@@ -285,19 +285,13 @@ func (m *Manager) Sync(ctx context.Context, req *rpc.SyncRequest) (resp *rpc.Bac
 		return nil, err
 	}
 
-	port, _, err := m.allocatePorts(1)
-	if err != nil {
-		return nil, err
-	}
-	receiverAddress := fmt.Sprintf("%s:%d", req.ToHost, port)
 	senderManagerAddress := fmt.Sprintf("%s:%d", req.FromHost, types.DefaultPort)
-	if _, err = bi.Receive(port, senderManagerAddress, func() {
-		if err := m.releasePorts(port, port+1); err != nil {
-			log.Errorf("Backing Image Manager: failed to release port %v after receiving backing image", port)
-		}
-	}); err != nil {
+	port, err := bi.Receive(senderManagerAddress, m.allocatePorts, m.releasePorts)
+	if err != nil {
 		return nil, errors.Wrapf(err, "failed to receive backing image")
 	}
+
+	receiverAddress := fmt.Sprintf("%s:%d", req.ToHost, port)
 	sender := client.NewBackingImageManagerClient(senderManagerAddress)
 	if err = sender.Send(req.BackingImageSpec.Name, receiverAddress); err != nil {
 		return nil, errors.Wrapf(err, "sender failed to send backing image")
@@ -331,19 +325,11 @@ func (m *Manager) Send(ctx context.Context, req *rpc.SendRequest) (resp *empty.E
 		return nil, status.Errorf(codes.NotFound, "backing image %v is being transferring to a new manager", req.Name)
 	}
 
-	port, _, err := m.allocatePorts(1)
-	if err != nil {
-		return nil, err
-	}
-	if err := bi.Send(req.ToAddress, func() {
-		if err := m.releasePorts(port, port+1); err != nil {
-			log.Errorf("Backing Image Manager: failed to release port %v after sending backing image", port)
-		}
-	}); err != nil {
+	if err := bi.Send(req.ToAddress, m.allocatePorts, m.releasePorts); err != nil {
 		return nil, err
 	}
 
-	log.Info("Backing Image Manager: sending backing image")
+	log.Infof("Backing Image Manager: sending backing image")
 	return &empty.Empty{}, nil
 }
 

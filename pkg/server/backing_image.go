@@ -172,7 +172,7 @@ func (bi *BackingImage) Get() (*rpc.BackingImageResponse, error) {
 	return bi.rpcResponse(), nil
 }
 
-func (bi *BackingImage) Receive(port int32, senderManagerAddress string, portReleaseFunc func()) (resp *rpc.BackingImageResponse, err error) {
+func (bi *BackingImage) Receive(senderManagerAddress string, portAllocateFunc func(portCount int32) (int32, int32, error), portReleaseFunc func(start, end int32) error) (port int32, err error) {
 	bi.lock.Lock()
 	defer func() {
 		if err != nil {
@@ -186,17 +186,24 @@ func (bi *BackingImage) Receive(port int32, senderManagerAddress string, portRel
 
 	bi.senderManagerAddress = senderManagerAddress
 	bi.log = bi.log.WithField("senderManagerAddress", senderManagerAddress)
-	bi.log.Infof("Backing Image: prepare to receive backing image at port %v", port)
 
 	if err := bi.prepareForDownload(); err != nil {
-		return nil, errors.Wrapf(err, "failed to prepare for backing image receiving")
+		return 0, errors.Wrapf(err, "failed to prepare for backing image receiving")
+	}
+
+	if port, _, err = portAllocateFunc(1); err != nil {
+		return 0, errors.Wrapf(err, "failed to request a port for backing image receiving")
 	}
 
 	go func() {
 		defer func() {
 			bi.updateCh <- nil
-			portReleaseFunc()
+			if err := portReleaseFunc(port, port+1); err != nil {
+				bi.log.WithError(err).Errorf("Failed to release port %v after receiving backing image", port)
+			}
 		}()
+
+		bi.log.Infof("Backing Image: prepare to receive backing image at port %v", port)
 
 		if err := sparserest.Server(strconv.Itoa(int(port)), filepath.Join(bi.WorkDirectory, types.BackingImageTmpFileName), &sparserest.SyncFileStub{}); err != nil && err != http.ErrServerClosed {
 			bi.lock.Lock()
@@ -212,12 +219,10 @@ func (bi *BackingImage) Receive(port int32, senderManagerAddress string, portRel
 
 	go bi.waitForFileAndUpdateWithLockWhenDownloadStart()
 
-	bi.log.Infof("Backing image: receiving backing image from %v", senderManagerAddress)
-
-	return bi.rpcResponse(), nil
+	return port, nil
 }
 
-func (bi *BackingImage) Send(address string, portReleaseFunc func()) error {
+func (bi *BackingImage) Send(address string, portAllocateFunc func(portCount int32) (int32, int32, error), portReleaseFunc func(start, end int32) error) (err error) {
 	bi.lock.Lock()
 	oldState := bi.state
 	defer func() {
@@ -240,25 +245,32 @@ func (bi *BackingImage) Send(address string, portReleaseFunc func()) error {
 	if bi.sendingReference >= types.SendingLimit {
 		return fmt.Errorf("backing image %v is already sending data to %v backing images", bi.Name, types.SendingLimit)
 	}
+
+	port, _, err := portAllocateFunc(1)
+	if err != nil {
+		return errors.Wrapf(err, "failed to request a port for backing image sending")
+	}
+
 	bi.sendingReference++
 
-	bi.log.Infof("Backing Image: start to send backing image %v to %v", bi.Name, address)
-	backingFilepath := filepath.Join(bi.WorkDirectory, types.BackingImageFileName)
 	go func() {
-		defer portReleaseFunc()
+		bi.log.Infof("Backing Image: start to send backing image to address %v", address)
+		defer func() {
+			bi.lock.Lock()
+			bi.sendingReference--
+			bi.lock.Unlock()
+			bi.updateCh <- nil
+			if err := portReleaseFunc(port, port+1); err != nil {
+				bi.log.WithError(err).Errorf("Failed to release port %v after sending backing image", port)
+			}
+		}()
 
-		if err := sparse.SyncFile(backingFilepath, address, types.FileSyncTimeout, false); err != nil {
+		if err := sparse.SyncFile(filepath.Join(bi.WorkDirectory, types.BackingImageFileName), address, types.FileSyncTimeout, false); err != nil {
 			bi.log.WithError(err).Errorf("Backing Image: failed to send backing image to address %v", address)
 			return
 		}
-		bi.lock.Lock()
-		bi.sendingReference--
-		bi.log.Infof("Backing Image: done sending backing image to address %v", bi.Name, address)
-		bi.lock.Unlock()
-		bi.updateCh <- nil
+		bi.log.Infof("Backing Image: done sending backing image to address %v", address)
 	}()
-
-	bi.log.Infof("Backing image: sending backing image")
 
 	return nil
 }
