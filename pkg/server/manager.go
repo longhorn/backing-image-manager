@@ -319,11 +319,15 @@ func (m *Manager) Send(ctx context.Context, req *rpc.SendRequest) (resp *empty.E
 	if req.Name == "" || req.ToAddress == "" {
 		return nil, status.Errorf(codes.InvalidArgument, "missing required argument")
 	}
-	bi := m.findBackingImage(req.Name)
-	if bi == nil {
+
+	m.lock.Lock()
+	defer m.lock.Unlock()
+
+	bi, exists := m.backingImages[req.Name]
+	if !exists {
 		return nil, status.Errorf(codes.NotFound, "backing image %v not found in the send side", req.Name)
 	}
-	if m.isTransferringBackingImage(req.Name) {
+	if _, exists := m.transferringBackingImages[req.Name]; exists {
 		return nil, status.Errorf(codes.NotFound, "backing image %v is being transferring to a new manager", req.Name)
 	}
 
