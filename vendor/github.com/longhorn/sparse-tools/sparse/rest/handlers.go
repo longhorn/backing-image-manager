@@ -197,7 +197,7 @@ func (server *SyncServer) doWriteData(request *http.Request) error {
 	if err != nil {
 		return fmt.Errorf("server.getQueryInterval failed, err: %s", err)
 	}
-	log.Debugf("writeData: interval: %s", remoteDataInterval)
+	log.Tracef("writeData: interval: %s", remoteDataInterval)
 
 	data, err := ioutil.ReadAll(io.LimitReader(request.Body, remoteDataInterval.End-remoteDataInterval.Begin))
 	if err != nil {
