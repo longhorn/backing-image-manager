@@ -237,8 +237,8 @@ func (bi *BackingImage) Send(address string, portReleaseFunc func()) error {
 		bi.log.WithError(err).Error("Backing Image: failed to validate files before sending")
 		return errors.Wrapf(err, "cannot send backing image %v to others since the files are invalid", bi.Name)
 	}
-	if bi.sendingReference > 0 {
-		return fmt.Errorf("backing image %v is sending data to another backing image", bi.Name)
+	if bi.sendingReference >= types.SendingLimit {
+		return fmt.Errorf("backing image %v is already sending data to %v backing images", bi.Name, types.SendingLimit)
 	}
 	bi.sendingReference++
 
@@ -273,7 +273,7 @@ func (bi *BackingImage) rpcResponse() *rpc.BackingImageResponse {
 
 		Status: &rpc.BackingImageStatus{
 			State:                string(bi.state),
-			IsSending:            bi.sendingReference > 0,
+			SendingReference:     int32(bi.sendingReference),
 			ErrorMsg:             bi.errorMsg,
 			SenderManagerAddress: bi.senderManagerAddress,
 		},

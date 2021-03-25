@@ -25,7 +25,7 @@ message BackingImageSpec {
 message BackingImageStatus {
 	string state = 1;
 	string error_msg = 2;
-	bool is_sending = 3;
+	int32 sending_reference = 3;
 	string sender_manager_address = 4;
 }
 

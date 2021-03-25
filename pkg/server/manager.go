@@ -398,7 +398,7 @@ func (m *Manager) OwnershipTransferStart(ctx context.Context, req *empty.Empty) 
 			m.log.WithField("backingImage", bi.Name).WithError(err).Error("Backing Image Manager: failed to get backing image info when upgrade from the old manager")
 			continue
 		}
-		if !biResp.Status.IsSending && biResp.Status.State == types.DownloadStateDownloaded {
+		if biResp.Status.SendingReference == 0 && biResp.Status.State == types.DownloadStateDownloaded {
 			m.transferringBackingImages[name] = bi
 			resp.ReadyBackingImages[name] = biResp.Spec
 		}

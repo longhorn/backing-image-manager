@@ -13,6 +13,8 @@ const (
 	FileValidationInterval = 5 * time.Second
 	FileSyncTimeout        = 120
 
+	SendingLimit = 3
+
 	DownloadStatePending     = "pending"
 	DownloadStateDownloading = "downloading"
 	DownloadStateDownloaded  = "downloaded"
