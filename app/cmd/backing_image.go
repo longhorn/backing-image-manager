@@ -2,10 +2,11 @@ package cmd
 
 import (
 	"fmt"
-	"github.com/longhorn/backing-image-manager/api"
+
 	"github.com/sirupsen/logrus"
 	"github.com/urfave/cli"
 
+	"github.com/longhorn/backing-image-manager/api"
 	"github.com/longhorn/backing-image-manager/pkg/client"
 	"github.com/longhorn/backing-image-manager/pkg/util"
 )
@@ -20,8 +21,8 @@ func BackingImageCmd() cli.Command {
 			DeleteCmd(),
 			GetCmd(),
 			ListCmd(),
-			TransferStartCmd(),
-			TransferConfirmCmd(),
+			OwnershipTransferStartCmd(),
+			OwnershipTransferConfirmCmd(),
 		},
 	}
 }
@@ -182,45 +183,50 @@ func list(c *cli.Context) error {
 	return util.PrintJSON(biList)
 }
 
-func TransferStartCmd() cli.Command {
+func OwnershipTransferStartCmd() cli.Command {
 	return cli.Command{
-		Name: "transfer-start",
+		Name:    "ownership-transfer-start",
+		Aliases: []string{"ots"},
 		Action: func(c *cli.Context) {
-			if err := transferStart(c); err != nil {
-				logrus.Fatalf("Error running backing image transfer start command: %v.", err)
+			if err := ownershipTransferStart(c); err != nil {
+				logrus.Fatalf("Error running backing image ownership transfer start command: %v.", err)
 			}
 		},
+		Usage: "Ask an old manager to prepare for transferring the ownership pf all downloaded and not-sending backing images. This will return the prepared transferring backing images",
 	}
 }
 
-func transferStart(c *cli.Context) error {
+func ownershipTransferStart(c *cli.Context) error {
 	url := c.GlobalString("url")
 	bimClient := client.NewBackingImageManagerClient(url)
-	biMap, err := bimClient.TransferStart()
+	biMap, err := bimClient.OwnershipTransferStart()
 	if err != nil {
 		return err
 	}
 	return util.PrintJSON(biMap)
 }
 
-func TransferConfirmCmd() cli.Command {
+func OwnershipTransferConfirmCmd() cli.Command {
 	return cli.Command{
-		Name: "transfer-confirm",
+		Name:    "ownership-transfer-confirm",
+		Aliases: []string{"otc"},
 		Flags: []cli.Flag{
 			cli.StringSliceFlag{
 				Name: "backing-images",
 			},
 			// For simplicity, URLs are not required.
 		},
+		Usage: "If '--backing-image' is empty, this command means asking an old manager to give up the ownership of transferring backing images. " +
+			"If '--backing-image' is set, this command means asking a new manager to take over the ownership of transferring backing images from an old manager.",
 		Action: func(c *cli.Context) {
-			if err := transferConfirm(c); err != nil {
-				logrus.Fatalf("Error running backing image transfer confirm command: %v.", err)
+			if err := ownershipTransferConfirm(c); err != nil {
+				logrus.Fatalf("Error running backing image ownership transfer confirm command: %v.", err)
 			}
 		},
 	}
 }
 
-func transferConfirm(c *cli.Context) error {
+func ownershipTransferConfirm(c *cli.Context) error {
 	url := c.GlobalString("url")
 	biNames := c.StringSlice("backing-images")
 	bimClient := client.NewBackingImageManagerClient(url)
@@ -228,5 +234,5 @@ func transferConfirm(c *cli.Context) error {
 	for _, name := range biNames {
 		readyBackingImages[name] = &api.BackingImage{Name: name}
 	}
-	return bimClient.TransferConfirm(readyBackingImages)
+	return bimClient.OwnershipTransferConfirm(readyBackingImages)
 }

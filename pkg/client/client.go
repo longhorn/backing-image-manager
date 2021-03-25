@@ -2,6 +2,7 @@ package client
 
 import (
 	"fmt"
+
 	"github.com/golang/protobuf/ptypes/empty"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
@@ -163,7 +164,7 @@ func (cli *BackingImageManagerClient) List() (map[string]*api.BackingImage, erro
 	return api.RPCToBackingImageList(resp), nil
 }
 
-func (cli *BackingImageManagerClient) TransferStart() (map[string]*api.BackingImage, error) {
+func (cli *BackingImageManagerClient) OwnershipTransferStart() (map[string]*api.BackingImage, error) {
 	conn, err := grpc.Dial(cli.Address, grpc.WithInsecure())
 	if err != nil {
 		return nil, fmt.Errorf("cannot connect backing image manager service to %v: %v", cli.Address, err)
@@ -174,7 +175,7 @@ func (cli *BackingImageManagerClient) TransferStart() (map[string]*api.BackingIm
 	ctx, cancel := context.WithTimeout(context.Background(), types.GRPCServiceTimeout)
 	defer cancel()
 
-	transferResp, err := client.TransferStart(ctx, &empty.Empty{})
+	transferResp, err := client.OwnershipTransferStart(ctx, &empty.Empty{})
 	if err != nil {
 		return nil, err
 	}
@@ -190,7 +191,7 @@ func (cli *BackingImageManagerClient) TransferStart() (map[string]*api.BackingIm
 	return resp, nil
 }
 
-func (cli *BackingImageManagerClient) TransferConfirm(transferringBackingImages map[string]*api.BackingImage) error {
+func (cli *BackingImageManagerClient) OwnershipTransferConfirm(transferringBackingImages map[string]*api.BackingImage) error {
 	conn, err := grpc.Dial(cli.Address, grpc.WithInsecure())
 	if err != nil {
 		return fmt.Errorf("cannot connect backing image manager service to %v: %v", cli.Address, err)
@@ -209,7 +210,7 @@ func (cli *BackingImageManagerClient) TransferConfirm(transferringBackingImages 
 		}
 	}
 
-	_, err = client.TransferConfirm(ctx, &rpc.TransferConfirmRequest{
+	_, err = client.OwnershipTransferConfirm(ctx, &rpc.OwnershipTransferConfirmRequest{
 		ReadyBackingImages: input,
 	})
 	return err

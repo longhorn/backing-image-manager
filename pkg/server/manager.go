@@ -383,11 +383,11 @@ func ParsePortRange(portRange string) (int32, int32, error) {
 	return int32(portStart), int32(portEnd), nil
 }
 
-func (m *Manager) TransferStart(ctx context.Context, req *empty.Empty) (resp *rpc.TransferStartResponse, err error) {
+func (m *Manager) OwnershipTransferStart(ctx context.Context, req *empty.Empty) (resp *rpc.OwnershipTransferStartResponse, err error) {
 	m.lock.Lock()
 	defer m.lock.Unlock()
 
-	resp = &rpc.TransferStartResponse{
+	resp = &rpc.OwnershipTransferStartResponse{
 		ReadyBackingImages: map[string]*rpc.BackingImageSpec{},
 	}
 
@@ -408,7 +408,7 @@ func (m *Manager) TransferStart(ctx context.Context, req *empty.Empty) (resp *rp
 	return resp, nil
 }
 
-func (m *Manager) TransferConfirm(ctx context.Context, req *rpc.TransferConfirmRequest) (resp *empty.Empty, err error) {
+func (m *Manager) OwnershipTransferConfirm(ctx context.Context, req *rpc.OwnershipTransferConfirmRequest) (resp *empty.Empty, err error) {
 	m.lock.Lock()
 	defer m.lock.Unlock()
 

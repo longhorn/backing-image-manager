@@ -9,8 +9,8 @@ service BackingImageManagerService {
 	rpc Delete(DeleteRequest) returns (google.protobuf.Empty) {}
 	rpc Get(GetRequest) returns (BackingImageResponse) {}
 	rpc List(google.protobuf.Empty) returns (ListResponse) {}
-	rpc TransferStart(google.protobuf.Empty) returns (TransferStartResponse) {}
-	rpc TransferConfirm(TransferConfirmRequest) returns (google.protobuf.Empty) {}
+	rpc OwnershipTransferStart(google.protobuf.Empty) returns (OwnershipTransferStartResponse) {}
+	rpc OwnershipTransferConfirm(OwnershipTransferConfirmRequest) returns (google.protobuf.Empty) {}
 	rpc VersionGet(google.protobuf.Empty) returns(VersionResponse);
 
 	rpc Watch(google.protobuf.Empty) returns (stream google.protobuf.Empty) {}
@@ -62,11 +62,11 @@ message SyncRequest {
 	string to_host = 3;
 }
 
-message TransferStartResponse {
+message OwnershipTransferStartResponse {
 	map<string, BackingImageSpec> ready_backing_images  = 1;
 }
 
-message TransferConfirmRequest {
+message OwnershipTransferConfirmRequest {
 	map<string, BackingImageSpec> ready_backing_images  = 1;
 }
 
