@@ -26,7 +26,7 @@ message BackingImageStatus {
 	string state = 1;
 	string error_msg = 2;
 	bool is_sending = 3;
-	string sender_address = 4;
+	string sender_manager_address = 4;
 }
 
 message BackingImageResponse {

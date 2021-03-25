@@ -42,8 +42,8 @@ type BackingImage struct {
 	state         state
 	errorMsg      string
 
-	sendingReference int
-	senderAddress    string
+	sendingReference     int
+	senderManagerAddress string
 
 	// Need to acquire lock when access to BackingImage fields as well as its meta file.
 	lock *sync.RWMutex
@@ -172,7 +172,7 @@ func (bi *BackingImage) Get() (*rpc.BackingImageResponse, error) {
 	return bi.rpcResponse(), nil
 }
 
-func (bi *BackingImage) Receive(port int32, senderAddress string, portReleaseFunc func()) (resp *rpc.BackingImageResponse, err error) {
+func (bi *BackingImage) Receive(port int32, senderManagerAddress string, portReleaseFunc func()) (resp *rpc.BackingImageResponse, err error) {
 	bi.lock.Lock()
 	defer func() {
 		if err != nil {
@@ -184,8 +184,8 @@ func (bi *BackingImage) Receive(port int32, senderAddress string, portReleaseFun
 		bi.updateCh <- nil
 	}()
 
-	bi.senderAddress = senderAddress
-	bi.log = bi.log.WithField("senderAddress", senderAddress)
+	bi.senderManagerAddress = senderManagerAddress
+	bi.log = bi.log.WithField("senderManagerAddress", senderManagerAddress)
 	bi.log.Infof("Backing Image: prepare to receive backing image at port %v", port)
 
 	if err := bi.prepareForDownload(); err != nil {
@@ -202,7 +202,7 @@ func (bi *BackingImage) Receive(port int32, senderAddress string, portReleaseFun
 			bi.lock.Lock()
 			bi.state = StateFailed
 			bi.errorMsg = err.Error()
-			bi.log.WithError(err).Errorf("Backing Image: failed to receive backing image from %v", senderAddress)
+			bi.log.WithError(err).Errorf("Backing Image: failed to receive backing image from %v", senderManagerAddress)
 			bi.lock.Unlock()
 			return
 		}
@@ -212,7 +212,7 @@ func (bi *BackingImage) Receive(port int32, senderAddress string, portReleaseFun
 
 	go bi.waitForFileAndUpdateWithLockWhenDownloadStart()
 
-	bi.log.Infof("Backing image: receiving backing image from %v", senderAddress)
+	bi.log.Infof("Backing image: receiving backing image from %v", senderManagerAddress)
 
 	return bi.rpcResponse(), nil
 }
@@ -272,10 +272,10 @@ func (bi *BackingImage) rpcResponse() *rpc.BackingImageResponse {
 		},
 
 		Status: &rpc.BackingImageStatus{
-			State:         string(bi.state),
-			IsSending:     bi.sendingReference > 0,
-			ErrorMsg:      bi.errorMsg,
-			SenderAddress: bi.senderAddress,
+			State:                string(bi.state),
+			IsSending:            bi.sendingReference > 0,
+			ErrorMsg:             bi.errorMsg,
+			SenderManagerAddress: bi.senderManagerAddress,
 		},
 	}
 	return resp

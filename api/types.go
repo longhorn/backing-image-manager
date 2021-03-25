@@ -18,10 +18,10 @@ type BackingImage struct {
 }
 
 type BackingImageStatus struct {
-	State         string `json:"state"`
-	IsSending     bool   `json:"isSending"`
-	ErrorMsg      string `json:"errorMsg"`
-	SenderAddress string `json:"senderAddress"`
+	State                string `json:"state"`
+	IsSending            bool   `json:"isSending"`
+	ErrorMsg             string `json:"errorMsg"`
+	SenderManagerAddress string `json:"senderManagerAddress"`
 }
 
 func RPCToBackingImage(obj *rpc.BackingImageResponse) *BackingImage {
@@ -31,10 +31,10 @@ func RPCToBackingImage(obj *rpc.BackingImageResponse) *BackingImage {
 		Directory: obj.Spec.Directory,
 
 		Status: BackingImageStatus{
-			State:         obj.Status.State,
-			IsSending:     obj.Status.IsSending,
-			ErrorMsg:      obj.Status.ErrorMsg,
-			SenderAddress: obj.Status.SenderAddress,
+			State:                obj.Status.State,
+			IsSending:            obj.Status.IsSending,
+			ErrorMsg:             obj.Status.ErrorMsg,
+			SenderManagerAddress: obj.Status.SenderManagerAddress,
 		},
 	}
 }

@@ -290,15 +290,15 @@ func (m *Manager) Sync(ctx context.Context, req *rpc.SyncRequest) (resp *rpc.Bac
 		return nil, err
 	}
 	receiverAddress := fmt.Sprintf("%s:%d", req.ToHost, port)
-	senderAddress := fmt.Sprintf("%s:%d", req.FromHost, types.DefaultPort)
-	if _, err = bi.Receive(port, senderAddress, func() {
+	senderManagerAddress := fmt.Sprintf("%s:%d", req.FromHost, types.DefaultPort)
+	if _, err = bi.Receive(port, senderManagerAddress, func() {
 		if err := m.releasePorts(port, port+1); err != nil {
 			log.Errorf("Backing Image Manager: failed to release port %v after receiving backing image", port)
 		}
 	}); err != nil {
 		return nil, errors.Wrapf(err, "failed to receive backing image")
 	}
-	sender := client.NewBackingImageManagerClient(senderAddress)
+	sender := client.NewBackingImageManagerClient(senderManagerAddress)
 	if err = sender.Send(req.BackingImageSpec.Name, receiverAddress); err != nil {
 		return nil, errors.Wrapf(err, "sender failed to send backing image")
 	}
