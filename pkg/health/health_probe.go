@@ -30,7 +30,7 @@ func (hc *CheckServer) Check(context.Context, *healthpb.HealthCheckRequest) (*he
 
 	return &healthpb.HealthCheckResponse{
 		Status: healthpb.HealthCheckResponse_NOT_SERVING,
-	}, fmt.Errorf("Backing Image Manager is not running")
+	}, fmt.Errorf("backing image management service is not running")
 }
 
 func (hc *CheckServer) Watch(req *healthpb.HealthCheckRequest, ws healthpb.Health_WatchServer) error {
@@ -39,14 +39,14 @@ func (hc *CheckServer) Watch(req *healthpb.HealthCheckRequest, ws healthpb.Healt
 			if err := ws.Send(&healthpb.HealthCheckResponse{
 				Status: healthpb.HealthCheckResponse_SERVING,
 			}); err != nil {
-				logrus.Errorf("Failed to send health check result %v for gRPC process management server: %v",
+				logrus.Errorf("Failed to send health check result %v for gRPC backing image management server: %v",
 					healthpb.HealthCheckResponse_SERVING, err)
 			}
 		} else {
 			if err := ws.Send(&healthpb.HealthCheckResponse{
 				Status: healthpb.HealthCheckResponse_NOT_SERVING,
 			}); err != nil {
-				logrus.Errorf("Failed to send health check result %v for gRPC process management server: %v",
+				logrus.Errorf("Failed to send health check result %v for gRPC backing image management server: %v",
 					healthpb.HealthCheckResponse_NOT_SERVING, err)
 			}
 
