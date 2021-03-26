@@ -20,7 +20,8 @@ message BackingImageSpec {
 	string name = 1;
 	string url = 2;
 	string uuid = 3;
-	string directory = 4;
+	int64 size = 4;
+	string directory = 5;
 }
 
 message BackingImageStatus {
@@ -28,6 +29,7 @@ message BackingImageStatus {
 	string error_msg = 2;
 	int32 sending_reference = 3;
 	string sender_manager_address = 4;
+	int32 downloadProgress = 5;
 }
 
 message BackingImageResponse {
