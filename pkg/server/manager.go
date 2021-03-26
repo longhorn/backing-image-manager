@@ -284,7 +284,7 @@ func (m *Manager) Sync(ctx context.Context, req *rpc.SyncRequest) (resp *rpc.Bac
 		}
 	}()
 
-	if req.BackingImageSpec.Name == "" || req.BackingImageSpec.Uuid == "" || req.FromHost == "" || req.ToHost == "" {
+	if req.BackingImageSpec.Name == "" || req.BackingImageSpec.Uuid == "" || req.FromHost == "" || req.ToHost == "" || req.BackingImageSpec.Size <= 0 {
 		return nil, status.Errorf(codes.InvalidArgument, "missing required argument")
 	}
 	if bi := m.findBackingImage(req.BackingImageSpec.Name); bi != nil {
@@ -297,7 +297,7 @@ func (m *Manager) Sync(ctx context.Context, req *rpc.SyncRequest) (resp *rpc.Bac
 	}
 
 	senderManagerAddress := fmt.Sprintf("%s:%d", req.FromHost, types.DefaultPort)
-	port, err := bi.Receive(senderManagerAddress, m.allocatePorts, m.releasePorts)
+	port, err := bi.Receive(req.BackingImageSpec.Size, senderManagerAddress, m.allocatePorts, m.releasePorts)
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to receive backing image")
 	}
@@ -433,7 +433,7 @@ func (m *Manager) OwnershipTransferConfirm(ctx context.Context, req *rpc.Ownersh
 		if _, exists := m.backingImages[biSpec.Name]; exists {
 			continue
 		}
-		bi := IntroduceDownloadedBackingImage(biSpec.Name, biSpec.Url, biSpec.Uuid, m.diskPathOnHost)
+		bi := IntroduceDownloadedBackingImage(biSpec.Name, biSpec.Url, biSpec.Uuid, m.diskPathOnHost, biSpec.Size)
 		m.backingImages[bi.Name] = bi
 		bi.SetUpdateChannel(m.updateCh)
 	}

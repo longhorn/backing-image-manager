@@ -51,8 +51,8 @@ func (cli *BackingImageManagerClient) Pull(name, url, uuid string) (*api.Backing
 	return api.RPCToBackingImage(resp), nil
 }
 
-func (cli *BackingImageManagerClient) Sync(name, url, uuid, fromHost, toHost string) (*api.BackingImage, error) {
-	if name == "" || uuid == "" || fromHost == "" || toHost == "" {
+func (cli *BackingImageManagerClient) Sync(name, url, uuid, fromHost, toHost string, size int64) (*api.BackingImage, error) {
+	if name == "" || uuid == "" || fromHost == "" || toHost == "" || size <= 0 {
 		return nil, fmt.Errorf("failed to sync backing image: missing required parameter")
 	}
 
@@ -71,6 +71,7 @@ func (cli *BackingImageManagerClient) Sync(name, url, uuid, fromHost, toHost str
 			Name: name,
 			Url:  url,
 			Uuid: uuid,
+			Size: size,
 		},
 		FromHost: fromHost,
 		ToHost:   toHost,
@@ -188,6 +189,7 @@ func (cli *BackingImageManagerClient) OwnershipTransferStart() (map[string]*api.
 			Name: biSpec.Name,
 			URL:  biSpec.Url,
 			UUID: biSpec.Uuid,
+			Size: biSpec.Size,
 		}
 	}
 
@@ -211,6 +213,7 @@ func (cli *BackingImageManagerClient) OwnershipTransferConfirm(transferringBacki
 			Name: bi.Name,
 			Url:  bi.URL,
 			Uuid: bi.UUID,
+			Size: bi.Size,
 		}
 	}
 

@@ -72,6 +72,9 @@ func SyncCmd() cli.Command {
 			cli.StringFlag{
 				Name: "uuid",
 			},
+			cli.Int64Flag{
+				Name: "size",
+			},
 			cli.StringFlag{
 				Name: "from-host",
 			},
@@ -90,7 +93,7 @@ func SyncCmd() cli.Command {
 func sync(c *cli.Context) error {
 	url := c.GlobalString("url")
 	bimClient := client.NewBackingImageManagerClient(url)
-	bi, err := bimClient.Sync(c.String("name"), c.String("download-url"), c.String("uuid"), c.String("from-host"), c.String("to-host"))
+	bi, err := bimClient.Sync(c.String("name"), c.String("download-url"), c.String("uuid"), c.String("from-host"), c.String("to-host"), c.Int64("size"))
 	if err != nil {
 		return err
 	}
