@@ -12,6 +12,7 @@ import (
 type BackingImage struct {
 	Name      string `json:"name"`
 	URL       string `json:"url"`
+	UUID      string `json:"uuid"`
 	Directory string `json:"directory"`
 
 	Status BackingImageStatus `json:"status"`
@@ -28,6 +29,7 @@ func RPCToBackingImage(obj *rpc.BackingImageResponse) *BackingImage {
 	return &BackingImage{
 		Name:      obj.Spec.Name,
 		URL:       obj.Spec.Url,
+		UUID:      obj.Spec.Uuid,
 		Directory: obj.Spec.Directory,
 
 		Status: BackingImageStatus{

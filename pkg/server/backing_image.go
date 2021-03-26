@@ -37,6 +37,7 @@ const (
 type BackingImage struct {
 	Name          string
 	URL           string
+	UUID          string
 	HostDirectory string
 	WorkDirectory string
 	state         state
@@ -52,7 +53,7 @@ type BackingImage struct {
 	updateCh chan interface{}
 }
 
-func NewBackingImage(name, url, diskPath string) *BackingImage {
+func NewBackingImage(name, url, uuid, diskPath string) *BackingImage {
 	hostDir := filepath.Join(diskPath, types.BackingImageDirectoryName, name)
 	workDir := filepath.Join(types.WorkDirectory, name)
 	return &BackingImage{
@@ -66,6 +67,7 @@ func NewBackingImage(name, url, diskPath string) *BackingImage {
 				"component": "backing-image",
 				"name":      name,
 				"url":       url,
+				"uuid":      uuid,
 				"hostDir":   hostDir,
 				"workDir":   workDir,
 			},
@@ -78,8 +80,8 @@ func (bi *BackingImage) SetUpdateChannel(updateCh chan interface{}) {
 	bi.updateCh = updateCh
 }
 
-func IntroduceDownloadedBackingImage(name, url, diskPath string) *BackingImage {
-	bi := NewBackingImage(name, url, diskPath)
+func IntroduceDownloadedBackingImage(name, url, uuid, diskPath string) *BackingImage {
+	bi := NewBackingImage(name, url, uuid, diskPath)
 	bi.state = types.DownloadStateDownloaded
 	return bi
 }
@@ -280,6 +282,7 @@ func (bi *BackingImage) rpcResponse() *rpc.BackingImageResponse {
 		Spec: &rpc.BackingImageSpec{
 			Name:      bi.Name,
 			Url:       bi.URL,
+			Uuid:      bi.UUID,
 			Directory: bi.HostDirectory,
 		},
 

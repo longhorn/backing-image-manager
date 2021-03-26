@@ -19,7 +19,8 @@ service BackingImageManagerService {
 message BackingImageSpec {
 	string name = 1;
 	string url = 2;
-	string directory = 3;
+	string uuid = 3;
+	string directory = 4;
 }
 
 message BackingImageStatus {

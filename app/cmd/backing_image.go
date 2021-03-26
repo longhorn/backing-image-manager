@@ -37,6 +37,9 @@ func PullCmd() cli.Command {
 			cli.StringFlag{
 				Name: "download-url",
 			},
+			cli.StringFlag{
+				Name: "uuid",
+			},
 		},
 		Action: func(c *cli.Context) {
 			if err := pull(c); err != nil {
@@ -49,7 +52,7 @@ func PullCmd() cli.Command {
 func pull(c *cli.Context) error {
 	url := c.GlobalString("url")
 	bimClient := client.NewBackingImageManagerClient(url)
-	bi, err := bimClient.Pull(c.String("name"), c.String("download-url"))
+	bi, err := bimClient.Pull(c.String("name"), c.String("download-url"), c.String("uuid"))
 	if err != nil {
 		return err
 	}
@@ -65,6 +68,9 @@ func SyncCmd() cli.Command {
 			},
 			cli.StringFlag{
 				Name: "download-url",
+			},
+			cli.StringFlag{
+				Name: "uuid",
 			},
 			cli.StringFlag{
 				Name: "from-host",
@@ -84,7 +90,7 @@ func SyncCmd() cli.Command {
 func sync(c *cli.Context) error {
 	url := c.GlobalString("url")
 	bimClient := client.NewBackingImageManagerClient(url)
-	bi, err := bimClient.Sync(c.String("name"), c.String("download-url"), c.String("from-host"), c.String("to-host"))
+	bi, err := bimClient.Sync(c.String("name"), c.String("download-url"), c.String("uuid"), c.String("from-host"), c.String("to-host"))
 	if err != nil {
 		return err
 	}
@@ -214,7 +220,12 @@ func OwnershipTransferConfirmCmd() cli.Command {
 			cli.StringSliceFlag{
 				Name: "backing-images",
 			},
-			// For simplicity, URLs are not required.
+			cli.StringSliceFlag{
+				Name: "download-urls",
+			},
+			cli.StringSliceFlag{
+				Name: "uuids",
+			},
 		},
 		Usage: "If '--backing-image' is empty, this command means asking an old manager to give up the ownership of transferring backing images. " +
 			"If '--backing-image' is set, this command means asking a new manager to take over the ownership of transferring backing images from an old manager.",
@@ -229,10 +240,22 @@ func OwnershipTransferConfirmCmd() cli.Command {
 func ownershipTransferConfirm(c *cli.Context) error {
 	url := c.GlobalString("url")
 	biNames := c.StringSlice("backing-images")
+	downloadURLs := c.StringSlice("download-urls")
+	uuids := c.StringSlice("uuids")
+	if len(biNames) != len(downloadURLs) {
+		return fmt.Errorf("the length of download URLs doesn't match that of backing images")
+	}
+	if len(biNames) != len(uuids) {
+		return fmt.Errorf("the length of UUIDs doesn't match that of backing images")
+	}
 	bimClient := client.NewBackingImageManagerClient(url)
 	readyBackingImages := map[string]*api.BackingImage{}
-	for _, name := range biNames {
-		readyBackingImages[name] = &api.BackingImage{Name: name}
+	for index, name := range biNames {
+		readyBackingImages[name] = &api.BackingImage{
+			Name: name,
+			URL:  downloadURLs[index],
+			UUID: uuids[index],
+		}
 	}
 	return bimClient.OwnershipTransferConfirm(readyBackingImages)
 }

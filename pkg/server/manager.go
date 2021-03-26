@@ -155,11 +155,11 @@ func (m *Manager) Pull(ctx context.Context, req *rpc.PullRequest) (ret *rpc.Back
 		}
 	}()
 
-	if req.Spec.Name == "" || req.Spec.Url == "" {
+	if req.Spec.Name == "" || req.Spec.Url == "" || req.Spec.Uuid == "" {
 		return nil, status.Errorf(codes.InvalidArgument, "missing required argument")
 	}
 
-	bi := NewBackingImage(req.Spec.Name, req.Spec.Url, m.diskPath)
+	bi := NewBackingImage(req.Spec.Name, req.Spec.Url, req.Spec.Uuid, m.diskPath)
 	if err := m.registerBackingImage(bi); err != nil {
 		return nil, err
 	}
@@ -273,14 +273,14 @@ func (m *Manager) Sync(ctx context.Context, req *rpc.SyncRequest) (resp *rpc.Bac
 		}
 	}()
 
-	if req.BackingImageSpec.Name == "" || req.FromHost == "" || req.ToHost == "" {
+	if req.BackingImageSpec.Name == "" || req.BackingImageSpec.Uuid == "" || req.FromHost == "" || req.ToHost == "" {
 		return nil, status.Errorf(codes.InvalidArgument, "missing required argument")
 	}
 	if bi := m.findBackingImage(req.BackingImageSpec.Name); bi != nil {
 		return nil, status.Errorf(codes.AlreadyExists, "backing image %v already exists in the receiver side", req.BackingImageSpec.Name)
 	}
 
-	bi := NewBackingImage(req.BackingImageSpec.Name, req.BackingImageSpec.Url, m.diskPath)
+	bi := NewBackingImage(req.BackingImageSpec.Name, req.BackingImageSpec.Url, req.BackingImageSpec.Uuid, m.diskPath)
 	if err := m.registerBackingImage(bi); err != nil {
 		return nil, err
 	}
@@ -399,6 +399,9 @@ func (m *Manager) OwnershipTransferStart(ctx context.Context, req *empty.Empty) 
 }
 
 func (m *Manager) OwnershipTransferConfirm(ctx context.Context, req *rpc.OwnershipTransferConfirmRequest) (resp *empty.Empty, err error) {
+	defer func() {
+		m.updateCh <- nil
+	}()
 	m.lock.Lock()
 	defer m.lock.Unlock()
 
@@ -419,7 +422,7 @@ func (m *Manager) OwnershipTransferConfirm(ctx context.Context, req *rpc.Ownersh
 		if _, exists := m.backingImages[biSpec.Name]; exists {
 			continue
 		}
-		bi := IntroduceDownloadedBackingImage(biSpec.Name, biSpec.Url, m.diskPath)
+		bi := IntroduceDownloadedBackingImage(biSpec.Name, biSpec.Url, biSpec.Uuid, m.diskPath)
 		m.backingImages[bi.Name] = bi
 		bi.SetUpdateChannel(m.updateCh)
 	}
