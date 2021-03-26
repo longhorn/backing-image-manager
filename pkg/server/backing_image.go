@@ -53,9 +53,9 @@ type BackingImage struct {
 	updateCh chan interface{}
 }
 
-func NewBackingImage(name, url, uuid, diskPath string) *BackingImage {
-	hostDir := filepath.Join(diskPath, types.BackingImageDirectoryName, name)
-	workDir := filepath.Join(types.WorkDirectory, name)
+func NewBackingImage(name, url, uuid, diskPathOnHost string) *BackingImage {
+	hostDir := filepath.Join(diskPathOnHost, types.BackingImageDirectoryName, GetBackingImageDirectoryName(name, uuid))
+	workDir := filepath.Join(types.WorkDirectory, GetBackingImageDirectoryName(name, uuid))
 	return &BackingImage{
 		Name:          name,
 		URL:           url,
@@ -74,6 +74,10 @@ func NewBackingImage(name, url, uuid, diskPath string) *BackingImage {
 		),
 		lock: &sync.RWMutex{},
 	}
+}
+
+func GetBackingImageDirectoryName(biName, biUUID string) string {
+	return fmt.Sprintf("%s-%s", biName, biUUID)
 }
 
 func (bi *BackingImage) SetUpdateChannel(updateCh chan interface{}) {

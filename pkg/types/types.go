@@ -5,8 +5,9 @@ import (
 )
 
 const (
-	DiskPath      = "/data/"
-	WorkDirectory = DiskPath + "backing-images/"
+	BackingImageDirectoryName = "backing-images"
+	DiskPath                  = "/data/"
+	WorkDirectory             = DiskPath + BackingImageDirectoryName + "/"
 
 	DefaultPort = 8000
 
@@ -21,7 +22,6 @@ const (
 	DownloadStateDownloaded  = "downloaded"
 	DownloadStateFailed      = "failed"
 
-	BackingImageTmpFileName   = "backing.tmp"
-	BackingImageFileName      = "backing"
-	BackingImageDirectoryName = "backing-images"
+	BackingImageTmpFileName = "backing.tmp"
+	BackingImageFileName    = "backing"
 )
