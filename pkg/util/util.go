@@ -4,8 +4,10 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"net/http"
 	"os"
+	"path/filepath"
 )
 
 func PrintJSON(obj interface{}) error {
@@ -39,4 +41,27 @@ func DownloadFile(filepath string, url string) error {
 	// Write the body to file
 	_, err = io.Copy(out, resp.Body)
 	return err
+}
+
+// This should be the same as the schema in longhorn-manager/util
+const (
+	DiskConfigFile = "longhorn-disk.cfg"
+)
+
+type DiskConfig struct {
+	DiskUUID string `json:"diskUUID"`
+}
+
+func GetDiskConfig(diskPath string) (string, error) {
+	filePath := filepath.Join(diskPath, DiskConfigFile)
+	output, err := ioutil.ReadFile(filePath)
+	if err != nil {
+		return "", fmt.Errorf("cannot find disk config file %v: %v", filePath, err)
+	}
+
+	cfg := &DiskConfig{}
+	if err := json.Unmarshal([]byte(output), cfg); err != nil {
+		return "", fmt.Errorf("failed to unmarshal %v content %v: %v", filePath, output, err)
+	}
+	return cfg.DiskUUID, nil
 }

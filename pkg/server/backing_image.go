@@ -84,8 +84,8 @@ func (bi *BackingImage) SetUpdateChannel(updateCh chan interface{}) {
 	bi.updateCh = updateCh
 }
 
-func IntroduceDownloadedBackingImage(name, url, uuid, diskPath string) *BackingImage {
-	bi := NewBackingImage(name, url, uuid, diskPath)
+func IntroduceDownloadedBackingImage(name, url, uuid, diskPathOnHost string) *BackingImage {
+	bi := NewBackingImage(name, url, uuid, diskPathOnHost)
 	bi.state = types.DownloadStateDownloaded
 	return bi
 }

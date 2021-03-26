@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"fmt"
 	"net"
 	"os"
 	"os/signal"
@@ -16,6 +17,8 @@ import (
 	"github.com/longhorn/backing-image-manager/pkg/health"
 	"github.com/longhorn/backing-image-manager/pkg/rpc"
 	"github.com/longhorn/backing-image-manager/pkg/server"
+	"github.com/longhorn/backing-image-manager/pkg/types"
+	"github.com/longhorn/backing-image-manager/pkg/util"
 )
 
 func StartCmd() cli.Command {
@@ -32,6 +35,10 @@ func StartCmd() cli.Command {
 				Usage: "The corresponding host disk path of the work directory",
 			},
 			cli.StringFlag{
+				Name:  "disk-uuid",
+				Usage: "The corresponding disk uuid stored in the metafile of the disk path",
+			},
+			cli.StringFlag{
 				Name:  "port-range",
 				Value: "30001-31000",
 			},
@@ -46,11 +53,22 @@ func StartCmd() cli.Command {
 
 func start(c *cli.Context) error {
 	listen := c.String("listen")
-	diskPath := c.String("disk-path")
+	diskUUID := c.String("disk-uuid")
+	diskPathOnHost := c.String("disk-path")
 	portRange := c.String("port-range")
 
+	diskUUIDInFile, err := util.GetDiskConfig(types.DiskPath)
+	if err != nil {
+		return err
+	}
+	if diskUUID == "" {
+		diskUUID = diskUUIDInFile
+	} else if diskUUID != diskUUIDInFile {
+		return fmt.Errorf("invalid input disk UUID %v, which doesn't match disk UUID %v the disk config file", diskUUID, diskUUIDInFile)
+	}
+
 	shutdownCh := make(chan error)
-	bim, err := server.NewManager(diskPath, portRange, shutdownCh)
+	bim, err := server.NewManager(diskUUID, diskPathOnHost, portRange, shutdownCh)
 	if err != nil {
 		return err
 	}

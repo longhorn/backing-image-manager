@@ -27,7 +27,8 @@ import (
 */
 
 type Manager struct {
-	diskPath                  string
+	diskUUID                  string
+	diskPathOnHost            string
 	backingImages             map[string]*BackingImage
 	transferringBackingImages map[string]*BackingImage
 
@@ -47,13 +48,14 @@ type Manager struct {
 	broadcastCh chan interface{}
 }
 
-func NewManager(diskPath, portRange string, shutdownCh chan error) (*Manager, error) {
+func NewManager(diskUUID, diskPathOnHost, portRange string, shutdownCh chan error) (*Manager, error) {
 	start, end, err := ParsePortRange(portRange)
 	if err != nil {
 		return nil, err
 	}
 	m := &Manager{
-		diskPath:                  diskPath,
+		diskUUID:                  diskUUID,
+		diskPathOnHost:            diskPathOnHost,
 		backingImages:             map[string]*BackingImage{},
 		transferringBackingImages: map[string]*BackingImage{},
 
@@ -65,8 +67,8 @@ func NewManager(diskPath, portRange string, shutdownCh chan error) (*Manager, er
 
 		log: logrus.StandardLogger().WithFields(
 			logrus.Fields{
-				"component": "backing-image-manager",
-				"diskPath":  diskPath,
+				"component":      "backing-image-manager",
+				"diskPathOnHost": diskPathOnHost,
 			},
 		),
 
@@ -101,10 +103,19 @@ func (m *Manager) startMonitoring() {
 			done = true
 			break
 		case <-ticker.C:
+			diskUUID, err := util.GetDiskConfig(types.DiskPath)
+			if err != nil {
+				m.log.WithError(err).Error("Backing Image Manager: failed to read disk config file before validating backing image files")
+			}
+
 			m.lock.RLock()
-			for _, bi := range m.backingImages {
-				if _, err := bi.Get(); err != nil {
-					m.log.WithField("backingImage", bi.Name).WithError(err).Error("Backing Image Manager: failed to validate backing image files")
+			if diskUUID != m.diskUUID {
+				m.log.Errorf("Backing Image Manager: the disk UUID %v in config file doesn't match the disk UUID %v in backing image manager, will skip validating backing image files then", diskUUID, m.diskUUID)
+			} else {
+				for _, bi := range m.backingImages {
+					if _, err := bi.Get(); err != nil {
+						m.log.WithField("backingImage", bi.Name).WithError(err).Error("Backing Image Manager: failed to validate backing image files")
+					}
 				}
 			}
 			m.lock.RUnlock()
@@ -159,7 +170,7 @@ func (m *Manager) Pull(ctx context.Context, req *rpc.PullRequest) (ret *rpc.Back
 		return nil, status.Errorf(codes.InvalidArgument, "missing required argument")
 	}
 
-	bi := NewBackingImage(req.Spec.Name, req.Spec.Url, req.Spec.Uuid, m.diskPath)
+	bi := NewBackingImage(req.Spec.Name, req.Spec.Url, req.Spec.Uuid, m.diskPathOnHost)
 	if err := m.registerBackingImage(bi); err != nil {
 		return nil, err
 	}
@@ -280,7 +291,7 @@ func (m *Manager) Sync(ctx context.Context, req *rpc.SyncRequest) (resp *rpc.Bac
 		return nil, status.Errorf(codes.AlreadyExists, "backing image %v already exists in the receiver side", req.BackingImageSpec.Name)
 	}
 
-	bi := NewBackingImage(req.BackingImageSpec.Name, req.BackingImageSpec.Url, req.BackingImageSpec.Uuid, m.diskPath)
+	bi := NewBackingImage(req.BackingImageSpec.Name, req.BackingImageSpec.Url, req.BackingImageSpec.Uuid, m.diskPathOnHost)
 	if err := m.registerBackingImage(bi); err != nil {
 		return nil, err
 	}
@@ -422,7 +433,7 @@ func (m *Manager) OwnershipTransferConfirm(ctx context.Context, req *rpc.Ownersh
 		if _, exists := m.backingImages[biSpec.Name]; exists {
 			continue
 		}
-		bi := IntroduceDownloadedBackingImage(biSpec.Name, biSpec.Url, biSpec.Uuid, m.diskPath)
+		bi := IntroduceDownloadedBackingImage(biSpec.Name, biSpec.Url, biSpec.Uuid, m.diskPathOnHost)
 		m.backingImages[bi.Name] = bi
 		bi.SetUpdateChannel(m.updateCh)
 	}
