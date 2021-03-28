@@ -180,7 +180,12 @@ func (m *Manager) Pull(ctx context.Context, req *rpc.PullRequest) (ret *rpc.Back
 		return nil, err
 	}
 
-	log.Info("Backing Image Manager: pulling backing image")
+	if biReps.Status.State == types.DownloadStateDownloaded {
+		log.Info("Backing Image Manager: skip pulling backing image")
+	} else {
+		log.Info("Backing Image Manager: pulling backing image")
+	}
+
 	return biReps, nil
 }
 
@@ -300,6 +305,11 @@ func (m *Manager) Sync(ctx context.Context, req *rpc.SyncRequest) (resp *rpc.Bac
 	port, err := bi.Receive(req.BackingImageSpec.Size, senderManagerAddress, m.allocatePorts, m.releasePorts)
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to receive backing image")
+	}
+
+	if port == 0 {
+		log.Info("Backing Image Manager: skip syncing backing image")
+		return bi.Get()
 	}
 
 	receiverAddress := fmt.Sprintf("%s:%d", req.ToHost, port)
