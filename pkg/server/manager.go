@@ -148,7 +148,6 @@ func (m *Manager) Shutdown() {
 	defer m.lock.Unlock()
 
 	m.shutdownCh <- nil
-	close(m.updateCh)
 
 	for _, bi := range m.backingImages {
 		if err := bi.Delete(); err != nil {
