@@ -1,6 +1,7 @@
 package server
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	"os"
@@ -37,9 +38,10 @@ type BackingImage struct {
 	state         state
 	errorMsg      string
 
-	size          int64
-	processedSize int64
-	progress      int
+	size              int64
+	processedSize     int64
+	progress          int
+	downloadCanceller context.CancelFunc
 
 	sendingReference     int
 	senderManagerAddress string
@@ -123,16 +125,19 @@ func (bi *BackingImage) Pull() (resp *rpc.BackingImageResponse, err error) {
 	if size <= 0 {
 		bi.log.Warnf("Backing Image: cannot get size from URL, will set size after pulling")
 	}
+	ctx, cancel := context.WithCancel(context.Background())
 	bi.size = size
+	bi.downloadCanceller = cancel
 
 	go func() {
 		defer func() {
 			bi.updateCh <- nil
 		}()
 
-		written, err := util.DownloadFile(bi.URL, filepath.Join(bi.WorkDirectory, types.BackingImageTmpFileName), bi)
+		written, err := util.DownloadFile(ctx, cancel, bi.URL, filepath.Join(bi.WorkDirectory, types.BackingImageTmpFileName), bi)
 		if err != nil {
 			bi.lock.Lock()
+			bi.downloadCanceller = nil
 			bi.state = StateFailed
 			bi.errorMsg = err.Error()
 			bi.log.WithError(err).Error("Backing Image: failed to pull from remote")
@@ -153,6 +158,10 @@ func (bi *BackingImage) Delete() (err error) {
 	oldState := bi.state
 	defer func() {
 		currentState := bi.state
+		if bi.downloadCanceller != nil {
+			bi.downloadCanceller()
+			bi.downloadCanceller = nil
+		}
 		bi.lock.Unlock()
 		if oldState != currentState {
 			bi.updateCh <- nil
@@ -174,10 +183,20 @@ func (bi *BackingImage) Delete() (err error) {
 	return nil
 }
 
-func (bi *BackingImage) Get() (*rpc.BackingImageResponse, error) {
+func (bi *BackingImage) Get() (resp *rpc.BackingImageResponse, err error) {
 	bi.lock.Lock()
 	oldState := bi.state
 	defer func() {
+		if err != nil {
+			bi.state = StateFailed
+			bi.errorMsg = err.Error()
+			if bi.downloadCanceller != nil {
+				bi.downloadCanceller()
+				bi.downloadCanceller = nil
+			}
+			bi.log.WithError(err).Error("Backing Image: failed to get backing image")
+		}
+
 		currentState := bi.state
 		bi.lock.Unlock()
 		if oldState != currentState {
@@ -186,18 +205,11 @@ func (bi *BackingImage) Get() (*rpc.BackingImageResponse, error) {
 	}()
 
 	if err := bi.validateFiles(); err != nil {
-		bi.state = StateFailed
-		bi.errorMsg = err.Error()
-		bi.log.WithError(err).Error("Backing Image: failed to validate files when getting backing image")
-		return nil, errors.Wrapf(err, "failed to validate files when getting backing image %v", bi.Name)
+		return nil, err
 	}
 
 	if bi.state == types.DownloadStateDownloaded && bi.size <= 0 {
-		err := fmt.Errorf("invalid size %v for downloaded file", bi.size)
-		bi.state = StateFailed
-		bi.errorMsg = err.Error()
-		bi.log.Errorf("Backing Image: failed to validate files when getting backing image: %v", err)
-		return nil, err
+		return nil, fmt.Errorf("invalid size %v for downloaded file", bi.size)
 	}
 
 	return bi.rpcResponse(), nil
@@ -432,6 +444,10 @@ func (bi *BackingImage) completeDownloadWithLock(size int64) {
 
 	var err error
 	defer func() {
+		if bi.downloadCanceller != nil {
+			bi.downloadCanceller()
+			bi.downloadCanceller = nil
+		}
 		if err != nil {
 			bi.state = StateFailed
 			bi.errorMsg = err.Error()
