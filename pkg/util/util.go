@@ -11,6 +11,8 @@ import (
 	"path/filepath"
 	"strconv"
 	"time"
+
+	"github.com/pkg/errors"
 )
 
 const HTTPTimeout = 4 * time.Second
@@ -156,4 +158,51 @@ func GetDiskConfig(diskPath string) (string, error) {
 		return "", fmt.Errorf("failed to unmarshal %v content %v: %v", filePath, output, err)
 	}
 	return cfg.DiskUUID, nil
+}
+
+// This should be the same as the schema in longhorn-manager/util
+const (
+	BackingImageConfigFile = "backing.cfg"
+)
+
+type BackingImageConfig struct {
+	Name string `json:"name"`
+	UUID string `json:"uuid"`
+	Size int64  `json:"size"`
+	URL  string `json:"url"`
+}
+
+func WriteBackingImageConfigFile(workDirectory string, cfg *BackingImageConfig) error {
+	filePath := filepath.Join(workDirectory, BackingImageConfigFile)
+	if _, err := os.Stat(filePath); os.IsExist(err) {
+		return fmt.Errorf("backing image cfg on %v exists, cannot override", filePath)
+	}
+
+	encoded, err := json.Marshal(cfg)
+	if err != nil {
+		return errors.Wrapf(err, "BUG: Cannot marshal %+v", cfg)
+	}
+
+	defer func() {
+		if err != nil {
+			if delErr := os.Remove(filePath); delErr != nil && !os.IsNotExist(delErr) {
+				err = errors.Wrapf(err, "cleaning up backing image config path %v failed with error: %v", filePath, delErr)
+			}
+		}
+	}()
+	return ioutil.WriteFile(filePath, encoded, 0666)
+}
+
+func ReadBackingImageConfigFile(workDirectory string) (*BackingImageConfig, error) {
+	filePath := filepath.Join(workDirectory, BackingImageConfigFile)
+	output, err := ioutil.ReadFile(filePath)
+	if err != nil {
+		return nil, errors.Wrapf(err, "cannot find backing image config file %v", filePath)
+	}
+
+	cfg := &BackingImageConfig{}
+	if err := json.Unmarshal(output, cfg); err != nil {
+		return nil, errors.Wrapf(err, "failed to unmarshal %v content %v", filePath, output)
+	}
+	return cfg, nil
 }

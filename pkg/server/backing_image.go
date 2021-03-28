@@ -106,6 +106,12 @@ func (bi *BackingImage) Pull() (resp *rpc.BackingImageResponse, err error) {
 	}()
 	bi.log.Info("Backing Image: start to pull backing image")
 
+	if err = bi.checkAndReuseBackingImageFileWithoutLock(); err == nil {
+		bi.log.Infof("Backing Image: succeeded to reuse the existing backing image file, will skip pulling")
+		return bi.rpcResponse(), nil
+	}
+	bi.log.Infof("Backing Image: failed to try to check or reuse the possible existing backing image file, will start pulling then: %v", err)
+
 	if err := bi.prepareForDownload(); err != nil {
 		return nil, errors.Wrapf(err, "failed to prepare for pulling")
 	}
@@ -133,7 +139,7 @@ func (bi *BackingImage) Pull() (resp *rpc.BackingImageResponse, err error) {
 			bi.lock.Unlock()
 			return
 		}
-		bi.renameFileAndUpdateWithLockAfterDownloadComplete(written)
+		bi.completeDownloadWithLock(written)
 		return
 	}()
 
@@ -212,6 +218,12 @@ func (bi *BackingImage) Receive(size int64, senderManagerAddress string, portAll
 	bi.senderManagerAddress = senderManagerAddress
 	bi.log = bi.log.WithField("senderManagerAddress", senderManagerAddress)
 
+	if err = bi.checkAndReuseBackingImageFileWithoutLock(); err == nil {
+		bi.log.Infof("Backing Image: succeeded to reuse the existing backing image file, will skip syncing")
+		return 0, nil
+	}
+	bi.log.Infof("Backing Image: failed to try to check or reuse the possible existing backing image file, will start syncing then: %v", err)
+
 	if err := bi.prepareForDownload(); err != nil {
 		return 0, errors.Wrapf(err, "failed to prepare for backing image receiving")
 	}
@@ -240,7 +252,7 @@ func (bi *BackingImage) Receive(size int64, senderManagerAddress string, portAll
 			bi.lock.Unlock()
 			return
 		}
-		bi.renameFileAndUpdateWithLockAfterDownloadComplete(size)
+		bi.completeDownloadWithLock(size)
 		return
 	}()
 
@@ -321,6 +333,29 @@ func (bi *BackingImage) rpcResponse() *rpc.BackingImageResponse {
 	return resp
 }
 
+func (bi *BackingImage) checkAndReuseBackingImageFileWithoutLock() error {
+	backingImagePath := filepath.Join(bi.WorkDirectory, types.BackingImageFileName)
+	info, err := os.Stat(backingImagePath)
+	if err != nil {
+		return err
+	}
+	cfg, err := util.ReadBackingImageConfigFile(bi.WorkDirectory)
+	if err != nil {
+		return err
+	}
+	if info.Size() != cfg.Size || bi.Name != cfg.Name || bi.UUID != bi.UUID || bi.URL != bi.URL {
+		return fmt.Errorf("backing image config %+v doesn't match the backing image current status or actual file size %v", cfg, info.Size())
+	}
+
+	bi.size = cfg.Size
+	bi.processedSize = cfg.Size
+	bi.progress = 100
+	bi.state = types.DownloadStateDownloaded
+	bi.log.Infof("Backing Image: Directly reuse the existing file in path %v", backingImagePath)
+
+	return nil
+}
+
 func (bi *BackingImage) prepareForDownload() error {
 	if _, err := os.Stat(bi.WorkDirectory); os.IsNotExist(err) {
 		if err := os.Mkdir(bi.WorkDirectory, 666); err != nil {
@@ -329,7 +364,12 @@ func (bi *BackingImage) prepareForDownload() error {
 		return nil
 	}
 
-	// Try to reuse the existing file if possible
+	configFilePath := filepath.Join(bi.WorkDirectory, util.BackingImageConfigFile)
+	if err := os.Remove(configFilePath); err != nil && !os.IsNotExist(err) {
+		return err
+	}
+
+	// By renaming the existing backing image file to the tmp file, the sync function can reuse part of the data
 	backingImageTmpPath := filepath.Join(bi.WorkDirectory, types.BackingImageTmpFileName)
 	backingImagePath := filepath.Join(bi.WorkDirectory, types.BackingImageFileName)
 	if _, err := os.Stat(backingImagePath); os.IsExist(err) {
@@ -363,6 +403,10 @@ func (bi *BackingImage) validateFiles() error {
 		if _, err := os.Stat(backingImagePath); err != nil {
 			return errors.Wrapf(err, "failed to validate backing image file existence for downloaded backing image")
 		}
+		configFilePath := filepath.Join(bi.WorkDirectory, util.BackingImageConfigFile)
+		if _, err := os.Stat(configFilePath); err != nil {
+			return errors.Wrapf(err, "failed to validate backing image config file existence for downloaded backing image")
+		}
 	// Don't need to check anything for a failed/pending backing image.
 	// Let's directly wait for cleanup then re-downloading.
 	case StatePending:
@@ -374,7 +418,7 @@ func (bi *BackingImage) validateFiles() error {
 	return nil
 }
 
-func (bi *BackingImage) renameFileAndUpdateWithLockAfterDownloadComplete(size int64) {
+func (bi *BackingImage) completeDownloadWithLock(size int64) {
 	backingImageTmpPath := filepath.Join(bi.WorkDirectory, types.BackingImageTmpFileName)
 	backingImagePath := filepath.Join(bi.WorkDirectory, types.BackingImageFileName)
 
@@ -386,22 +430,37 @@ func (bi *BackingImage) renameFileAndUpdateWithLockAfterDownloadComplete(size in
 		return
 	}
 
+	var err error
+	defer func() {
+		if err != nil {
+			bi.state = StateFailed
+			bi.errorMsg = err.Error()
+			bi.log.WithError(err).Error("Backing Image: failed to complete download")
+		}
+	}()
+
 	if bi.processedSize != size {
-		bi.state = StateFailed
-		bi.errorMsg = fmt.Errorf("processed size %v doesn't match written size %v", bi.processedSize, size).Error()
-		bi.log.Error("Backing Image: %s", bi.errorMsg)
+		err = fmt.Errorf("processed size %v doesn't match written size %v", bi.processedSize, size)
 		return
 	}
 
 	if err := os.Rename(backingImageTmpPath, backingImagePath); err != nil {
-		bi.state = StateFailed
-		bi.errorMsg = errors.Wrapf(err, "failed to rename backing image file after downloading").Error()
-		bi.log.WithError(err).Error("Backing Image: failed to rename backing image file after downloading")
+		err = errors.Wrapf(err, "failed to rename backing image file after downloading")
 		return
 	}
-	bi.state = StateDownloaded
+
+	if err := util.WriteBackingImageConfigFile(bi.WorkDirectory, &util.BackingImageConfig{
+		Name: bi.Name,
+		UUID: bi.UUID,
+		URL:  bi.URL,
+		Size: size,
+	}); err != nil {
+		err = errors.Wrapf(err, "failed to write backing image config file after downloading")
+	}
+
 	bi.size = size
 	bi.progress = 100
+	bi.state = StateDownloaded
 	bi.log.Infof("Backing Image: downloaded backing image file")
 	return
 }
