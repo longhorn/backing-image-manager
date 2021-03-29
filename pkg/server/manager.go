@@ -148,12 +148,6 @@ func (m *Manager) Shutdown() {
 	defer m.lock.Unlock()
 
 	m.shutdownCh <- nil
-
-	for _, bi := range m.backingImages {
-		if err := bi.Delete(); err != nil {
-			m.log.WithField("backingImage", bi.Name).WithError(err).Error("Backing Image Manager: failed to clean up backing image during shutdown")
-		}
-	}
 }
 
 func (m *Manager) Pull(ctx context.Context, req *rpc.PullRequest) (ret *rpc.BackingImageResponse, err error) {
