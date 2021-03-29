@@ -58,6 +58,7 @@ func NewBackingImage(name, url, uuid, diskPathOnHost string) *BackingImage {
 	workDir := filepath.Join(types.WorkDirectory, GetBackingImageDirectoryName(name, uuid))
 	return &BackingImage{
 		Name:          name,
+		UUID:          uuid,
 		URL:           url,
 		HostDirectory: hostDir,
 		WorkDirectory: workDir,
