@@ -118,9 +118,7 @@ func (m *Manager) startMonitoring() {
 				m.log.Errorf("Backing Image Manager: the disk UUID %v in config file doesn't match the disk UUID %v in backing image manager, will skip validating backing image files then", diskUUID, m.diskUUID)
 			} else {
 				for _, bi := range m.backingImages {
-					if _, err := bi.Get(); err != nil {
-						m.log.WithField("backingImage", bi.Name).WithError(err).Error("Backing Image Manager: failed to validate backing image files")
-					}
+					bi.Get()
 				}
 			}
 			m.lock.RUnlock()
@@ -259,7 +257,7 @@ func (m *Manager) Get(ctx context.Context, req *rpc.GetRequest) (*rpc.BackingIma
 		return nil, status.Errorf(codes.NotFound, "cannot find backing image %v", req.Name)
 	}
 
-	return bi.Get()
+	return bi.Get(), nil
 }
 
 func (m *Manager) List(ctx context.Context, req *empty.Empty) (*rpc.ListResponse, error) {
@@ -268,11 +266,7 @@ func (m *Manager) List(ctx context.Context, req *empty.Empty) (*rpc.ListResponse
 
 	list := map[string]*rpc.BackingImageResponse{}
 	for name, bi := range m.backingImages {
-		biResp, err := bi.Get()
-		if err != nil {
-			return nil, err
-		}
-		list[name] = biResp
+		list[name] = bi.Get()
 	}
 
 	return &rpc.ListResponse{BackingImages: list}, nil
@@ -307,7 +301,7 @@ func (m *Manager) Sync(ctx context.Context, req *rpc.SyncRequest) (resp *rpc.Bac
 
 	if port == 0 {
 		log.Info("Backing Image Manager: skip syncing backing image")
-		return bi.Get()
+		return bi.Get(), nil
 	}
 
 	receiverAddress := fmt.Sprintf("%s:%d", req.ToHost, port)
@@ -317,7 +311,7 @@ func (m *Manager) Sync(ctx context.Context, req *rpc.SyncRequest) (resp *rpc.Bac
 	}
 
 	log.Info("Backing Image Manager: receiving backing image")
-	return bi.Get()
+	return bi.Get(), nil
 }
 
 func (m *Manager) Send(ctx context.Context, req *rpc.SendRequest) (resp *empty.Empty, err error) {
@@ -402,11 +396,7 @@ func (m *Manager) OwnershipTransferStart(ctx context.Context, req *empty.Empty) 
 
 	m.log.Info("Backing Image Manager: start to transfer files from this old manager")
 	for name, bi := range m.backingImages {
-		biResp, err := bi.Get()
-		if err != nil {
-			m.log.WithField("backingImage", bi.Name).WithError(err).Error("Backing Image Manager: failed to get backing image info when upgrade from the old manager")
-			continue
-		}
+		biResp := bi.Get()
 		if biResp.Status.SendingReference == 0 && biResp.Status.State == types.DownloadStateDownloaded {
 			m.transferringBackingImages[name] = bi
 			resp.ReadyBackingImages[name] = biResp.Spec
