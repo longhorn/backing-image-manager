@@ -186,7 +186,8 @@ func (bi *BackingImage) Delete() (err error) {
 	return nil
 }
 
-func (bi *BackingImage) Get() (resp *rpc.BackingImageResponse, err error) {
+func (bi *BackingImage) Get() (resp *rpc.BackingImageResponse) {
+	var err error
 	bi.lock.Lock()
 	oldState := bi.state
 	defer func() {
@@ -199,7 +200,7 @@ func (bi *BackingImage) Get() (resp *rpc.BackingImageResponse, err error) {
 			}
 			bi.log.WithError(err).Error("Backing Image: failed to get backing image")
 		}
-
+		resp = bi.rpcResponse()
 		currentState := bi.state
 		bi.lock.Unlock()
 		if oldState != currentState {
@@ -207,15 +208,16 @@ func (bi *BackingImage) Get() (resp *rpc.BackingImageResponse, err error) {
 		}
 	}()
 
-	if err := bi.validateFiles(); err != nil {
-		return nil, err
+	if err = bi.validateFiles(); err != nil {
+		return
 	}
 
 	if bi.state == types.DownloadStateDownloaded && bi.size <= 0 {
-		return nil, fmt.Errorf("invalid size %v for downloaded file", bi.size)
+		err = fmt.Errorf("invalid size %v for downloaded file", bi.size)
+		return
 	}
 
-	return bi.rpcResponse(), nil
+	return
 }
 
 func (bi *BackingImage) Receive(size int64, senderManagerAddress string, portAllocateFunc func(portCount int32) (int32, int32, error), portReleaseFunc func(start, end int32) error) (port int32, err error) {
