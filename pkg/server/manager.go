@@ -166,6 +166,14 @@ func (m *Manager) Pull(ctx context.Context, req *rpc.PullRequest) (ret *rpc.Back
 		return nil, status.Errorf(codes.InvalidArgument, "missing required argument")
 	}
 
+	if bi := m.findBackingImage(req.Spec.Name); bi != nil {
+		biResp := bi.Get()
+		if biResp.Status.State != types.DownloadStateFailed {
+			return nil, status.Errorf(codes.AlreadyExists, "backing image %v with state %v already exists", req.Spec.Name, biResp.Status.State)
+		}
+		log.Infof("Backing Image Manager: prepare to re-register and re-pull failed backing image")
+		m.unregisterBackingImage(bi)
+	}
 	bi := NewBackingImage(req.Spec.Name, req.Spec.Url, req.Spec.Uuid, m.diskPathOnHost)
 	if err := m.registerBackingImage(bi); err != nil {
 		return nil, err
@@ -284,10 +292,15 @@ func (m *Manager) Sync(ctx context.Context, req *rpc.SyncRequest) (resp *rpc.Bac
 	if req.BackingImageSpec.Name == "" || req.BackingImageSpec.Uuid == "" || req.FromHost == "" || req.ToHost == "" || req.BackingImageSpec.Size <= 0 {
 		return nil, status.Errorf(codes.InvalidArgument, "missing required argument")
 	}
-	if bi := m.findBackingImage(req.BackingImageSpec.Name); bi != nil {
-		return nil, status.Errorf(codes.AlreadyExists, "backing image %v already exists in the receiver side", req.BackingImageSpec.Name)
-	}
 
+	if bi := m.findBackingImage(req.BackingImageSpec.Name); bi != nil {
+		biResp := bi.Get()
+		if biResp.Status.State != types.DownloadStateFailed {
+			return nil, status.Errorf(codes.AlreadyExists, "backing image %v with state %v already exists in the receiver side", req.BackingImageSpec.Name, biResp.Status.State)
+		}
+		log.Infof("Backing Image Manager: prepare to re-register and re-sync failed backing image")
+		m.unregisterBackingImage(bi)
+	}
 	bi := NewBackingImage(req.BackingImageSpec.Name, req.BackingImageSpec.Url, req.BackingImageSpec.Uuid, m.diskPathOnHost)
 	if err := m.registerBackingImage(bi); err != nil {
 		return nil, err
