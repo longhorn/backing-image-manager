@@ -2,6 +2,7 @@ package server
 
 import (
 	"fmt"
+	"os"
 	"strconv"
 	"strings"
 	"sync"
@@ -49,6 +50,10 @@ type Manager struct {
 }
 
 func NewManager(diskUUID, diskPathOnHost, portRange string, shutdownCh chan error) (*Manager, error) {
+	if err := os.Mkdir(types.WorkDirectory, 0666); err != nil && !os.IsExist(err) {
+		return nil, err
+	}
+
 	start, end, err := ParsePortRange(portRange)
 	if err != nil {
 		return nil, err
