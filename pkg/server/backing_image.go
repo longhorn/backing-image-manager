@@ -87,10 +87,12 @@ func (bi *BackingImage) SetUpdateChannel(updateCh chan interface{}) {
 
 func IntroduceDownloadedBackingImage(name, url, uuid, diskPathOnHost string, size int64) *BackingImage {
 	bi := NewBackingImage(name, url, uuid, diskPathOnHost)
-	bi.size = size
 	if name == "" || uuid == "" || diskPathOnHost == "" || size <= 0 {
 		bi.state = types.DownloadStateFailed
 	} else {
+		bi.size = size
+		bi.processedSize = size
+		bi.progress = 100
 		bi.state = types.DownloadStateDownloaded
 	}
 	return bi
