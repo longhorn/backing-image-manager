@@ -111,6 +111,7 @@ func (m *Manager) startMonitoring() {
 			diskUUID, err := util.GetDiskConfig(types.DiskPath)
 			if err != nil {
 				m.log.WithError(err).Error("Backing Image Manager: failed to read disk config file before validating backing image files")
+				continue
 			}
 
 			m.lock.RLock()
