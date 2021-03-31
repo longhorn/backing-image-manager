@@ -35,7 +35,6 @@ message BackingImageStatus {
 message BackingImageResponse {
 	BackingImageSpec spec = 1;
 	BackingImageStatus status = 2;
-	bool deleted = 3;
 }
 
 message PullRequest {
