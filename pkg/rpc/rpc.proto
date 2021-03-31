@@ -66,11 +66,11 @@ message SyncRequest {
 }
 
 message OwnershipTransferStartResponse {
-	map<string, BackingImageSpec> ready_backing_images  = 1;
+	map<string, BackingImageResponse> ready_backing_images  = 1;
 }
 
 message OwnershipTransferConfirmRequest {
-	map<string, BackingImageSpec> ready_backing_images  = 1;
+	map<string, BackingImageResponse> ready_backing_images  = 1;
 }
 
 message VersionResponse {

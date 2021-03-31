@@ -201,7 +201,7 @@ func OwnershipTransferStartCmd() cli.Command {
 				logrus.Fatalf("Error running backing image ownership transfer start command: %v.", err)
 			}
 		},
-		Usage: "Ask an old manager to prepare for transferring the ownership pf all downloaded and not-sending backing images. This will return the prepared transferring backing images",
+		Usage: "Ask an old manager to prepare for transferring the ownership of all not-sending backing images. This will return the prepared transferring backing images",
 	}
 }
 
@@ -229,6 +229,12 @@ func OwnershipTransferConfirmCmd() cli.Command {
 			cli.StringSliceFlag{
 				Name: "uuids",
 			},
+			cli.Int64SliceFlag{
+				Name: "size-list",
+			},
+			cli.StringSliceFlag{
+				Name: "state-list",
+			},
 		},
 		Usage: "If '--backing-image' is empty, this command means asking an old manager to give up the ownership of transferring backing images. " +
 			"If '--backing-image' is set, this command means asking a new manager to take over the ownership of transferring backing images from an old manager.",
@@ -245,11 +251,19 @@ func ownershipTransferConfirm(c *cli.Context) error {
 	biNames := c.StringSlice("backing-images")
 	downloadURLs := c.StringSlice("download-urls")
 	uuids := c.StringSlice("uuids")
+	sizeList := c.Int64Slice("size-list")
+	stateList := c.StringSlice("state-list")
 	if len(biNames) != len(downloadURLs) {
 		return fmt.Errorf("the length of download URLs doesn't match that of backing images")
 	}
 	if len(biNames) != len(uuids) {
 		return fmt.Errorf("the length of UUIDs doesn't match that of backing images")
+	}
+	if len(biNames) != len(sizeList) {
+		return fmt.Errorf("the length of Size list doesn't match that of backing images")
+	}
+	if len(biNames) != len(stateList) {
+		return fmt.Errorf("the length of State list doesn't match that of backing images")
 	}
 	bimClient := client.NewBackingImageManagerClient(url)
 	readyBackingImages := map[string]*api.BackingImage{}
@@ -258,6 +272,10 @@ func ownershipTransferConfirm(c *cli.Context) error {
 			Name: name,
 			URL:  downloadURLs[index],
 			UUID: uuids[index],
+			Size: sizeList[index],
+			Status: api.BackingImageStatus{
+				State: stateList[index],
+			},
 		}
 	}
 	return bimClient.OwnershipTransferConfirm(readyBackingImages)
