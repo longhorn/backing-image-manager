@@ -405,15 +405,15 @@ func (m *Manager) OwnershipTransferStart(ctx context.Context, req *empty.Empty) 
 	defer m.lock.Unlock()
 
 	resp = &rpc.OwnershipTransferStartResponse{
-		ReadyBackingImages: map[string]*rpc.BackingImageSpec{},
+		ReadyBackingImages: map[string]*rpc.BackingImageResponse{},
 	}
 
 	m.log.Info("Backing Image Manager: start to transfer files from this old manager")
 	for name, bi := range m.backingImages {
 		biResp := bi.Get()
-		if biResp.Status.SendingReference == 0 && biResp.Status.State == types.DownloadStateDownloaded {
+		if biResp.Status.SendingReference == 0 && biResp.Status.State != types.DownloadStateDownloading && biResp.Status.State != types.DownloadStatePending {
 			m.transferringBackingImages[name] = bi
-			resp.ReadyBackingImages[name] = biResp.Spec
+			resp.ReadyBackingImages[name] = biResp
 		}
 	}
 	m.log.Infof("Backing Image Manager: transferring from this old manager: %+v", m.transferringBackingImages)
@@ -439,13 +439,13 @@ func (m *Manager) OwnershipTransferConfirm(ctx context.Context, req *rpc.Ownersh
 		return &empty.Empty{}, nil
 	}
 
-	// This means the current manager is the new one and it needs to take over the existing ready backing images
+	// This means the current manager is the new one and it needs to take over the existing backing images
 	m.log.Infof("Backing Image Manager: prepare to register transferring backing images to this new manager: %+v", req.ReadyBackingImages)
-	for _, biSpec := range req.ReadyBackingImages {
-		if _, exists := m.backingImages[biSpec.Name]; exists {
+	for _, biInfo := range req.ReadyBackingImages {
+		if _, exists := m.backingImages[biInfo.Spec.Name]; exists {
 			continue
 		}
-		bi := IntroduceDownloadedBackingImage(biSpec.Name, biSpec.Url, biSpec.Uuid, m.diskPathOnHost, biSpec.Size)
+		bi := IntroduceBackingImage(biInfo.Spec.Name, biInfo.Spec.Url, biInfo.Spec.Uuid, m.diskPathOnHost, biInfo.Status.State, biInfo.Spec.Size)
 		m.backingImages[bi.Name] = bi
 		bi.SetUpdateChannel(m.updateCh)
 	}

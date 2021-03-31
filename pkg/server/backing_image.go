@@ -85,15 +85,16 @@ func (bi *BackingImage) SetUpdateChannel(updateCh chan interface{}) {
 	bi.updateCh = updateCh
 }
 
-func IntroduceDownloadedBackingImage(name, url, uuid, diskPathOnHost string, size int64) *BackingImage {
+func IntroduceBackingImage(name, url, uuid, diskPathOnHost, state string, size int64) *BackingImage {
 	bi := NewBackingImage(name, url, uuid, diskPathOnHost)
-	if name == "" || uuid == "" || diskPathOnHost == "" || size <= 0 {
+	bi.lock.Lock()
+	defer bi.lock.Unlock()
+	if name == "" || uuid == "" || diskPathOnHost == "" || size <= 0 || state != types.DownloadStateDownloaded {
 		bi.state = types.DownloadStateFailed
 	} else {
-		bi.size = size
-		bi.processedSize = size
-		bi.progress = 100
-		bi.state = types.DownloadStateDownloaded
+		if err := bi.checkAndReuseBackingImageFileWithoutLock(); err != nil || bi.size != size {
+			bi.state = types.DownloadStateFailed
+		}
 	}
 	return bi
 }
@@ -368,7 +369,7 @@ func (bi *BackingImage) checkAndReuseBackingImageFileWithoutLock() error {
 	bi.processedSize = cfg.Size
 	bi.progress = 100
 	bi.state = types.DownloadStateDownloaded
-	bi.log.Infof("Backing Image: Directly reuse the existing file in path %v", backingImagePath)
+	bi.log.Infof("Backing Image: Directly reuse/introduce the existing file in path %v", backingImagePath)
 
 	return nil
 }
