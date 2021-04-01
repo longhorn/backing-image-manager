@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"sync"
+	"time"
 
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
@@ -27,6 +28,9 @@ const (
 	StateDownloading = state(types.DownloadStateDownloading)
 	StateDownloaded  = state(types.DownloadStateDownloaded)
 	StateFailed      = state(types.DownloadStateFailed)
+
+	RetryInterval = 1 * time.Second
+	RetryCount    = 30
 )
 
 type BackingImage struct {
@@ -150,6 +154,7 @@ func (bi *BackingImage) Pull() (resp *rpc.BackingImageResponse, err error) {
 		bi.completeDownloadWithLock()
 		return
 	}()
+	go bi.waitForDownloadStartWithLock()
 
 	bi.log.Info("Backing Image: pulling backing image")
 
@@ -272,6 +277,7 @@ func (bi *BackingImage) Receive(size int64, senderManagerAddress string, portAll
 		bi.completeDownloadWithLock()
 		return
 	}()
+	go bi.waitForDownloadStartWithLock()
 
 	return port, nil
 }
@@ -433,6 +439,38 @@ func (bi *BackingImage) validateFiles() error {
 	}
 
 	return nil
+}
+
+func (bi *BackingImage) waitForDownloadStartWithLock() {
+	count := 0
+	ticker := time.NewTicker(RetryInterval)
+	defer ticker.Stop()
+	for {
+		select {
+		case <-ticker.C:
+			count++
+			bi.lock.RLock()
+			state := bi.state
+			bi.lock.RUnlock()
+			if state != types.DownloadStatePending {
+				return
+			}
+			if count >= RetryCount {
+				if state == types.DownloadStatePending {
+					bi.lock.Lock()
+					bi.state = types.DownloadStateFailed
+					bi.errorMsg = fmt.Sprintf("failed to wait for download start in %v seconds", RetryCount)
+					if bi.downloadCanceller != nil {
+						bi.downloadCanceller()
+					}
+					bi.log.Errorf("Backing Image: %v", bi.errorMsg)
+					bi.lock.Unlock()
+					bi.updateCh <- nil
+				}
+				return
+			}
+		}
+	}
 }
 
 func (bi *BackingImage) completeDownloadWithLock() {
