@@ -138,8 +138,7 @@ func (bi *BackingImage) Pull() (resp *rpc.BackingImageResponse, err error) {
 			bi.updateCh <- nil
 		}()
 
-		written, err := util.DownloadFile(ctx, cancel, bi.URL, filepath.Join(bi.WorkDirectory, types.BackingImageTmpFileName), bi)
-		if err != nil {
+		if _, err := util.DownloadFile(ctx, cancel, bi.URL, filepath.Join(bi.WorkDirectory, types.BackingImageTmpFileName), bi); err != nil {
 			bi.lock.Lock()
 			bi.downloadCanceller = nil
 			bi.state = StateFailed
@@ -148,7 +147,7 @@ func (bi *BackingImage) Pull() (resp *rpc.BackingImageResponse, err error) {
 			bi.lock.Unlock()
 			return
 		}
-		bi.completeDownloadWithLock(written)
+		bi.completeDownloadWithLock()
 		return
 	}()
 
@@ -270,7 +269,7 @@ func (bi *BackingImage) Receive(size int64, senderManagerAddress string, portAll
 			bi.lock.Unlock()
 			return
 		}
-		bi.completeDownloadWithLock(size)
+		bi.completeDownloadWithLock()
 		return
 	}()
 
@@ -436,7 +435,7 @@ func (bi *BackingImage) validateFiles() error {
 	return nil
 }
 
-func (bi *BackingImage) completeDownloadWithLock(size int64) {
+func (bi *BackingImage) completeDownloadWithLock() {
 	backingImageTmpPath := filepath.Join(bi.WorkDirectory, types.BackingImageTmpFileName)
 	backingImagePath := filepath.Join(bi.WorkDirectory, types.BackingImageFileName)
 
@@ -461,9 +460,18 @@ func (bi *BackingImage) completeDownloadWithLock(size int64) {
 		}
 	}()
 
-	if bi.processedSize != size {
-		err = fmt.Errorf("processed size %v doesn't match written size %v", bi.processedSize, size)
+	tmpFileStat, err := os.Stat(backingImageTmpPath)
+	if err != nil {
+		err = errors.Wrapf(err, "failed to check the tmp file after downloading")
 		return
+	}
+	if tmpFileStat.Size() != bi.size {
+		bi.log.Debugf("Backing Image: update image size %v to the actual file size %v after downloading", bi.size, tmpFileStat.Size())
+		bi.size = tmpFileStat.Size()
+	}
+	if tmpFileStat.Size() != bi.processedSize {
+		bi.log.Debugf("Backing Image: processed size %v is not equal to the actual file size %v after downloading", bi.processedSize, tmpFileStat.Size())
+		bi.processedSize = tmpFileStat.Size()
 	}
 
 	if err := os.Rename(backingImageTmpPath, backingImagePath); err != nil {
@@ -475,12 +483,11 @@ func (bi *BackingImage) completeDownloadWithLock(size int64) {
 		Name: bi.Name,
 		UUID: bi.UUID,
 		URL:  bi.URL,
-		Size: size,
+		Size: bi.size,
 	}); err != nil {
 		err = errors.Wrapf(err, "failed to write backing image config file after downloading")
 	}
 
-	bi.size = size
 	bi.progress = 100
 	bi.state = StateDownloaded
 	bi.log.Infof("Backing Image: downloaded backing image file")
