@@ -47,6 +47,8 @@ type Manager struct {
 
 	broadcaster *broadcaster.Broadcaster
 	broadcastCh chan interface{}
+
+	DownloaderFactory DownloaderFactory
 }
 
 func NewManager(diskUUID, diskPathOnHost, portRange string, shutdownCh chan error) (*Manager, error) {
@@ -82,6 +84,8 @@ func NewManager(diskUUID, diskPathOnHost, portRange string, shutdownCh chan erro
 
 		broadcaster: &broadcaster.Broadcaster{},
 		broadcastCh: make(chan interface{}),
+
+		DownloaderFactory: &BackingImageDownloaderFactory{},
 	}
 
 	// help to kickstart the broadcaster
@@ -175,7 +179,7 @@ func (m *Manager) Pull(ctx context.Context, req *rpc.PullRequest) (ret *rpc.Back
 		log.Infof("Backing Image Manager: prepare to re-register and re-pull failed backing image")
 		m.unregisterBackingImage(bi)
 	}
-	bi := NewBackingImage(req.Spec.Name, req.Spec.Url, req.Spec.Uuid, m.diskPathOnHost)
+	bi := NewBackingImage(req.Spec.Name, req.Spec.Url, req.Spec.Uuid, m.diskPathOnHost, m.DownloaderFactory.NewDownloader())
 	if err := m.registerBackingImage(bi); err != nil {
 		return nil, err
 	}
@@ -302,7 +306,7 @@ func (m *Manager) Sync(ctx context.Context, req *rpc.SyncRequest) (resp *rpc.Bac
 		log.Infof("Backing Image Manager: prepare to re-register and re-sync failed backing image")
 		m.unregisterBackingImage(bi)
 	}
-	bi := NewBackingImage(req.BackingImageSpec.Name, req.BackingImageSpec.Url, req.BackingImageSpec.Uuid, m.diskPathOnHost)
+	bi := NewBackingImage(req.BackingImageSpec.Name, req.BackingImageSpec.Url, req.BackingImageSpec.Uuid, m.diskPathOnHost, m.DownloaderFactory.NewDownloader())
 	if err := m.registerBackingImage(bi); err != nil {
 		return nil, err
 	}
@@ -445,7 +449,7 @@ func (m *Manager) OwnershipTransferConfirm(ctx context.Context, req *rpc.Ownersh
 		if _, exists := m.backingImages[biInfo.Spec.Name]; exists {
 			continue
 		}
-		bi := IntroduceBackingImage(biInfo.Spec.Name, biInfo.Spec.Url, biInfo.Spec.Uuid, m.diskPathOnHost, biInfo.Status.State, biInfo.Spec.Size)
+		bi := IntroduceBackingImage(biInfo.Spec.Name, biInfo.Spec.Url, biInfo.Spec.Uuid, m.diskPathOnHost, biInfo.Status.State, biInfo.Spec.Size, m.DownloaderFactory.NewDownloader())
 		m.backingImages[bi.Name] = bi
 		bi.SetUpdateChannel(m.updateCh)
 	}
