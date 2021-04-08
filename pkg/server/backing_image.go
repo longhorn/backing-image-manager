@@ -53,9 +53,9 @@ type BackingImage struct {
 	downloader Downloader
 }
 
-func NewBackingImage(name, url, uuid, diskPathOnHost string, downloader Downloader) *BackingImage {
+func NewBackingImage(name, url, uuid, diskPathOnHost, diskPathInContainer string, downloader Downloader) *BackingImage {
 	hostDir := filepath.Join(diskPathOnHost, types.BackingImageDirectoryName, GetBackingImageDirectoryName(name, uuid))
-	workDir := filepath.Join(types.WorkDirectory, GetBackingImageDirectoryName(name, uuid))
+	workDir := filepath.Join(diskPathInContainer, types.BackingImageDirectoryName, GetBackingImageDirectoryName(name, uuid))
 	return &BackingImage{
 		Name:          name,
 		UUID:          uuid,
@@ -86,8 +86,8 @@ func (bi *BackingImage) SetUpdateChannel(updateCh chan interface{}) {
 	bi.updateCh = updateCh
 }
 
-func IntroduceBackingImage(name, url, uuid, diskPathOnHost, state string, size int64, downloader Downloader) *BackingImage {
-	bi := NewBackingImage(name, url, uuid, diskPathOnHost, downloader)
+func IntroduceBackingImage(name, url, uuid, diskPathOnHost, diskPathInContainer, state string, size int64, downloader Downloader) *BackingImage {
+	bi := NewBackingImage(name, url, uuid, diskPathOnHost, diskPathInContainer, downloader)
 	bi.lock.Lock()
 	defer bi.lock.Unlock()
 	if name == "" || uuid == "" || diskPathOnHost == "" || size <= 0 || state != types.DownloadStateDownloaded {
