@@ -29,11 +29,10 @@ import (
 */
 
 type Manager struct {
-	diskUUID                  string
-	diskPathOnHost            string
-	diskPathInContainer       string
-	backingImages             map[string]*BackingImage
-	transferringBackingImages map[string]*BackingImage
+	diskUUID            string
+	diskPathOnHost      string
+	diskPathInContainer string
+	backingImages       map[string]*BackingImage
 
 	portRangeMin   int32
 	portRangeMax   int32
@@ -65,11 +64,10 @@ func NewManager(diskUUID, diskPathOnHost, diskPathInContainer, portRange string,
 		return nil, err
 	}
 	m := &Manager{
-		diskUUID:                  diskUUID,
-		diskPathInContainer:       diskPathInContainer,
-		diskPathOnHost:            diskPathOnHost,
-		backingImages:             map[string]*BackingImage{},
-		transferringBackingImages: map[string]*BackingImage{},
+		diskUUID:            diskUUID,
+		diskPathInContainer: diskPathInContainer,
+		diskPathOnHost:      diskPathOnHost,
+		backingImages:       map[string]*BackingImage{},
 
 		portRangeMin:   start,
 		portRangeMax:   end,
@@ -248,7 +246,6 @@ func (m *Manager) unregisterBackingImage(bi *BackingImage) {
 	defer m.lock.Unlock()
 
 	delete(m.backingImages, bi.Name)
-	delete(m.transferringBackingImages, bi.Name)
 
 	return
 }
@@ -258,13 +255,6 @@ func (m *Manager) findBackingImage(name string) *BackingImage {
 	defer m.lock.RUnlock()
 
 	return m.backingImages[name]
-}
-
-func (m *Manager) isTransferringBackingImage(name string) bool {
-	m.lock.RLock()
-	defer m.lock.RUnlock()
-
-	return m.transferringBackingImages[name] != nil
 }
 
 func (m *Manager) Get(ctx context.Context, req *rpc.GetRequest) (*rpc.BackingImageResponse, error) {
@@ -363,9 +353,6 @@ func (m *Manager) Send(ctx context.Context, req *rpc.SendRequest) (resp *empty.E
 	if !exists {
 		return nil, status.Errorf(codes.NotFound, "backing image %v not found in the send side", req.Name)
 	}
-	if _, exists := m.transferringBackingImages[req.Name]; exists {
-		return nil, status.Errorf(codes.NotFound, "backing image %v is being transferring to a new manager", req.Name)
-	}
 
 	if err := bi.Send(req.ToAddress, m.allocatePorts, m.releasePorts); err != nil {
 		return nil, err
@@ -413,59 +400,6 @@ func ParsePortRange(portRange string) (int32, int32, error) {
 		return 0, 0, fmt.Errorf("Invalid end port for range: %s", err)
 	}
 	return int32(portStart), int32(portEnd), nil
-}
-
-func (m *Manager) OwnershipTransferStart(ctx context.Context, req *empty.Empty) (resp *rpc.OwnershipTransferStartResponse, err error) {
-	m.lock.Lock()
-	defer m.lock.Unlock()
-
-	resp = &rpc.OwnershipTransferStartResponse{
-		ReadyBackingImages: map[string]*rpc.BackingImageResponse{},
-	}
-
-	m.log.Info("Backing Image Manager: start to transfer files from this old manager")
-	for name, bi := range m.backingImages {
-		biResp := bi.Get()
-		if biResp.Status.SendingReference == 0 && biResp.Status.State != types.DownloadStateDownloading && biResp.Status.State != types.DownloadStatePending {
-			m.transferringBackingImages[name] = bi
-			resp.ReadyBackingImages[name] = biResp
-		}
-	}
-	m.log.Infof("Backing Image Manager: transferring from this old manager: %+v", m.transferringBackingImages)
-
-	return resp, nil
-}
-
-func (m *Manager) OwnershipTransferConfirm(ctx context.Context, req *rpc.OwnershipTransferConfirmRequest) (resp *empty.Empty, err error) {
-	defer func() {
-		m.updateCh <- nil
-	}()
-	m.lock.Lock()
-	defer m.lock.Unlock()
-
-	// This means the current manager is the old one. This manager need to unregister transferring backing images.
-	if len(req.ReadyBackingImages) == 0 {
-		m.log.Infof("Backing Image Manager: prepare to unregister transferring backing images from this old manager: %+v", m.transferringBackingImages)
-		for name := range m.transferringBackingImages {
-			delete(m.backingImages, name)
-			delete(m.transferringBackingImages, name)
-		}
-		m.log.Info("Backing Image Manager: unregistered transferring backing images from this old manager")
-		return &empty.Empty{}, nil
-	}
-
-	// This means the current manager is the new one and it needs to take over the existing backing images
-	m.log.Infof("Backing Image Manager: prepare to register transferring backing images to this new manager: %+v", req.ReadyBackingImages)
-	for _, biInfo := range req.ReadyBackingImages {
-		if _, exists := m.backingImages[biInfo.Spec.Name]; exists {
-			continue
-		}
-		bi := IntroduceBackingImage(biInfo.Spec.Name, biInfo.Spec.Url, biInfo.Spec.Uuid, m.diskPathOnHost, m.diskPathInContainer, biInfo.Status.State, biInfo.Spec.Size, m.DownloaderFactory.NewDownloader())
-		m.backingImages[bi.Name] = bi
-		bi.SetUpdateChannel(m.updateCh)
-	}
-	m.log.Info("Backing Image Manager: registered transferring backing images to this new manager")
-	return &empty.Empty{}, nil
 }
 
 func (m *Manager) Watch(req *empty.Empty, srv rpc.BackingImageManagerService_WatchServer) (err error) {

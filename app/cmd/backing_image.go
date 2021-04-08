@@ -6,7 +6,6 @@ import (
 	"github.com/sirupsen/logrus"
 	"github.com/urfave/cli"
 
-	"github.com/longhorn/backing-image-manager/api"
 	"github.com/longhorn/backing-image-manager/pkg/client"
 	"github.com/longhorn/backing-image-manager/pkg/util"
 )
@@ -21,8 +20,6 @@ func BackingImageCmd() cli.Command {
 			DeleteCmd(),
 			GetCmd(),
 			ListCmd(),
-			OwnershipTransferStartCmd(),
-			OwnershipTransferConfirmCmd(),
 		},
 	}
 }
@@ -190,93 +187,4 @@ func list(c *cli.Context) error {
 		return err
 	}
 	return util.PrintJSON(biList)
-}
-
-func OwnershipTransferStartCmd() cli.Command {
-	return cli.Command{
-		Name:    "ownership-transfer-start",
-		Aliases: []string{"ots"},
-		Action: func(c *cli.Context) {
-			if err := ownershipTransferStart(c); err != nil {
-				logrus.Fatalf("Error running backing image ownership transfer start command: %v.", err)
-			}
-		},
-		Usage: "Ask an old manager to prepare for transferring the ownership of all not-sending backing images. This will return the prepared transferring backing images",
-	}
-}
-
-func ownershipTransferStart(c *cli.Context) error {
-	url := c.GlobalString("url")
-	bimClient := client.NewBackingImageManagerClient(url)
-	biMap, err := bimClient.OwnershipTransferStart()
-	if err != nil {
-		return err
-	}
-	return util.PrintJSON(biMap)
-}
-
-func OwnershipTransferConfirmCmd() cli.Command {
-	return cli.Command{
-		Name:    "ownership-transfer-confirm",
-		Aliases: []string{"otc"},
-		Flags: []cli.Flag{
-			cli.StringSliceFlag{
-				Name: "backing-images",
-			},
-			cli.StringSliceFlag{
-				Name: "download-urls",
-			},
-			cli.StringSliceFlag{
-				Name: "uuids",
-			},
-			cli.Int64SliceFlag{
-				Name: "size-list",
-			},
-			cli.StringSliceFlag{
-				Name: "state-list",
-			},
-		},
-		Usage: "If '--backing-image' is empty, this command means asking an old manager to give up the ownership of transferring backing images. " +
-			"If '--backing-image' is set, this command means asking a new manager to take over the ownership of transferring backing images from an old manager.",
-		Action: func(c *cli.Context) {
-			if err := ownershipTransferConfirm(c); err != nil {
-				logrus.Fatalf("Error running backing image ownership transfer confirm command: %v.", err)
-			}
-		},
-	}
-}
-
-func ownershipTransferConfirm(c *cli.Context) error {
-	url := c.GlobalString("url")
-	biNames := c.StringSlice("backing-images")
-	downloadURLs := c.StringSlice("download-urls")
-	uuids := c.StringSlice("uuids")
-	sizeList := c.Int64Slice("size-list")
-	stateList := c.StringSlice("state-list")
-	if len(biNames) != len(downloadURLs) {
-		return fmt.Errorf("the length of download URLs doesn't match that of backing images")
-	}
-	if len(biNames) != len(uuids) {
-		return fmt.Errorf("the length of UUIDs doesn't match that of backing images")
-	}
-	if len(biNames) != len(sizeList) {
-		return fmt.Errorf("the length of Size list doesn't match that of backing images")
-	}
-	if len(biNames) != len(stateList) {
-		return fmt.Errorf("the length of State list doesn't match that of backing images")
-	}
-	bimClient := client.NewBackingImageManagerClient(url)
-	readyBackingImages := map[string]*api.BackingImage{}
-	for index, name := range biNames {
-		readyBackingImages[name] = &api.BackingImage{
-			Name: name,
-			URL:  downloadURLs[index],
-			UUID: uuids[index],
-			Size: sizeList[index],
-			Status: api.BackingImageStatus{
-				State: stateList[index],
-			},
-		}
-	}
-	return bimClient.OwnershipTransferConfirm(readyBackingImages)
 }
