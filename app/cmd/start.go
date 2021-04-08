@@ -57,7 +57,7 @@ func start(c *cli.Context) error {
 	diskPathOnHost := c.String("disk-path")
 	portRange := c.String("port-range")
 
-	diskUUIDInFile, err := util.GetDiskConfig(types.DiskPath)
+	diskUUIDInFile, err := util.GetDiskConfig(types.DiskPathInContainer)
 	if err != nil {
 		return err
 	}
@@ -68,7 +68,7 @@ func start(c *cli.Context) error {
 	}
 
 	shutdownCh := make(chan error)
-	bim, err := server.NewManager(diskUUID, diskPathOnHost, portRange, shutdownCh)
+	bim, err := server.NewManager(diskUUID, diskPathOnHost, types.DiskPathInContainer, portRange, shutdownCh)
 	if err != nil {
 		return err
 	}
