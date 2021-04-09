@@ -354,7 +354,7 @@ func (bi *BackingImage) checkAndReuseBackingImageFileWithoutLock() error {
 	if err != nil {
 		return err
 	}
-	if info.Size() != cfg.Size || bi.Name != cfg.Name || bi.UUID != bi.UUID || bi.URL != bi.URL {
+	if info.Size() != cfg.Size || bi.Name != cfg.Name || bi.UUID != bi.UUID {
 		return fmt.Errorf("backing image config %+v doesn't match the backing image current status or actual file size %v", cfg, info.Size())
 	}
 
