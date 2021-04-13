@@ -54,8 +54,8 @@ type BackingImage struct {
 }
 
 func NewBackingImage(name, url, uuid, diskPathOnHost, diskPathInContainer string, downloader Downloader) *BackingImage {
-	hostDir := filepath.Join(diskPathOnHost, types.BackingImageDirectoryName, GetBackingImageDirectoryName(name, uuid))
-	workDir := filepath.Join(diskPathInContainer, types.BackingImageDirectoryName, GetBackingImageDirectoryName(name, uuid))
+	hostDir := filepath.Join(diskPathOnHost, types.BackingImageManagerDirectoryName, GetBackingImageDirectoryName(name, uuid))
+	workDir := filepath.Join(diskPathInContainer, types.BackingImageManagerDirectoryName, GetBackingImageDirectoryName(name, uuid))
 	return &BackingImage{
 		Name:          name,
 		UUID:          uuid,

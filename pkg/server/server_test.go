@@ -59,7 +59,7 @@ func (s *TestSuite) SetUpSuite(c *C) {
 
 	testDiskPath := s.getTestDiskPath(c)
 	if _, err := os.Stat(testDiskPath); os.IsNotExist(err) {
-		err = os.Mkdir(filepath.Join(testDiskPath, types.BackingImageDirectoryName), 0777)
+		err = os.Mkdir(filepath.Join(testDiskPath, types.BackingImageManagerDirectoryName), 0777)
 		c.Assert(err, IsNil)
 	} else {
 		c.Assert(err, IsNil)
