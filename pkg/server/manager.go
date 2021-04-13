@@ -54,7 +54,7 @@ type Manager struct {
 }
 
 func NewManager(diskUUID, diskPathOnHost, diskPathInContainer, portRange string, shutdownCh chan error) (*Manager, error) {
-	workDir := filepath.Join(diskPathInContainer, types.BackingImageDirectoryName)
+	workDir := filepath.Join(diskPathInContainer, types.BackingImageManagerDirectoryName)
 	if err := os.Mkdir(workDir, 0666); err != nil && !os.IsExist(err) {
 		return nil, err
 	}
