@@ -67,7 +67,7 @@ func (d *BackingImageDownloader) Receive(port string, filePath string, syncFileO
 		d.Cancel()
 		return fmt.Errorf("BUG: downloader gets duplicate receive requests during downloading")
 	}
-	_, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(context.Background())
 	d.Lock()
 	d.cancelFunc = cancel
 	d.Unlock()
@@ -76,7 +76,7 @@ func (d *BackingImageDownloader) Receive(port string, filePath string, syncFileO
 		d.Cancel()
 	}()
 
-	if err := sparserest.Server(port, filePath, syncFileOps); err != nil && err != http.ErrServerClosed {
+	if err := sparserest.Server(ctx, cancel, port, filePath, syncFileOps); err != nil && err != http.ErrServerClosed {
 		return err
 	}
 	return nil
