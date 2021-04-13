@@ -47,6 +47,10 @@ func (d *BackingImageDownloader) GetSize(url string) (written int64, err error) 
 }
 
 func (d *BackingImageDownloader) Pull(url, filepath string, updater util.ProgressUpdater) (written int64, err error) {
+	if d.isDownloading() {
+		d.Cancel()
+		return 0, fmt.Errorf("BUG: downloader gets duplicate pull requests during downloading")
+	}
 	ctx, cancel := context.WithCancel(context.Background())
 	d.Lock()
 	d.cancelFunc = cancel
@@ -59,6 +63,10 @@ func (d *BackingImageDownloader) Pull(url, filepath string, updater util.Progres
 }
 
 func (d *BackingImageDownloader) Receive(port string, filePath string, syncFileOps sparserest.SyncFileOperations) error {
+	if d.isDownloading() {
+		d.Cancel()
+		return fmt.Errorf("BUG: downloader gets duplicate receive requests during downloading")
+	}
 	_, cancel := context.WithCancel(context.Background())
 	d.Lock()
 	d.cancelFunc = cancel
