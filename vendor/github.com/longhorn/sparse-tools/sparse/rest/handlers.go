@@ -119,7 +119,7 @@ func (server *SyncServer) close(writer http.ResponseWriter, request *http.Reques
 	server.fileIo.Close()
 	log.Infof("Closing ssync server")
 
-	server.srv.Close()
+	server.cancelFunc()
 }
 
 func (server *SyncServer) sendHole(writer http.ResponseWriter, request *http.Request) {
