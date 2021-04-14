@@ -368,36 +368,12 @@ func (bi *BackingImage) checkAndReuseBackingImageFileWithoutLock() error {
 }
 
 func (bi *BackingImage) prepareForDownload() error {
-	if _, err := os.Stat(bi.WorkDirectory); os.IsNotExist(err) {
-		if err := os.Mkdir(bi.WorkDirectory, 666); err != nil {
-			return errors.Wrapf(err, "failed to create work directory %v before downloading", bi.WorkDirectory)
-		}
-		return nil
+	if err := os.RemoveAll(bi.WorkDirectory); err != nil {
+		return errors.Wrapf(err, "failed to clean up the work directory %v before downloading", bi.WorkDirectory)
 	}
-
-	configFilePath := filepath.Join(bi.WorkDirectory, util.BackingImageConfigFile)
-	if err := os.Remove(configFilePath); err != nil && !os.IsNotExist(err) {
-		return err
+	if err := os.Mkdir(bi.WorkDirectory, 666); err != nil && !os.IsExist(err) {
+		return errors.Wrapf(err, "failed to create work directory %v before downloading", bi.WorkDirectory)
 	}
-
-	// By renaming the existing backing image file to the tmp file, the sync function can reuse part of the data
-	backingImageTmpPath := filepath.Join(bi.WorkDirectory, types.BackingImageTmpFileName)
-	backingImagePath := filepath.Join(bi.WorkDirectory, types.BackingImageFileName)
-	if _, err := os.Stat(backingImagePath); os.IsExist(err) {
-		if _, err := os.Stat(backingImageTmpPath); os.IsExist(err) {
-			if err := os.Remove(backingImageTmpPath); err != nil {
-				return errors.Wrapf(err, "failed to delete tmp file %v before trying to reuse file %v", backingImageTmpPath, backingImagePath)
-			}
-		}
-		if err := os.Rename(backingImagePath, backingImageTmpPath); err != nil {
-			bi.log.WithError(err).Warnf("Backing Image: failed to rename existing file %v to tmp file %v before trying to reuse it, will fall back to clean up it", backingImagePath, backingImageTmpPath)
-			if err := os.Remove(backingImagePath); err != nil {
-				return errors.Wrapf(err, "failed to delete file %v before downloading", backingImagePath)
-			}
-		}
-		return nil
-	}
-
 	return nil
 }
 
