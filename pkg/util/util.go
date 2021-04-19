@@ -64,7 +64,8 @@ func GetDownloadSize(url string) (fileSize int64, err error) {
 	return fileSize, nil
 }
 
-func DownloadFile(ctx context.Context, cancel context.CancelFunc, url, filepath string, updater ProgressUpdater) (written int64, err error) {
+func DownloadFile(ctx context.Context, url, filepath string, updater ProgressUpdater) (written int64, err error) {
+	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
 	rr, err := http.NewRequestWithContext(ctx, "GET", url, nil)

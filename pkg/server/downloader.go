@@ -16,67 +16,82 @@ import (
 	"github.com/longhorn/backing-image-manager/pkg/util"
 )
 
-type DownloaderFactory interface {
-	NewDownloader() Downloader
-}
-
-type Downloader interface {
-	GetSize(url string) (size int64, err error)
-	Pull(url, filepath string, updater util.ProgressUpdater) (written int64, err error)
-	Receive(port string, filePath string, syncFileOps sparserest.SyncFileOperations) error
-	Send(filePath string, address string) error
-	Cancel()
-}
-
-type BackingImageDownloaderFactory struct{}
-
 type BackingImageDownloader struct {
 	*sync.RWMutex
-	cancelFunc context.CancelFunc
+	isDownloading bool
+	ctx           context.Context
+	cancelFunc    context.CancelFunc
+
+	// for unit test
+	DownloaderEngine
 }
 
-func (f *BackingImageDownloaderFactory) NewDownloader() Downloader {
-	return &BackingImageDownloader{
-		&sync.RWMutex{},
-		nil,
-	}
+type DownloaderEngine interface {
+	GetSize(url string) (int64, error)
+	Download(ctx context.Context, url, filePath string, updater util.ProgressUpdater) (written int64, err error)
+	ReceiverLaunch(ctx context.Context, port string, filePath string, syncFileOps sparserest.SyncFileOperations) error
+	SenderLaunch(localPath string, remote string, timeout int, directIO bool) error
 }
 
-func (d *BackingImageDownloader) GetSize(url string) (written int64, err error) {
-	return util.GetDownloadSize(url)
+func (d *BackingImageDownloader) GetSize(url string) (int64, error) {
+	return d.DownloaderEngine.GetSize(url)
 }
 
-func (d *BackingImageDownloader) Pull(url, filepath string, updater util.ProgressUpdater) (written int64, err error) {
-	if d.isDownloading() {
-		d.Cancel()
-		return 0, fmt.Errorf("BUG: downloader gets duplicate pull requests during downloading")
-	}
-	ctx, cancel := context.WithCancel(context.Background())
+func (d *BackingImageDownloader) InitDownloading() error {
 	d.Lock()
-	d.cancelFunc = cancel
+	defer d.Unlock()
+	if d.ctx != nil && d.cancelFunc != nil {
+		return fmt.Errorf("downloader is already initialized")
+	}
+	if d.ctx != nil || d.cancelFunc != nil {
+		d.cancelDownloadingWithoutLock()
+		return fmt.Errorf("downloader is not initialized correctly")
+	}
+	d.ctx, d.cancelFunc = context.WithCancel(context.Background())
+	return nil
+}
+
+func (d *BackingImageDownloader) Pull(url, filePath string, updater util.ProgressUpdater) (written int64, err error) {
+	d.Lock()
+	if d.isDownloading {
+		d.Unlock()
+		return 0, fmt.Errorf("downloader is already downloading")
+	}
+	if d.ctx == nil || d.cancelFunc == nil {
+		d.cancelDownloadingWithoutLock()
+		d.Unlock()
+		return 0, fmt.Errorf("BUG: downloader is not initialized correctly or already cancelled before actual pulling")
+	}
+	ctx := d.ctx
+	d.isDownloading = true
 	d.Unlock()
 
 	defer func() {
 		d.Cancel()
 	}()
-	return util.DownloadFile(ctx, cancel, url, filepath, updater)
+	return d.DownloaderEngine.Download(ctx, url, filePath, updater)
 }
 
 func (d *BackingImageDownloader) Receive(port string, filePath string, syncFileOps sparserest.SyncFileOperations) error {
-	if d.isDownloading() {
-		d.Cancel()
-		return fmt.Errorf("BUG: downloader gets duplicate receive requests during downloading")
-	}
-	ctx, cancel := context.WithCancel(context.Background())
 	d.Lock()
-	d.cancelFunc = cancel
+	if d.isDownloading {
+		d.Unlock()
+		return fmt.Errorf("downloader is already downloading")
+	}
+	if d.ctx == nil || d.cancelFunc == nil {
+		d.cancelDownloadingWithoutLock()
+		d.Unlock()
+		return fmt.Errorf("BUG: downloader is not initialized correctly or already cancelled before actual receiving")
+	}
+	ctx := d.ctx
+	d.isDownloading = true
 	d.Unlock()
 
 	defer func() {
 		d.Cancel()
 	}()
 
-	if err := sparserest.Server(ctx, cancel, port, filePath, syncFileOps); err != nil && err != http.ErrServerClosed {
+	if err := d.DownloaderEngine.ReceiverLaunch(ctx, port, filePath, syncFileOps); err != nil && err != http.ErrServerClosed {
 		return err
 	}
 	return nil
@@ -84,89 +99,87 @@ func (d *BackingImageDownloader) Receive(port string, filePath string, syncFileO
 
 // Send should fail once the receiver is closed or the timeout is reached.
 func (d *BackingImageDownloader) Send(filePath string, address string) error {
-	if d.isDownloading() {
+	if d.isDownloadingInitialized() {
 		return fmt.Errorf("downloader cannot send files when the pulling or receiving is still in progress")
 	}
 
-	return sparse.SyncFile(filePath, address, types.FileSyncTimeout, false)
+	return d.DownloaderEngine.SenderLaunch(filePath, address, types.FileSyncTimeout, false)
 }
 
 func (d *BackingImageDownloader) Cancel() {
 	d.Lock()
 	defer d.Unlock()
+	d.cancelDownloadingWithoutLock()
+}
+
+func (d *BackingImageDownloader) cancelDownloadingWithoutLock() {
+	d.isDownloading = false
+	d.ctx = nil
 	if d.cancelFunc != nil {
 		d.cancelFunc()
 		d.cancelFunc = nil
 	}
 }
 
-func (d *BackingImageDownloader) isDownloading() bool {
-	d.Lock()
-	defer d.Unlock()
-	return d.cancelFunc != nil
+func (d *BackingImageDownloader) isDownloadingInitialized() bool {
+	d.RLock()
+	defer d.RUnlock()
+	return d.ctx != nil || d.cancelFunc != nil
+}
+
+type DownloaderFactory interface {
+	NewDownloader() *BackingImageDownloader
+}
+
+type BackingImageDownloaderFactory struct{}
+
+type BackingImageDownloaderEngine struct{}
+
+func (e *BackingImageDownloaderEngine) GetSize(url string) (int64, error) {
+	return util.GetDownloadSize(url)
+}
+
+func (e *BackingImageDownloaderEngine) Download(ctx context.Context, url, filePath string, updater util.ProgressUpdater) (written int64, err error) {
+	return util.DownloadFile(ctx, url, filePath, updater)
+}
+
+func (e *BackingImageDownloaderEngine) ReceiverLaunch(ctx context.Context, port string, filePath string, syncFileOps sparserest.SyncFileOperations) error {
+	return sparserest.Server(ctx, port, filePath, syncFileOps)
+}
+
+func (e *BackingImageDownloaderEngine) SenderLaunch(localPath string, remote string, timeout int, directIO bool) error {
+	return sparse.SyncFile(localPath, remote, timeout, directIO)
+}
+
+func (f *BackingImageDownloaderFactory) NewDownloader() *BackingImageDownloader {
+	return &BackingImageDownloader{
+		&sync.RWMutex{},
+		false, nil, nil,
+		&BackingImageDownloaderEngine{},
+	}
 }
 
 type MockDownloaderFactory struct{}
 
-type MockDownloader struct {
-	*sync.RWMutex
-	cancelFunc context.CancelFunc
-}
+type MockDownloaderEngine struct{}
 
-const MockDownloadSize = 100
-
-func (f *MockDownloaderFactory) NewDownloader() Downloader {
-	return &MockDownloader{
-		&sync.RWMutex{},
-		nil,
-	}
-}
-
-func (d *MockDownloader) GetSize(url string) (written int64, err error) {
+func (e *MockDownloaderEngine) GetSize(url string) (int64, error) {
 	return MockDownloadSize, nil
 }
 
-func (d *MockDownloader) Pull(url, filepath string, updater util.ProgressUpdater) (written int64, err error) {
-	ctx, cancel := context.WithCancel(context.Background())
-	d.Lock()
-	d.cancelFunc = cancel
-	d.Unlock()
-
-	defer func() {
-		d.Cancel()
-	}()
-
-	f, err := os.Create(filepath)
-	if err != nil {
-		return 0, err
-	}
-	f.Close()
-	if err := os.Truncate(filepath, MockDownloadSize); err != nil {
-		return 0, err
-	}
-
-	for i := 1; i <= MockDownloadSize; i++ {
-		select {
-		case <-ctx.Done():
-			return int64(i - 1), fmt.Errorf("cancelled mock pulling")
-		default:
-			updater.UpdateSyncFileProgress(1)
-		}
-		time.Sleep(50 * time.Millisecond)
-	}
-	return MockDownloadSize, nil
+func (e *MockDownloaderEngine) Download(ctx context.Context, url, filePath string, updater util.ProgressUpdater) (written int64, err error) {
+	return MockDownloadSize, e.mockDownload(ctx, filePath, updater.UpdateSyncFileProgress)
 }
 
-func (d *MockDownloader) Receive(port string, filePath string, syncFileOps sparserest.SyncFileOperations) error {
-	ctx, cancel := context.WithCancel(context.Background())
-	d.Lock()
-	d.cancelFunc = cancel
-	d.Unlock()
+func (e *MockDownloaderEngine) ReceiverLaunch(ctx context.Context, port string, filePath string, syncFileOps sparserest.SyncFileOperations) error {
+	return e.mockDownload(ctx, filePath, syncFileOps.UpdateSyncFileProgress)
+}
 
-	defer func() {
-		d.Cancel()
-	}()
+func (e *MockDownloaderEngine) SenderLaunch(localPath string, remote string, timeout int, directIO bool) error {
+	return nil
+}
 
+func (e *MockDownloaderEngine) mockDownload(ctx context.Context, filePath string, progressUpdateFunc func(int64)) error {
 	f, err := os.Create(filePath)
 	if err != nil {
 		return err
@@ -181,22 +194,19 @@ func (d *MockDownloader) Receive(port string, filePath string, syncFileOps spars
 		case <-ctx.Done():
 			return fmt.Errorf("cancelled mock receiving")
 		default:
-			syncFileOps.UpdateSyncFileProgress(1)
+			progressUpdateFunc(1)
 		}
 		time.Sleep(50 * time.Millisecond)
 	}
 	return nil
 }
 
-func (d *MockDownloader) Send(filePath string, address string) error {
-	return nil
-}
+const MockDownloadSize = 100
 
-func (d *MockDownloader) Cancel() {
-	d.Lock()
-	defer d.Unlock()
-	if d.cancelFunc != nil {
-		d.cancelFunc()
-		d.cancelFunc = nil
+func (f *MockDownloaderFactory) NewDownloader() *BackingImageDownloader {
+	return &BackingImageDownloader{
+		&sync.RWMutex{},
+		false, nil, nil,
+		&MockDownloaderEngine{},
 	}
 }
