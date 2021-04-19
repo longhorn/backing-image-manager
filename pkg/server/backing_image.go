@@ -86,20 +86,6 @@ func (bi *BackingImage) SetUpdateChannel(updateCh chan interface{}) {
 	bi.updateCh = updateCh
 }
 
-func IntroduceBackingImage(name, url, uuid, diskPathOnHost, diskPathInContainer, state string, size int64, downloader Downloader) *BackingImage {
-	bi := NewBackingImage(name, url, uuid, diskPathOnHost, diskPathInContainer, downloader)
-	bi.lock.Lock()
-	defer bi.lock.Unlock()
-	if name == "" || uuid == "" || diskPathOnHost == "" || size <= 0 || state != types.DownloadStateDownloaded {
-		bi.state = types.DownloadStateFailed
-	} else {
-		if err := bi.checkAndReuseBackingImageFileWithoutLock(); err != nil || bi.size != size {
-			bi.state = types.DownloadStateFailed
-		}
-	}
-	return bi
-}
-
 func (bi *BackingImage) Pull() (resp *rpc.BackingImageResponse, err error) {
 	bi.lock.Lock()
 	defer func() {
