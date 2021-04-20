@@ -53,7 +53,7 @@ type BackingImage struct {
 	downloader Downloader
 }
 
-func NewBackingImage(name, url, uuid, diskPathOnHost, diskPathInContainer string, downloader Downloader) *BackingImage {
+func NewBackingImage(name, url, uuid, diskPathOnHost, diskPathInContainer string, downloader Downloader, updateCh chan interface{}) *BackingImage {
 	hostDir := filepath.Join(diskPathOnHost, types.BackingImageManagerDirectoryName, GetBackingImageDirectoryName(name, uuid))
 	workDir := filepath.Join(diskPathInContainer, types.BackingImageManagerDirectoryName, GetBackingImageDirectoryName(name, uuid))
 	return &BackingImage{
@@ -75,15 +75,12 @@ func NewBackingImage(name, url, uuid, diskPathOnHost, diskPathInContainer string
 		),
 		lock:       &sync.RWMutex{},
 		downloader: downloader,
+		updateCh:   updateCh,
 	}
 }
 
 func GetBackingImageDirectoryName(biName, biUUID string) string {
 	return fmt.Sprintf("%s-%s", biName, biUUID)
-}
-
-func (bi *BackingImage) SetUpdateChannel(updateCh chan interface{}) {
-	bi.updateCh = updateCh
 }
 
 func (bi *BackingImage) Pull() (resp *rpc.BackingImageResponse, err error) {

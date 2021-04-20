@@ -176,18 +176,20 @@ func (m *Manager) Pull(ctx context.Context, req *rpc.PullRequest) (ret *rpc.Back
 		return nil, status.Errorf(codes.InvalidArgument, "missing required argument")
 	}
 
-	if bi := m.findBackingImage(req.Spec.Name); bi != nil {
+	m.lock.Lock()
+	bi := m.backingImages[req.Spec.Name]
+	if bi != nil {
 		biResp := bi.Get()
 		if biResp.Status.State != types.DownloadStateFailed {
+			m.lock.Unlock()
 			return nil, status.Errorf(codes.AlreadyExists, "backing image %v with state %v already exists", req.Spec.Name, biResp.Status.State)
 		}
 		log.Infof("Backing Image Manager: prepare to re-register and re-pull failed backing image")
-		m.unregisterBackingImage(bi)
+		delete(m.backingImages, req.Spec.Name)
 	}
-	bi := NewBackingImage(req.Spec.Name, req.Spec.Url, req.Spec.Uuid, m.diskPathOnHost, m.diskPathInContainer, m.DownloaderFactory.NewDownloader())
-	if err := m.registerBackingImage(bi); err != nil {
-		return nil, err
-	}
+	bi = NewBackingImage(req.Spec.Name, req.Spec.Url, req.Spec.Uuid, m.diskPathOnHost, m.diskPathInContainer, m.DownloaderFactory.NewDownloader(), m.updateCh)
+	m.backingImages[req.Spec.Name] = bi
+	m.lock.Unlock()
 
 	biReps, err := bi.Pull()
 	if err != nil {
@@ -227,18 +229,6 @@ func (m *Manager) Delete(ctx context.Context, req *rpc.DeleteRequest) (resp *emp
 
 	log.Info("Backing Image Manager: deleted backing image")
 	return &empty.Empty{}, nil
-}
-
-func (m *Manager) registerBackingImage(bi *BackingImage) error {
-	m.lock.Lock()
-	defer m.lock.Unlock()
-
-	if _, exists := m.backingImages[bi.Name]; exists {
-		return status.Errorf(codes.AlreadyExists, "Backing Image %v already exists", bi.Name)
-	}
-	m.backingImages[bi.Name] = bi
-	bi.SetUpdateChannel(m.updateCh)
-	return nil
 }
 
 func (m *Manager) unregisterBackingImage(bi *BackingImage) {
@@ -295,18 +285,20 @@ func (m *Manager) Sync(ctx context.Context, req *rpc.SyncRequest) (resp *rpc.Bac
 		return nil, status.Errorf(codes.InvalidArgument, "missing required argument")
 	}
 
-	if bi := m.findBackingImage(req.BackingImageSpec.Name); bi != nil {
+	m.lock.Lock()
+	bi := m.backingImages[req.BackingImageSpec.Name]
+	if bi != nil {
 		biResp := bi.Get()
 		if biResp.Status.State != types.DownloadStateFailed {
+			m.lock.Unlock()
 			return nil, status.Errorf(codes.AlreadyExists, "backing image %v with state %v already exists in the receiver side", req.BackingImageSpec.Name, biResp.Status.State)
 		}
 		log.Infof("Backing Image Manager: prepare to re-register and re-sync failed backing image")
-		m.unregisterBackingImage(bi)
+		delete(m.backingImages, req.BackingImageSpec.Name)
 	}
-	bi := NewBackingImage(req.BackingImageSpec.Name, req.BackingImageSpec.Url, req.BackingImageSpec.Uuid, m.diskPathOnHost, m.diskPathInContainer, m.DownloaderFactory.NewDownloader())
-	if err := m.registerBackingImage(bi); err != nil {
-		return nil, err
-	}
+	bi = NewBackingImage(req.BackingImageSpec.Name, req.BackingImageSpec.Url, req.BackingImageSpec.Uuid, m.diskPathOnHost, m.diskPathInContainer, m.DownloaderFactory.NewDownloader(), m.updateCh)
+	m.backingImages[req.BackingImageSpec.Name] = bi
+	m.lock.Unlock()
 
 	senderManagerAddress := fmt.Sprintf("%s:%d", req.FromHost, types.DefaultPort)
 	port, err := bi.Receive(req.BackingImageSpec.Size, senderManagerAddress, m.allocatePorts, m.releasePorts)
