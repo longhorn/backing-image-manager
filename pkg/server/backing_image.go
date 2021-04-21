@@ -512,15 +512,27 @@ func (bi *BackingImage) completeDownloadWithLock() {
 }
 
 func (bi *BackingImage) UpdateSyncFileProgress(size int64) {
+	updateRequired := false
+	defer func() {
+		if updateRequired {
+			bi.updateCh <- nil
+		}
+	}()
+
 	bi.lock.Lock()
 	defer bi.lock.Unlock()
 
 	if bi.state == types.DownloadStateStarting {
 		bi.state = types.DownloadStateDownloading
+		updateRequired = true
 	}
 
+	oldProgress := bi.progress
 	bi.processedSize = bi.processedSize + size
 	if bi.size > 0 {
 		bi.progress = int((float32(bi.processedSize) / float32(bi.size)) * 100)
+	}
+	if bi.progress != oldProgress {
+		updateRequired = true
 	}
 }
