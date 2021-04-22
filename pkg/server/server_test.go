@@ -78,14 +78,12 @@ func (s *TestSuite) SetUpSuite(c *C) {
 		c.Assert(err, IsNil)
 	}
 
-	s.m, err = NewManager("", "/var/lib/longhorn", testDiskPath, "30001-31000", make(chan error))
+	s.shutdownCh = make(chan error)
+	s.m, err = NewManager("bim-test-disk-cfg", "/var/lib/longhorn", testDiskPath, "30001-31000", s.shutdownCh)
 	if err != nil {
 		c.Assert(os.IsExist(err), Equals, true)
 	}
 	s.m.DownloaderFactory = &MockDownloaderFactory{}
-	s.shutdownCh = make(chan error)
-	s.m.diskPathInContainer = testDiskPath
-	s.m.diskUUID = "bim-test-disk-cfg"
 	s.m.Sender = MockSender
 }
 
@@ -186,16 +184,16 @@ func (s *TestSuite) TestSingleBackingImageCRUD(c *C) {
 	// Each iteration takes 5 seconds.
 	count := 10
 	for i := 0; i < count; i++ {
-		bm := NewBackingImage(name, url, uuid, "/var/lib/longhorn", s.getTestDiskPath(c), mockDownloaderFactory.NewDownloader(), make(chan interface{}, 100))
+		bi := NewBackingImage(name, url, uuid, "/var/lib/longhorn", s.getTestDiskPath(c), mockDownloaderFactory.NewDownloader(), make(chan interface{}, 100))
 		var err error
 
-		err = bm.Delete()
+		err = bi.Delete()
 		c.Assert(err, IsNil)
 
 		if i%2 != 0 {
-			_, err = bm.Pull()
+			_, err = bi.Pull()
 		} else {
-			_, err = bm.Receive(MockDownloadSize, "SenderAddress", func(portCount int32) (int32, int32, error) {
+			_, err = bi.Receive(MockDownloadSize, "SenderAddress", func(portCount int32) (int32, int32, error) {
 				return 0, 0, nil
 			}, func(start, end int32) error {
 				return nil
@@ -205,7 +203,7 @@ func (s *TestSuite) TestSingleBackingImageCRUD(c *C) {
 
 		downloaded := false
 		for j := 0; j < RetryCount; j++ {
-			getResp := bm.Get()
+			getResp := bi.Get()
 			if getResp.Status.State == types.DownloadStateDownloaded {
 				downloaded = true
 				break
@@ -214,7 +212,7 @@ func (s *TestSuite) TestSingleBackingImageCRUD(c *C) {
 		}
 		c.Assert(downloaded, Equals, true)
 
-		err = bm.Delete()
+		err = bi.Delete()
 		c.Assert(err, IsNil)
 	}
 }
@@ -228,9 +226,9 @@ func (s *TestSuite) TestBackingImageSimultaneousDownloadingAndCancellation(c *C)
 
 	count := 100
 	for i := 0; i < count; i++ {
-		bm := NewBackingImage(name, url, uuid, "/var/lib/longhorn", s.getTestDiskPath(c), mockDownloaderFactory.NewDownloader(), make(chan interface{}, 100))
+		bi := NewBackingImage(name, url, uuid, "/var/lib/longhorn", s.getTestDiskPath(c), mockDownloaderFactory.NewDownloader(), make(chan interface{}, 100))
 
-		err := bm.Delete()
+		err := bi.Delete()
 		c.Assert(err, IsNil)
 
 		// Start to do Pulling and Receiving simultaneously, which is impossible ideally.
@@ -240,11 +238,11 @@ func (s *TestSuite) TestBackingImageSimultaneousDownloadingAndCancellation(c *C)
 		wg.Add(2)
 		go func() {
 			defer wg.Done()
-			_, errPull = bm.Pull()
+			_, errPull = bi.Pull()
 		}()
 		go func() {
 			defer wg.Done()
-			_, errSync = bm.Receive(MockDownloadSize, "SenderAddress", func(portCount int32) (int32, int32, error) {
+			_, errSync = bi.Receive(MockDownloadSize, "SenderAddress", func(portCount int32) (int32, int32, error) {
 				return 0, 0, nil
 			}, func(start, end int32) error {
 				return nil
@@ -255,7 +253,7 @@ func (s *TestSuite) TestBackingImageSimultaneousDownloadingAndCancellation(c *C)
 
 		isDownloading := false
 		for j := 0; j < 5; j++ {
-			getResp := bm.Get()
+			getResp := bi.Get()
 			if getResp.Status.State == types.DownloadStateDownloading && getResp.Status.DownloadProgress > 0 {
 				isDownloading = true
 				break
@@ -263,9 +261,9 @@ func (s *TestSuite) TestBackingImageSimultaneousDownloadingAndCancellation(c *C)
 			time.Sleep(RetryInterval)
 		}
 		c.Assert(isDownloading, Equals, true)
-		err = bm.Delete()
+		err = bi.Delete()
 		c.Assert(err, IsNil)
-		getResp := bm.Get()
+		getResp := bi.Get()
 		c.Assert(getResp.Status.State, Equals, string(StateFailed))
 	}
 }
