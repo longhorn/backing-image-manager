@@ -51,6 +51,33 @@ func (cli *BackingImageManagerClient) Pull(name, url, uuid string) (*api.Backing
 	return api.RPCToBackingImage(resp), nil
 }
 
+func (cli *BackingImageManagerClient) LaunchUploadServer(name, uuid string) (*api.BackingImage, int32, error) {
+	if name == "" || uuid == "" {
+		return nil, 0, fmt.Errorf("failed to launch backing image upload server: missing required parameter")
+	}
+
+	conn, err := grpc.Dial(cli.Address, grpc.WithInsecure())
+	if err != nil {
+		return nil, 0, fmt.Errorf("cannot connect backing image manager service to %v: %v", cli.Address, err)
+	}
+	defer conn.Close()
+
+	client := rpc.NewBackingImageManagerServiceClient(conn)
+	ctx, cancel := context.WithTimeout(context.Background(), types.GRPCServiceTimeout)
+	defer cancel()
+
+	resp, err := client.UploadServerLaunch(ctx, &rpc.UploadServerLaunchRequest{
+		Spec: &rpc.BackingImageSpec{
+			Name: name,
+			Uuid: uuid,
+		},
+	})
+	if err != nil {
+		return nil, 0, err
+	}
+	return api.RPCToBackingImage(resp.BackingImageResp), resp.Port, nil
+}
+
 func (cli *BackingImageManagerClient) Sync(name, url, uuid, fromHost, toHost string, size int64) (*api.BackingImage, error) {
 	if name == "" || uuid == "" || fromHost == "" || toHost == "" || size <= 0 {
 		return nil, fmt.Errorf("failed to sync backing image: missing required parameter")
