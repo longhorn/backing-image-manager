@@ -25,6 +25,7 @@ type BackingImageStatus struct {
 	ErrorMsg             string `json:"errorMsg"`
 	SenderManagerAddress string `json:"senderManagerAddress"`
 	DownloadProgress     int    `json:"downloadProgress"`
+	UploadPort           int32  `json:"uploadPort"`
 }
 
 func RPCToBackingImage(obj *rpc.BackingImageResponse) *BackingImage {
@@ -41,6 +42,7 @@ func RPCToBackingImage(obj *rpc.BackingImageResponse) *BackingImage {
 			ErrorMsg:             obj.Status.ErrorMsg,
 			SenderManagerAddress: obj.Status.SenderManagerAddress,
 			DownloadProgress:     int(obj.Status.DownloadProgress),
+			UploadPort:           obj.Status.UploadPort,
 		},
 	}
 }

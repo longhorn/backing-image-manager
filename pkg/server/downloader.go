@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"path/filepath"
 	"sync"
 	"time"
 
@@ -14,6 +15,7 @@ import (
 
 	"github.com/longhorn/backing-image-manager/pkg/types"
 	"github.com/longhorn/backing-image-manager/pkg/util"
+	"github.com/longhorn/backing-image-manager/pkg/util/uploadserver"
 )
 
 type BackingImageDownloader struct {
@@ -31,6 +33,7 @@ type DownloaderEngine interface {
 	Download(ctx context.Context, url, filePath string, updater util.ProgressUpdater) (written int64, err error)
 	ReceiverLaunch(ctx context.Context, port string, filePath string, syncFileOps sparserest.SyncFileOperations) error
 	SenderLaunch(localPath string, remote string, timeout int, directIO bool) error
+	UploadServerLaunch(ctx context.Context, port string, directory string, syncFileOps sparserest.SyncFileOperations, sizeUpdater uploadserver.SizeUpdater) error
 }
 
 func (d *BackingImageDownloader) GetSize(url string) (int64, error) {
@@ -106,6 +109,31 @@ func (d *BackingImageDownloader) Send(filePath string, address string) error {
 	return d.DownloaderEngine.SenderLaunch(filePath, address, types.FileSyncTimeout, false)
 }
 
+func (d *BackingImageDownloader) Upload(port string, directory string, syncFileOps sparserest.SyncFileOperations, sizeUpdater uploadserver.SizeUpdater) error {
+	d.Lock()
+	if d.isDownloading {
+		d.Unlock()
+		return fmt.Errorf("downloader is already downloading/uploading")
+	}
+	if d.ctx == nil || d.cancelFunc == nil {
+		d.cancelDownloadingWithoutLock()
+		d.Unlock()
+		return fmt.Errorf("BUG: downloader is not initialized correctly or already cancelled before actual uploading")
+	}
+	ctx := d.ctx
+	d.isDownloading = true
+	d.Unlock()
+
+	defer func() {
+		d.Cancel()
+	}()
+
+	if err := d.DownloaderEngine.UploadServerLaunch(ctx, port, directory, syncFileOps, sizeUpdater); err != nil && err != http.ErrServerClosed {
+		return err
+	}
+	return nil
+}
+
 func (d *BackingImageDownloader) Cancel() {
 	d.Lock()
 	defer d.Unlock()
@@ -151,6 +179,10 @@ func (e *BackingImageDownloaderEngine) SenderLaunch(localPath string, remote str
 	return sparse.SyncFile(localPath, remote, timeout, directIO)
 }
 
+func (e *BackingImageDownloaderEngine) UploadServerLaunch(ctx context.Context, port string, directory string, syncFileOps sparserest.SyncFileOperations, sizeUpdater uploadserver.SizeUpdater) error {
+	return uploadserver.NewUploadServer(ctx, port, directory, syncFileOps, sizeUpdater)
+}
+
 func (f *BackingImageDownloaderFactory) NewDownloader() *BackingImageDownloader {
 	return &BackingImageDownloader{
 		&sync.RWMutex{},
@@ -177,6 +209,11 @@ func (e *MockDownloaderEngine) ReceiverLaunch(ctx context.Context, port string, 
 
 func (e *MockDownloaderEngine) SenderLaunch(localPath string, remote string, timeout int, directIO bool) error {
 	return nil
+}
+
+func (e *MockDownloaderEngine) UploadServerLaunch(ctx context.Context, port string, directory string, syncFileOps sparserest.SyncFileOperations, sizeUpdater uploadserver.SizeUpdater) error {
+	// No need to mock upload server here
+	return uploadserver.NewUploadServer(ctx, port, directory, syncFileOps, sizeUpdater)
 }
 
 func (e *MockDownloaderEngine) mockDownload(ctx context.Context, filePath string, progressUpdateFunc func(int64)) error {

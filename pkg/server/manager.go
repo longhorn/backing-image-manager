@@ -354,6 +354,39 @@ func (m *Manager) Send(ctx context.Context, req *rpc.SendRequest) (resp *empty.E
 	return &empty.Empty{}, nil
 }
 
+func (m *Manager) UploadServerLaunch(ctx context.Context, req *rpc.UploadServerLaunchRequest) (resp *rpc.BackingImageResponse, err error) {
+	log := m.log.WithFields(logrus.Fields{"backingImage": req.Spec.Name, "uuid": req.Spec.Uuid})
+
+	if req.Spec.Name == "" || req.Spec.Uuid == "" {
+		return nil, status.Errorf(codes.InvalidArgument, "missing required argument")
+	}
+
+	m.lock.Lock()
+	bi := m.backingImages[req.Spec.Name]
+	if bi != nil {
+		biResp := bi.Get()
+		if biResp.Status.State != types.DownloadStateFailed {
+			m.lock.Unlock()
+			return nil, status.Errorf(codes.AlreadyExists, "backing image %v with state %v already exists", req.Spec.Name, biResp.Status.State)
+		}
+		log.Infof("Backing Image Manager: prepare to re-register and upload failed backing image")
+		delete(m.backingImages, req.Spec.Name)
+	}
+	bi = NewBackingImage(req.Spec.Name, req.Spec.Url, req.Spec.Uuid, m.diskPathOnHost, m.diskPathInContainer, m.DownloaderFactory.NewDownloader(), m.updateCh)
+	m.backingImages[req.Spec.Name] = bi
+	m.lock.Unlock()
+
+	port, err := bi.LaunchUploadServer(m.allocatePorts, m.releasePorts)
+	if err != nil {
+		return nil, err
+	}
+
+	if port == 0 {
+		log.Info("Backing Image Manager: skip uploading backing image")
+	}
+	return bi.Get(), nil
+}
+
 func (m *Manager) allocatePorts(portCount int32) (int32, int32, error) {
 	if portCount < 0 {
 		return 0, 0, fmt.Errorf("invalid port count %v", portCount)

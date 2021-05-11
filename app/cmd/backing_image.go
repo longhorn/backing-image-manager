@@ -15,6 +15,7 @@ func BackingImageCmd() cli.Command {
 		Name: "backing-image",
 		Subcommands: []cli.Command{
 			PullCmd(),
+			LaunchUploadServerCmd(),
 			SyncCmd(),
 			SendCmd(),
 			DeleteCmd(),
@@ -50,6 +51,35 @@ func pull(c *cli.Context) error {
 	url := c.GlobalString("url")
 	bimClient := client.NewBackingImageManagerClient(url)
 	bi, err := bimClient.Pull(c.String("name"), c.String("download-url"), c.String("uuid"))
+	if err != nil {
+		return err
+	}
+	return util.PrintJSON(bi)
+}
+
+func LaunchUploadServerCmd() cli.Command {
+	return cli.Command{
+		Name: "launch-upload-server",
+		Flags: []cli.Flag{
+			cli.StringFlag{
+				Name: "name",
+			},
+			cli.StringFlag{
+				Name: "uuid",
+			},
+		},
+		Action: func(c *cli.Context) {
+			if err := launchUploadServer(c); err != nil {
+				logrus.Fatalf("Error running backing image upload server launch command: %v.", err)
+			}
+		},
+	}
+}
+
+func launchUploadServer(c *cli.Context) error {
+	url := c.GlobalString("url")
+	bimClient := client.NewBackingImageManagerClient(url)
+	bi, err := bimClient.LaunchUploadServer(c.String("name"), c.String("uuid"))
 	if err != nil {
 		return err
 	}
