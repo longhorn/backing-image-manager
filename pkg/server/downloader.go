@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"net/http"
 	"os"
-	"path/filepath"
 	"sync"
 	"time"
 
@@ -229,7 +228,7 @@ func (e *MockDownloaderEngine) mockDownload(ctx context.Context, filePath string
 	for i := 1; i <= MockDownloadSize; i++ {
 		select {
 		case <-ctx.Done():
-			return fmt.Errorf("cancelled mock receiving")
+			return fmt.Errorf("cancelled mock downloading")
 		default:
 			progressUpdateFunc(1)
 		}

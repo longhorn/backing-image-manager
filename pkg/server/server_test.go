@@ -3,7 +3,9 @@ package server
 import (
 	"encoding/json"
 	"io/ioutil"
+	"math/rand"
 	"os"
+	"os/exec"
 	"os/user"
 	"path/filepath"
 	"strconv"
@@ -20,6 +22,7 @@ import (
 	"github.com/longhorn/backing-image-manager/pkg/rpc"
 	"github.com/longhorn/backing-image-manager/pkg/types"
 	"github.com/longhorn/backing-image-manager/pkg/util"
+	"github.com/longhorn/backing-image-manager/pkg/util/uploadserver"
 
 	. "gopkg.in/check.v1"
 )
@@ -91,6 +94,7 @@ func (s *TestSuite) TearDownSuite(c *C) {
 	testDiskPath := s.getTestDiskPath(c)
 	diskCfgPath := filepath.Join(testDiskPath, util.DiskConfigFile)
 	os.RemoveAll(diskCfgPath)
+	os.RemoveAll(filepath.Join(testDiskPath, types.BackingImageManagerDirectoryName))
 	close(s.shutdownCh)
 }
 
@@ -266,4 +270,138 @@ func (s *TestSuite) TestBackingImageSimultaneousDownloadingAndCancellation(c *C)
 		getResp := bi.Get()
 		c.Assert(getResp.Status.State, Equals, string(StateFailed))
 	}
+}
+
+func (s *TestSuite) TestUpload(c *C) {
+	dir := s.getTestDiskPath(c)
+	originalFilePath := filepath.Join(dir, "original")
+	err := util.GenerateRandomDataFile(originalFilePath, 100)
+	c.Assert(err, IsNil)
+
+	count := 10
+	wg := &sync.WaitGroup{}
+	biw := &BackingImageWatcher{}
+	for i := 0; i < count; i++ {
+		wg.Add(1)
+		f, err := os.OpenFile(originalFilePath, os.O_RDONLY, 0666)
+		c.Assert(err, IsNil)
+
+		stat, err := f.Stat()
+		c.Assert(err, IsNil)
+		fileSize := stat.Size()
+
+		go func(i int) {
+			defer wg.Done()
+			name := "test_upload-" + strconv.Itoa(i)
+			uuid := name + "-" + "uuid"
+			go s.m.Watch(nil, biw)
+
+			deleteReq := &rpc.DeleteRequest{
+				Name: name,
+			}
+			_, err = s.m.Delete(nil, deleteReq)
+
+			uploadReq := &rpc.UploadServerLaunchRequest{
+				Spec: &rpc.BackingImageSpec{
+					Name: name,
+					Uuid: uuid,
+				},
+			}
+			uploadResp, err := s.m.UploadServerLaunch(nil, uploadReq)
+			c.Assert(err, IsNil)
+			c.Assert(uploadResp.Status.UploadPort, Not(Equals), 0)
+
+			getResp, err := s.m.Get(nil, &rpc.GetRequest{
+				Name: name,
+			})
+			c.Assert(err, IsNil)
+			c.Assert(getResp.Spec.Name, Equals, name)
+			c.Assert(getResp.Status.State, Equals, types.DownloadStateStarting)
+
+			cli := uploadserver.UploadClient{
+				Remote:    "localhost:" + strconv.Itoa(int(uploadResp.Status.UploadPort)),
+				Directory: dir,
+			}
+
+			// Wait for server starting
+			for retry := 0; retry < 5; retry++ {
+				if err = cli.Start(fileSize); err == nil {
+					break
+				}
+				time.Sleep(RetryInterval)
+			}
+			c.Assert(err, IsNil)
+
+			offset := int64(0)
+			chunkCount := int64(0)
+			for index := 0; offset < fileSize; index++ {
+				// Upload 2Mi ~ 4Mi data in each HTTP Post
+				chunkSize := rand.Int63n(2*1024*1024) + 2*1024*1024
+				if fileSize-offset <= chunkSize {
+					chunkSize = fileSize - offset
+				}
+				data := make([]byte, chunkSize)
+				_, err = f.ReadAt(data, offset)
+				c.Assert(err, IsNil)
+				offset += chunkSize
+
+				exists, err := cli.PrepareChunk(index, data)
+				c.Assert(err, IsNil)
+				c.Assert(exists, Equals, false)
+
+				err = cli.UploadChunk(index, data)
+				c.Assert(err, IsNil)
+				chunkCount++
+
+				getResp, err = s.m.Get(nil, &rpc.GetRequest{
+					Name: name,
+				})
+				c.Assert(err, IsNil)
+				c.Assert(getResp.Spec.Name, Equals, name)
+				c.Assert(getResp.Status.State, Equals, types.DownloadStateDownloading)
+				c.Assert(getResp.Status.DownloadProgress, Not(Equals), 0)
+			}
+
+			err = cli.CoalesceChunk(stat.Size(), chunkCount)
+			c.Assert(err, IsNil)
+
+			cli.Close()
+			err = f.Close()
+			c.Assert(err, IsNil)
+
+			for retry := 0; retry < 5; retry++ {
+				getResp, err = s.m.Get(nil, &rpc.GetRequest{
+					Name: name,
+				})
+				c.Assert(err, IsNil)
+				if getResp.Status.State == types.DownloadStateDownloaded && getResp.Status.DownloadProgress == 100 {
+					break
+				}
+				time.Sleep(RetryInterval)
+			}
+
+			listResp, err := s.m.List(nil, &empty.Empty{})
+			c.Assert(err, IsNil)
+			c.Assert(listResp.BackingImages[name], NotNil)
+			c.Assert(listResp.BackingImages[name].Spec.Name, Equals, name)
+			c.Assert(listResp.BackingImages[name].Status.State, Equals, types.DownloadStateDownloaded)
+
+			uploadedFilePath := filepath.Join(dir, types.BackingImageManagerDirectoryName,
+				GetBackingImageDirectoryName(name, uuid), types.BackingImageFileName)
+			err = exec.Command("diff", originalFilePath, uploadedFilePath).Run()
+			c.Assert(err, IsNil)
+
+			deleteReq = &rpc.DeleteRequest{
+				Name: name,
+			}
+			_, err = s.m.Delete(nil, deleteReq)
+			c.Assert(err, IsNil)
+			getResp, err = s.m.Get(nil, &rpc.GetRequest{
+				Name: name,
+			})
+			c.Assert(err, NotNil)
+			c.Assert(status.Code(err), Equals, codes.NotFound)
+		}(i)
+	}
+	wg.Wait()
 }

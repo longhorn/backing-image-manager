@@ -2,10 +2,13 @@ package util
 
 import (
 	"context"
+	"crypto/sha512"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"io"
 	"io/ioutil"
+	"math/rand"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -15,7 +18,12 @@ import (
 	"github.com/pkg/errors"
 )
 
-const HTTPTimeout = 4 * time.Second
+const (
+	HTTPTimeout             = 4 * time.Second
+	PreservedChecksumLength = 64
+
+	LetterBytes = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
+)
 
 func PrintJSON(obj interface{}) error {
 	output, err := json.MarshalIndent(obj, "", "\t")
@@ -24,6 +32,49 @@ func PrintJSON(obj interface{}) error {
 	}
 
 	fmt.Println(string(output))
+	return nil
+}
+
+func GetChecksum(data []byte) string {
+	checksumBytes := sha512.Sum512(data)
+	checksum := hex.EncodeToString(checksumBytes[:])[:PreservedChecksumLength]
+	return checksum
+}
+
+func RandStringBytes(n int64) []byte {
+	b := make([]byte, n)
+	for i := range b {
+		b[i] = LetterBytes[rand.Intn(len(LetterBytes))]
+	}
+	return b
+}
+
+func GenerateRandomDataFile(filePath string, sizeInMB int) error {
+	// 1Mi
+	chunkSize := int64(1 * 1024 * 1024)
+
+	if err := os.Remove(filePath); err != nil && !os.IsNotExist(err) {
+		return err
+	}
+
+	f, err := os.OpenFile(filePath, os.O_RDWR|os.O_CREATE, 0666)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+	defer f.Sync()
+	if err := f.Truncate(int64(sizeInMB) * chunkSize); err != nil {
+		return err
+	}
+
+	data := make([]byte, chunkSize)
+	for i := 0; i < sizeInMB; i++ {
+		data = RandStringBytes(chunkSize)
+		if _, err := f.WriteAt(data, int64(i)*chunkSize); err != nil {
+			return err
+		}
+	}
+
 	return nil
 }
 
