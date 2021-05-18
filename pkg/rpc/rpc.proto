@@ -28,7 +28,7 @@ message BackingImageStatus {
 	string error_msg = 2;
 	int32 sending_reference = 3;
 	string sender_manager_address = 4;
-	int32 download_progress = 5;
+	int32 progress = 5;
 	int32 upload_port = 6;
 }
 

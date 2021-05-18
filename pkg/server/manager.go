@@ -49,8 +49,8 @@ type Manager struct {
 	broadcaster *broadcaster.Broadcaster
 	broadcastCh chan interface{}
 
-	DownloaderFactory DownloaderFactory
-	Sender            func(string, string, string) error
+	HandlerFactory HandlerFactory
+	Sender         func(string, string, string) error
 }
 
 func NewManager(diskUUID, diskPathOnHost, diskPathInContainer, portRange string, shutdownCh chan error) (*Manager, error) {
@@ -89,8 +89,8 @@ func NewManager(diskUUID, diskPathOnHost, diskPathInContainer, portRange string,
 		broadcastCh: make(chan interface{}),
 
 		// for unit test
-		DownloaderFactory: &BackingImageDownloaderFactory{},
-		Sender:            RequestBackingImageSending,
+		HandlerFactory: &BackingImageHandlerFactory{},
+		Sender:         RequestBackingImageSending,
 	}
 
 	// help to kickstart the broadcaster
@@ -180,14 +180,14 @@ func (m *Manager) Pull(ctx context.Context, req *rpc.PullRequest) (ret *rpc.Back
 	bi := m.backingImages[req.Spec.Name]
 	if bi != nil {
 		biResp := bi.Get()
-		if biResp.Status.State != types.DownloadStateFailed {
+		if biResp.Status.State != types.BackingImageStateFailed {
 			m.lock.Unlock()
 			return nil, status.Errorf(codes.AlreadyExists, "backing image %v with state %v already exists", req.Spec.Name, biResp.Status.State)
 		}
 		log.Infof("Backing Image Manager: prepare to re-register and re-pull failed backing image")
 		delete(m.backingImages, req.Spec.Name)
 	}
-	bi = NewBackingImage(req.Spec.Name, req.Spec.Url, req.Spec.Uuid, m.diskPathOnHost, m.diskPathInContainer, m.DownloaderFactory.NewDownloader(), m.updateCh)
+	bi = NewBackingImage(req.Spec.Name, req.Spec.Url, req.Spec.Uuid, m.diskPathOnHost, m.diskPathInContainer, m.HandlerFactory.NewHandler(), m.updateCh)
 	m.backingImages[req.Spec.Name] = bi
 	m.lock.Unlock()
 
@@ -196,7 +196,7 @@ func (m *Manager) Pull(ctx context.Context, req *rpc.PullRequest) (ret *rpc.Back
 		return nil, err
 	}
 
-	if biReps.Status.State == types.DownloadStateDownloaded {
+	if biReps.Status.State == types.BackingImageStateReady {
 		log.Info("Backing Image Manager: skip pulling backing image")
 	} else {
 		log.Info("Backing Image Manager: pulling backing image")
@@ -289,14 +289,14 @@ func (m *Manager) Sync(ctx context.Context, req *rpc.SyncRequest) (resp *rpc.Bac
 	bi := m.backingImages[req.BackingImageSpec.Name]
 	if bi != nil {
 		biResp := bi.Get()
-		if biResp.Status.State != types.DownloadStateFailed {
+		if biResp.Status.State != types.BackingImageStateFailed {
 			m.lock.Unlock()
 			return nil, status.Errorf(codes.AlreadyExists, "backing image %v with state %v already exists in the receiver side", req.BackingImageSpec.Name, biResp.Status.State)
 		}
 		log.Infof("Backing Image Manager: prepare to re-register and re-sync failed backing image")
 		delete(m.backingImages, req.BackingImageSpec.Name)
 	}
-	bi = NewBackingImage(req.BackingImageSpec.Name, req.BackingImageSpec.Url, req.BackingImageSpec.Uuid, m.diskPathOnHost, m.diskPathInContainer, m.DownloaderFactory.NewDownloader(), m.updateCh)
+	bi = NewBackingImage(req.BackingImageSpec.Name, req.BackingImageSpec.Url, req.BackingImageSpec.Uuid, m.diskPathOnHost, m.diskPathInContainer, m.HandlerFactory.NewHandler(), m.updateCh)
 	m.backingImages[req.BackingImageSpec.Name] = bi
 	m.lock.Unlock()
 
@@ -365,14 +365,14 @@ func (m *Manager) UploadServerLaunch(ctx context.Context, req *rpc.UploadServerL
 	bi := m.backingImages[req.Spec.Name]
 	if bi != nil {
 		biResp := bi.Get()
-		if biResp.Status.State != types.DownloadStateFailed {
+		if biResp.Status.State != types.BackingImageStateFailed {
 			m.lock.Unlock()
 			return nil, status.Errorf(codes.AlreadyExists, "backing image %v with state %v already exists", req.Spec.Name, biResp.Status.State)
 		}
 		log.Infof("Backing Image Manager: prepare to re-register and upload failed backing image")
 		delete(m.backingImages, req.Spec.Name)
 	}
-	bi = NewBackingImage(req.Spec.Name, req.Spec.Url, req.Spec.Uuid, m.diskPathOnHost, m.diskPathInContainer, m.DownloaderFactory.NewDownloader(), m.updateCh)
+	bi = NewBackingImage(req.Spec.Name, req.Spec.Url, req.Spec.Uuid, m.diskPathOnHost, m.diskPathInContainer, m.HandlerFactory.NewHandler(), m.updateCh)
 	m.backingImages[req.Spec.Name] = bi
 	m.lock.Unlock()
 

@@ -20,11 +20,11 @@ import (
 type state string
 
 const (
-	StatePending     = state(types.DownloadStatePending)
-	StateStarting    = state(types.DownloadStateStarting)
-	StateDownloading = state(types.DownloadStateDownloading)
-	StateDownloaded  = state(types.DownloadStateDownloaded)
-	StateFailed      = state(types.DownloadStateFailed)
+	StatePending    = state(types.BackingImageStatePending)
+	StateStarting   = state(types.BackingImageStateStarting)
+	StateInProgress = state(types.BackingImageStateInProgress)
+	StateReady      = state(types.BackingImageStateReady)
+	StateFailed     = state(types.BackingImageStateFailed)
 
 	RetryInterval = 1 * time.Second
 	RetryCount    = 30
@@ -54,10 +54,10 @@ type BackingImage struct {
 	log      logrus.FieldLogger
 	updateCh chan interface{}
 
-	downloader *BackingImageDownloader
+	handler *BackingImageHandler
 }
 
-func NewBackingImage(name, url, uuid, diskPathOnHost, diskPathInContainer string, downloader *BackingImageDownloader, updateCh chan interface{}) *BackingImage {
+func NewBackingImage(name, url, uuid, diskPathOnHost, diskPathInContainer string, handler *BackingImageHandler, updateCh chan interface{}) *BackingImage {
 	hostDir := filepath.Join(diskPathOnHost, types.BackingImageManagerDirectoryName, GetBackingImageDirectoryName(name, uuid))
 	workDir := filepath.Join(diskPathInContainer, types.BackingImageManagerDirectoryName, GetBackingImageDirectoryName(name, uuid))
 	return &BackingImage{
@@ -66,7 +66,7 @@ func NewBackingImage(name, url, uuid, diskPathOnHost, diskPathInContainer string
 		URL:           url,
 		HostDirectory: hostDir,
 		WorkDirectory: workDir,
-		state:         types.DownloadStatePending,
+		state:         types.BackingImageStatePending,
 		log: logrus.StandardLogger().WithFields(
 			logrus.Fields{
 				"component": "backing-image",
@@ -77,9 +77,9 @@ func NewBackingImage(name, url, uuid, diskPathOnHost, diskPathInContainer string
 				"workDir":   workDir,
 			},
 		),
-		lock:       &sync.RWMutex{},
-		downloader: downloader,
-		updateCh:   updateCh,
+		lock:     &sync.RWMutex{},
+		handler:  handler,
+		updateCh: updateCh,
 	}
 }
 
@@ -92,7 +92,7 @@ func (bi *BackingImage) Pull() (resp *rpc.BackingImageResponse, err error) {
 	log := bi.log
 	log.Info("Backing Image: start to pull backing image")
 
-	if bi.state != types.DownloadStatePending {
+	if bi.state != types.BackingImageStatePending {
 		state := bi.state
 		bi.lock.Unlock()
 		return nil, fmt.Errorf("invalid state %v for pulling", state)
@@ -103,17 +103,17 @@ func (bi *BackingImage) Pull() (resp *rpc.BackingImageResponse, err error) {
 			bi.state = StateFailed
 			bi.errorMsg = err.Error()
 			log.WithError(err).Error("Backing Image: failed to pull backing image")
-			bi.downloader.Cancel()
+			bi.handler.Cancel()
 		}
 		bi.lock.Unlock()
 		bi.updateCh <- nil
 	}()
 
-	// This means state was pending but somehow the downloader had been initialized.
-	if err := bi.downloader.InitDownloading(); err != nil {
-		return nil, errors.Wrapf(err, "failed to ask for the downloader init before pulling")
+	// This means state was pending but somehow the handler had been initialized.
+	if err := bi.handler.InitProcessing(); err != nil {
+		return nil, errors.Wrapf(err, "failed to ask for the handler init before pulling")
 	}
-	bi.state = types.DownloadStateStarting
+	bi.state = types.BackingImageStateStarting
 
 	if err = bi.checkAndReuseBackingImageFileWithoutLock(); err == nil {
 		log.Infof("Backing Image: succeeded to reuse the existing backing image file, will skip pulling")
@@ -121,11 +121,11 @@ func (bi *BackingImage) Pull() (resp *rpc.BackingImageResponse, err error) {
 	}
 	log.Infof("Backing Image: failed to try to check or reuse the possible existing backing image file, will start pulling then: %v", err)
 
-	if err := bi.prepareForDownload(); err != nil {
+	if err := bi.prepareForFileHandling(); err != nil {
 		return nil, errors.Wrapf(err, "failed to prepare for pulling")
 	}
 
-	size, err := bi.downloader.GetSize(bi.URL)
+	size, err := bi.handler.GetSize(bi.URL)
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to get file size before pulling")
 	}
@@ -139,19 +139,19 @@ func (bi *BackingImage) Pull() (resp *rpc.BackingImageResponse, err error) {
 			bi.updateCh <- nil
 		}()
 
-		if _, err := bi.downloader.Pull(bi.URL, filepath.Join(bi.WorkDirectory, types.BackingImageTmpFileName), bi); err != nil {
+		if _, err := bi.handler.Pull(bi.URL, filepath.Join(bi.WorkDirectory, types.BackingImageTmpFileName), bi); err != nil {
 			bi.lock.Lock()
 			bi.state = StateFailed
 			bi.errorMsg = err.Error()
 			log.WithError(err).Error("Backing Image: failed to pull from remote")
-			bi.downloader.Cancel()
+			bi.handler.Cancel()
 			bi.lock.Unlock()
 			return
 		}
-		bi.completeDownloadWithLock()
+		bi.completeFileHandlingWIthLock()
 		return
 	}()
-	go bi.waitForDownloadStartWithLock()
+	go bi.waitForFileHandlingStartWithLock()
 
 	log.Info("Backing Image: pulling backing image")
 
@@ -164,7 +164,7 @@ func (bi *BackingImage) Delete() (err error) {
 	defer func() {
 		currentState := bi.state
 		bi.lock.Unlock()
-		bi.downloader.Cancel()
+		bi.handler.Cancel()
 		if oldState != currentState {
 			bi.updateCh <- nil
 		}
@@ -193,7 +193,7 @@ func (bi *BackingImage) Get() (resp *rpc.BackingImageResponse) {
 		if err != nil {
 			bi.state = StateFailed
 			bi.errorMsg = err.Error()
-			bi.downloader.Cancel()
+			bi.handler.Cancel()
 			bi.log.WithError(err).Error("Backing Image: failed to get backing image")
 		}
 		resp = bi.rpcResponse()
@@ -208,8 +208,8 @@ func (bi *BackingImage) Get() (resp *rpc.BackingImageResponse) {
 		return
 	}
 
-	if bi.state == types.DownloadStateDownloaded && bi.size <= 0 {
-		err = fmt.Errorf("invalid size %v for downloaded file", bi.size)
+	if bi.state == types.BackingImageStateReady && bi.size <= 0 {
+		err = fmt.Errorf("invalid size %v for ready file", bi.size)
 		return
 	}
 
@@ -221,7 +221,7 @@ func (bi *BackingImage) Receive(size int64, senderManagerAddress string, portAll
 	log := bi.log
 	log.Info("Backing Image: start to receive backing image")
 
-	if bi.state != types.DownloadStatePending {
+	if bi.state != types.BackingImageStatePending {
 		state := bi.state
 		bi.lock.Unlock()
 		return 0, fmt.Errorf("invalid state %v for receiving", state)
@@ -232,17 +232,17 @@ func (bi *BackingImage) Receive(size int64, senderManagerAddress string, portAll
 			bi.state = StateFailed
 			bi.errorMsg = err.Error()
 			log.WithError(err).Error("Backing Image: failed to receive backing image")
-			bi.downloader.Cancel()
+			bi.handler.Cancel()
 		}
 		bi.lock.Unlock()
 		bi.updateCh <- nil
 	}()
 
-	// This means state was pending but somehow the downloader had been initialized.
-	if err := bi.downloader.InitDownloading(); err != nil {
-		return 0, errors.Wrapf(err, "failed to ask for the downloader init before receiving")
+	// This means state was pending but somehow the handler had been initialized.
+	if err := bi.handler.InitProcessing(); err != nil {
+		return 0, errors.Wrapf(err, "failed to ask for the handler init before receiving")
 	}
-	bi.state = types.DownloadStateStarting
+	bi.state = types.BackingImageStateStarting
 
 	if err = bi.checkAndReuseBackingImageFileWithoutLock(); err == nil {
 		log.Infof("Backing Image: succeeded to reuse the existing backing image file, will skip syncing")
@@ -250,7 +250,7 @@ func (bi *BackingImage) Receive(size int64, senderManagerAddress string, portAll
 	}
 	log.Infof("Backing Image: failed to try to check or reuse the possible existing backing image file, will start syncing then: %v", err)
 
-	if err := bi.prepareForDownload(); err != nil {
+	if err := bi.prepareForFileHandling(); err != nil {
 		return 0, errors.Wrapf(err, "failed to prepare for backing image receiving")
 	}
 
@@ -273,19 +273,19 @@ func (bi *BackingImage) Receive(size int64, senderManagerAddress string, portAll
 
 		log.Infof("Backing Image: prepare to receive backing image at port %v", port)
 
-		if err := bi.downloader.Receive(strconv.Itoa(int(port)), filepath.Join(bi.WorkDirectory, types.BackingImageTmpFileName), bi); err != nil {
+		if err := bi.handler.Receive(strconv.Itoa(int(port)), filepath.Join(bi.WorkDirectory, types.BackingImageTmpFileName), bi); err != nil {
 			bi.lock.Lock()
 			bi.state = StateFailed
 			bi.errorMsg = err.Error()
 			log.WithError(err).Errorf("Backing Image: failed to receive backing image from %v", senderManagerAddress)
-			bi.downloader.Cancel()
+			bi.handler.Cancel()
 			bi.lock.Unlock()
 			return
 		}
-		bi.completeDownloadWithLock()
+		bi.completeFileHandlingWIthLock()
 		return
 	}()
-	go bi.waitForDownloadStartWithLock()
+	go bi.waitForFileHandlingStartWithLock()
 
 	return port, nil
 }
@@ -302,7 +302,7 @@ func (bi *BackingImage) Send(address string, portAllocateFunc func(portCount int
 		}
 	}()
 
-	if bi.state != types.DownloadStateDownloaded {
+	if bi.state != types.BackingImageStateReady {
 		return fmt.Errorf("backing image %v with state %v is invalid for file sending", bi.Name, bi.state)
 	}
 	if err := bi.validateFiles(); err != nil {
@@ -334,7 +334,7 @@ func (bi *BackingImage) Send(address string, portAllocateFunc func(portCount int
 			}
 		}()
 
-		if err := bi.downloader.Send(filepath.Join(bi.WorkDirectory, types.BackingImageFileName), address); err != nil {
+		if err := bi.handler.Send(filepath.Join(bi.WorkDirectory, types.BackingImageFileName), address); err != nil {
 			log.WithError(err).Errorf("Backing Image: failed to send backing image to address %v", address)
 			return
 		}
@@ -349,7 +349,7 @@ func (bi *BackingImage) LaunchUploadServer(portAllocateFunc func(portCount int32
 	log := bi.log
 	log.Info("Backing Image: start to upload backing image")
 
-	if bi.state != types.DownloadStatePending {
+	if bi.state != types.BackingImageStatePending {
 		state := bi.state
 		bi.lock.Unlock()
 		return 0, fmt.Errorf("invalid state %v for uploading", state)
@@ -360,17 +360,17 @@ func (bi *BackingImage) LaunchUploadServer(portAllocateFunc func(portCount int32
 			bi.state = StateFailed
 			bi.errorMsg = err.Error()
 			log.WithError(err).Error("Backing Image: failed to upload backing image")
-			bi.downloader.Cancel()
+			bi.handler.Cancel()
 		}
 		bi.lock.Unlock()
 		bi.updateCh <- nil
 	}()
 
-	// This means state was pending but somehow the downloader had been initialized.
-	if err := bi.downloader.InitDownloading(); err != nil {
-		return 0, errors.Wrapf(err, "failed to ask for the downloader init before uploading")
+	// This means state was pending but somehow the handler had been initialized.
+	if err := bi.handler.InitProcessing(); err != nil {
+		return 0, errors.Wrapf(err, "failed to ask for the handler init before uploading")
 	}
-	bi.state = types.DownloadStateStarting
+	bi.state = types.BackingImageStateStarting
 
 	if err = bi.checkAndReuseBackingImageFileWithoutLock(); err == nil {
 		log.Infof("Backing Image: succeeded to reuse the existing backing image file, will skip uploading")
@@ -378,7 +378,7 @@ func (bi *BackingImage) LaunchUploadServer(portAllocateFunc func(portCount int32
 	}
 	log.Infof("Backing Image: failed to try to check or reuse the possible existing backing image file, will start uploading then: %v", err)
 
-	if err := bi.prepareForDownload(); err != nil {
+	if err := bi.prepareForFileHandling(); err != nil {
 		return 0, errors.Wrapf(err, "failed to prepare for backing image uploading")
 	}
 
@@ -397,20 +397,20 @@ func (bi *BackingImage) LaunchUploadServer(portAllocateFunc func(portCount int32
 
 		log.Infof("Backing Image: prepare to upload backing image at port %v", port)
 
-		if err := bi.downloader.Upload(strconv.Itoa(int(port)), bi.WorkDirectory, bi, bi); err != nil {
+		if err := bi.handler.Upload(strconv.Itoa(int(port)), bi.WorkDirectory, bi, bi); err != nil {
 			bi.lock.Lock()
 			bi.uploadPort = 0
 			bi.state = StateFailed
 			bi.errorMsg = err.Error()
 			log.WithError(err).Errorf("Backing Image: failed to upload backing image at port %v", port)
-			bi.downloader.Cancel()
+			bi.handler.Cancel()
 			bi.lock.Unlock()
 			return
 		}
-		bi.completeDownloadWithLock()
+		bi.completeFileHandlingWIthLock()
 		return
 	}()
-	// go bi.waitForDownloadStartWithLock()
+	// go bi.waitForFileHandlingStartWithLock()
 
 	return port, nil
 }
@@ -430,7 +430,7 @@ func (bi *BackingImage) rpcResponse() *rpc.BackingImageResponse {
 			SendingReference:     int32(bi.sendingReference),
 			ErrorMsg:             bi.errorMsg,
 			SenderManagerAddress: bi.senderManagerAddress,
-			DownloadProgress:     int32(bi.progress),
+			Progress:             int32(bi.progress),
 			UploadPort:           bi.uploadPort,
 		},
 	}
@@ -454,14 +454,14 @@ func (bi *BackingImage) checkAndReuseBackingImageFileWithoutLock() error {
 	bi.size = cfg.Size
 	bi.processedSize = cfg.Size
 	bi.progress = 100
-	bi.state = types.DownloadStateDownloaded
-	bi.downloader.Cancel()
+	bi.state = types.BackingImageStateReady
+	bi.handler.Cancel()
 	bi.log.Infof("Backing Image: Directly reuse/introduce the existing file in path %v", backingImagePath)
 
 	return nil
 }
 
-func (bi *BackingImage) prepareForDownload() error {
+func (bi *BackingImage) prepareForFileHandling() error {
 	mkdirRequired := false
 	stat, err := os.Stat(bi.WorkDirectory)
 	if err != nil {
@@ -472,14 +472,14 @@ func (bi *BackingImage) prepareForDownload() error {
 	} else {
 		if !stat.IsDir() {
 			if err := os.Remove(bi.WorkDirectory); err != nil {
-				return errors.Wrapf(err, "failed to clean up the file occupying work directory name %v before downloading", bi.WorkDirectory)
+				return errors.Wrapf(err, "failed to clean up the file occupying work directory name %v before file handling", bi.WorkDirectory)
 			}
 			mkdirRequired = true
 		}
 	}
 	if mkdirRequired {
 		if err := os.Mkdir(bi.WorkDirectory, 666); err != nil && !os.IsExist(err) {
-			return errors.Wrapf(err, "failed to create work directory %v before downloading", bi.WorkDirectory)
+			return errors.Wrapf(err, "failed to create work directory %v before file handling", bi.WorkDirectory)
 		}
 	}
 
@@ -489,36 +489,36 @@ func (bi *BackingImage) prepareForDownload() error {
 	backingImageTmpPath := filepath.Join(bi.WorkDirectory, types.BackingImageTmpFileName)
 	backingImagePath := filepath.Join(bi.WorkDirectory, types.BackingImageFileName)
 	if err := os.Remove(backingImageCfgPath); err != nil && !os.IsNotExist(err) {
-		return errors.Wrapf(err, "failed to remove old backing image cfg file %v before downloading", backingImageCfgPath)
+		return errors.Wrapf(err, "failed to remove old backing image cfg file %v before file handling", backingImageCfgPath)
 	}
 	if err := os.Remove(backingImageTmpPath); err != nil && !os.IsNotExist(err) {
-		return errors.Wrapf(err, "failed to remove old backing image tmp file %v before downloading", backingImageTmpPath)
+		return errors.Wrapf(err, "failed to remove old backing image tmp file %v before file handling", backingImageTmpPath)
 	}
 	if err := os.Remove(backingImagePath); err != nil && !os.IsNotExist(err) {
-		return errors.Wrapf(err, "failed to remove old backing image file %v before downloading", backingImagePath)
+		return errors.Wrapf(err, "failed to remove old backing image file %v before file handling", backingImagePath)
 	}
 	return nil
 }
 
 func (bi *BackingImage) validateFiles() error {
 	switch bi.state {
-	case StateDownloading:
+	case StateInProgress:
 		backingImageTmpPath := filepath.Join(bi.WorkDirectory, types.BackingImageTmpFileName)
 		if _, err := os.Stat(backingImageTmpPath); err != nil {
-			return errors.Wrapf(err, "failed to validate backing image tmp file existence for downloading backing image")
+			return errors.Wrapf(err, "failed to validate backing image tmp file existence for handling backing image")
 		}
 		return nil
-	case StateDownloaded:
+	case StateReady:
 		backingImagePath := filepath.Join(bi.WorkDirectory, types.BackingImageFileName)
 		if _, err := os.Stat(backingImagePath); err != nil {
-			return errors.Wrapf(err, "failed to validate backing image file existence for downloaded backing image")
+			return errors.Wrapf(err, "failed to validate backing image file existence for ready backing image")
 		}
 		configFilePath := filepath.Join(bi.WorkDirectory, util.BackingImageConfigFile)
 		if _, err := os.Stat(configFilePath); err != nil {
-			return errors.Wrapf(err, "failed to validate backing image config file existence for downloaded backing image")
+			return errors.Wrapf(err, "failed to validate backing image config file existence for ready backing image")
 		}
 	// Don't need to check anything for a failed/pending backing image.
-	// Let's directly wait for cleanup then re-downloading.
+	// Let's directly wait for cleanup then re-handling.
 	case StatePending:
 	case StateStarting:
 	case StateFailed:
@@ -529,7 +529,7 @@ func (bi *BackingImage) validateFiles() error {
 	return nil
 }
 
-func (bi *BackingImage) waitForDownloadStartWithLock() {
+func (bi *BackingImage) waitForFileHandlingStartWithLock() {
 	count := 0
 	ticker := time.NewTicker(RetryInterval)
 	defer ticker.Stop()
@@ -538,16 +538,16 @@ func (bi *BackingImage) waitForDownloadStartWithLock() {
 		case <-ticker.C:
 			count++
 			bi.lock.Lock()
-			if bi.state != types.DownloadStateStarting {
+			if bi.state != types.BackingImageStateStarting {
 				bi.lock.Unlock()
 				return
 			}
 			if count >= RetryCount {
-				bi.state = types.DownloadStateFailed
-				bi.errorMsg = fmt.Sprintf("failed to wait for download start in %v seconds", RetryCount)
+				bi.state = types.BackingImageStateFailed
+				bi.errorMsg = fmt.Sprintf("failed to wait for file handling start in %v seconds", RetryCount)
 				bi.log.Errorf("Backing Image: %v", bi.errorMsg)
 				bi.lock.Unlock()
-				bi.downloader.Cancel()
+				bi.handler.Cancel()
 				bi.updateCh <- nil
 				return
 			}
@@ -556,7 +556,7 @@ func (bi *BackingImage) waitForDownloadStartWithLock() {
 	}
 }
 
-func (bi *BackingImage) completeDownloadWithLock() {
+func (bi *BackingImage) completeFileHandlingWIthLock() {
 	backingImageTmpPath := filepath.Join(bi.WorkDirectory, types.BackingImageTmpFileName)
 	backingImagePath := filepath.Join(bi.WorkDirectory, types.BackingImageFileName)
 
@@ -569,34 +569,34 @@ func (bi *BackingImage) completeDownloadWithLock() {
 			if bi.state != StateFailed {
 				bi.state = StateFailed
 				bi.errorMsg = err.Error()
-				log.WithError(err).Error("Backing Image: failed to complete download")
-				bi.downloader.Cancel()
+				log.WithError(err).Error("Backing Image: failed to complete file handling")
+				bi.handler.Cancel()
 			}
 		}
 		bi.lock.Unlock()
 	}()
 
-	if bi.state != StateDownloading {
-		log.Warnf("Backing Image: invalid state %v after downloading", bi.state)
+	if bi.state != StateInProgress {
+		log.Warnf("Backing Image: invalid state %v after file handling", bi.state)
 		return
 	}
 
 	tmpFileStat, err := os.Stat(backingImageTmpPath)
 	if err != nil {
-		err = errors.Wrapf(err, "failed to check the tmp file after downloading")
+		err = errors.Wrapf(err, "failed to check the tmp file after file handling")
 		return
 	}
 	if tmpFileStat.Size() != bi.size {
-		log.Debugf("Backing Image: update image size %v to the actual file size %v after downloading", bi.size, tmpFileStat.Size())
+		log.Debugf("Backing Image: update image size %v to the actual file size %v after file handling", bi.size, tmpFileStat.Size())
 		bi.size = tmpFileStat.Size()
 	}
 	if tmpFileStat.Size() != bi.processedSize {
-		log.Debugf("Backing Image: processed size %v is not equal to the actual file size %v after downloading", bi.processedSize, tmpFileStat.Size())
+		log.Debugf("Backing Image: processed size %v is not equal to the actual file size %v after file handling", bi.processedSize, tmpFileStat.Size())
 		bi.processedSize = tmpFileStat.Size()
 	}
 
 	if err := os.Rename(backingImageTmpPath, backingImagePath); err != nil {
-		err = errors.Wrapf(err, "failed to rename backing image file after downloading")
+		err = errors.Wrapf(err, "failed to rename backing image file after file handling")
 		return
 	}
 
@@ -606,18 +606,18 @@ func (bi *BackingImage) completeDownloadWithLock() {
 		URL:  bi.URL,
 		Size: bi.size,
 	}); err != nil {
-		err = errors.Wrapf(err, "failed to write backing image config file after downloading")
+		err = errors.Wrapf(err, "failed to write backing image config file after file handling")
 	}
 
 	bi.progress = 100
 	bi.uploadPort = 0
-	bi.state = StateDownloaded
-	log.Infof("Backing Image: downloaded backing image file")
+	bi.state = StateReady
+	log.Infof("Backing Image: backing image file is ready")
 
-	// Try to do cleanup after download complete
+	// Try to do cleanup after file handling complete
 	files, err := ioutil.ReadDir(bi.WorkDirectory)
 	if err != nil {
-		log.WithError(err).Errorf("failed to list all files in the work directory, will give up cleanup after download complete")
+		log.WithError(err).Errorf("failed to list all files in the work directory, will give up cleanup after file handling complete")
 	}
 	for _, f := range files {
 		fName := f.Name()
@@ -625,7 +625,7 @@ func (bi *BackingImage) completeDownloadWithLock() {
 			continue
 		}
 		if err := os.Remove(fName); err != nil && !os.IsNotExist(err) {
-			log.WithError(err).Errorf("failed to remove redundant file %v after download complete", fName)
+			log.WithError(err).Errorf("failed to remove redundant file %v after file handling complete", fName)
 		}
 	}
 
@@ -643,8 +643,8 @@ func (bi *BackingImage) UpdateSyncFileProgress(size int64) {
 	bi.lock.Lock()
 	defer bi.lock.Unlock()
 
-	if bi.state == types.DownloadStateStarting {
-		bi.state = types.DownloadStateDownloading
+	if bi.state == types.BackingImageStateStarting {
+		bi.state = types.BackingImageStateInProgress
 		updateRequired = true
 	}
 

@@ -86,7 +86,7 @@ func (s *TestSuite) SetUpSuite(c *C) {
 	if err != nil {
 		c.Assert(os.IsExist(err), Equals, true)
 	}
-	s.m.DownloaderFactory = &MockDownloaderFactory{}
+	s.m.HandlerFactory = &MockHandlerFactory{}
 	s.m.Sender = MockSender
 }
 
@@ -119,21 +119,21 @@ func (s *TestSuite) TestManagerCRUD(c *C) {
 				}
 				pullResp, err := s.m.Pull(nil, pullReq)
 				c.Assert(err, IsNil)
-				c.Assert(pullResp.Status.State, Not(Equals), types.DownloadStateFailed)
+				c.Assert(pullResp.Status.State, Not(Equals), types.BackingImageStateFailed)
 			} else {
 				syncReq := &rpc.SyncRequest{
 					BackingImageSpec: &rpc.BackingImageSpec{
 						Name: name,
 						Url:  "https://" + name + ".com",
 						Uuid: name + "-" + "uuid",
-						Size: MockDownloadSize,
+						Size: MockFileSize,
 					},
 					FromHost: "from-host-" + strconv.Itoa(i/2),
 					ToHost:   "to-host-" + strconv.Itoa(i/2),
 				}
 				syncResp, err := s.m.Sync(nil, syncReq)
 				c.Assert(err, IsNil)
-				c.Assert(syncResp.Status.State, Not(Equals), types.DownloadStateFailed)
+				c.Assert(syncResp.Status.State, Not(Equals), types.BackingImageStateFailed)
 			}
 
 			getResp, err := s.m.Get(nil, &rpc.GetRequest{
@@ -141,27 +141,27 @@ func (s *TestSuite) TestManagerCRUD(c *C) {
 			})
 			c.Assert(err, IsNil)
 			c.Assert(getResp.Spec.Name, Equals, name)
-			c.Assert(getResp.Status.State, Not(Equals), types.DownloadStateFailed)
+			c.Assert(getResp.Status.State, Not(Equals), types.BackingImageStateFailed)
 
 			listResp, err := s.m.List(nil, &empty.Empty{})
 			c.Assert(err, IsNil)
 			c.Assert(listResp.BackingImages[name], NotNil)
 			c.Assert(listResp.BackingImages[name].Spec.Name, Equals, name)
-			c.Assert(listResp.BackingImages[name].Status.State, Not(Equals), types.DownloadStateFailed)
+			c.Assert(listResp.BackingImages[name].Status.State, Not(Equals), types.BackingImageStateFailed)
 
-			downloaded := false
+			ready := false
 			for j := 0; j < RetryCount; j++ {
 				getResp, err := s.m.Get(nil, &rpc.GetRequest{
 					Name: name,
 				})
 				c.Assert(err, IsNil)
-				if getResp.Status.State == types.DownloadStateDownloaded {
-					downloaded = true
+				if getResp.Status.State == types.BackingImageStateReady {
+					ready = true
 					break
 				}
 				time.Sleep(RetryInterval)
 			}
-			c.Assert(downloaded, Equals, true)
+			c.Assert(ready, Equals, true)
 
 			deleteReq := &rpc.DeleteRequest{
 				Name: name,
@@ -183,12 +183,12 @@ func (s *TestSuite) TestSingleBackingImageCRUD(c *C) {
 	url := "https://" + name + ".com"
 	uuid := name + "-" + "uuid"
 
-	mockDownloaderFactory := &MockDownloaderFactory{}
+	mockHandlerFactory := &MockHandlerFactory{}
 
 	// Each iteration takes 5 seconds.
 	count := 10
 	for i := 0; i < count; i++ {
-		bi := NewBackingImage(name, url, uuid, "/var/lib/longhorn", s.getTestDiskPath(c), mockDownloaderFactory.NewDownloader(), make(chan interface{}, 100))
+		bi := NewBackingImage(name, url, uuid, "/var/lib/longhorn", s.getTestDiskPath(c), mockHandlerFactory.NewHandler(), make(chan interface{}, 100))
 		var err error
 
 		err = bi.Delete()
@@ -197,7 +197,7 @@ func (s *TestSuite) TestSingleBackingImageCRUD(c *C) {
 		if i%2 != 0 {
 			_, err = bi.Pull()
 		} else {
-			_, err = bi.Receive(MockDownloadSize, "SenderAddress", func(portCount int32) (int32, int32, error) {
+			_, err = bi.Receive(MockFileSize, "SenderAddress", func(portCount int32) (int32, int32, error) {
 				return 0, 0, nil
 			}, func(start, end int32) error {
 				return nil
@@ -205,32 +205,32 @@ func (s *TestSuite) TestSingleBackingImageCRUD(c *C) {
 		}
 		c.Assert(err, IsNil)
 
-		downloaded := false
+		ready := false
 		for j := 0; j < RetryCount; j++ {
 			getResp := bi.Get()
-			if getResp.Status.State == types.DownloadStateDownloaded {
-				downloaded = true
+			if getResp.Status.State == types.BackingImageStateReady {
+				ready = true
 				break
 			}
 			time.Sleep(RetryInterval)
 		}
-		c.Assert(downloaded, Equals, true)
+		c.Assert(ready, Equals, true)
 
 		err = bi.Delete()
 		c.Assert(err, IsNil)
 	}
 }
 
-func (s *TestSuite) TestBackingImageSimultaneousDownloadingAndCancellation(c *C) {
-	name := "test_simultaneous_downloading_and_cancellation_backing_image"
+func (s *TestSuite) TestBackingImageSimultaneousHandlingAndCancellation(c *C) {
+	name := "test_simultaneous_handling_and_cancellation_backing_image"
 	url := "https://" + name + ".com"
 	uuid := name + "-" + "uuid"
 
-	mockDownloaderFactory := &MockDownloaderFactory{}
+	mockHandlerFactory := &MockHandlerFactory{}
 
 	count := 100
 	for i := 0; i < count; i++ {
-		bi := NewBackingImage(name, url, uuid, "/var/lib/longhorn", s.getTestDiskPath(c), mockDownloaderFactory.NewDownloader(), make(chan interface{}, 100))
+		bi := NewBackingImage(name, url, uuid, "/var/lib/longhorn", s.getTestDiskPath(c), mockHandlerFactory.NewHandler(), make(chan interface{}, 100))
 
 		err := bi.Delete()
 		c.Assert(err, IsNil)
@@ -246,7 +246,7 @@ func (s *TestSuite) TestBackingImageSimultaneousDownloadingAndCancellation(c *C)
 		}()
 		go func() {
 			defer wg.Done()
-			_, errSync = bi.Receive(MockDownloadSize, "SenderAddress", func(portCount int32) (int32, int32, error) {
+			_, errSync = bi.Receive(MockFileSize, "SenderAddress", func(portCount int32) (int32, int32, error) {
 				return 0, 0, nil
 			}, func(start, end int32) error {
 				return nil
@@ -255,16 +255,16 @@ func (s *TestSuite) TestBackingImageSimultaneousDownloadingAndCancellation(c *C)
 		wg.Wait()
 		c.Assert((errPull == nil && errSync != nil) || (errPull != nil && errSync == nil), Equals, true)
 
-		isDownloading := false
+		isHandling := false
 		for j := 0; j < 5; j++ {
 			getResp := bi.Get()
-			if getResp.Status.State == types.DownloadStateDownloading && getResp.Status.DownloadProgress > 0 {
-				isDownloading = true
+			if getResp.Status.State == types.BackingImageStateInProgress && getResp.Status.Progress > 0 {
+				isHandling = true
 				break
 			}
 			time.Sleep(RetryInterval)
 		}
-		c.Assert(isDownloading, Equals, true)
+		c.Assert(isHandling, Equals, true)
 		err = bi.Delete()
 		c.Assert(err, IsNil)
 		getResp := bi.Get()
@@ -316,7 +316,7 @@ func (s *TestSuite) TestUpload(c *C) {
 			})
 			c.Assert(err, IsNil)
 			c.Assert(getResp.Spec.Name, Equals, name)
-			c.Assert(getResp.Status.State, Equals, types.DownloadStateStarting)
+			c.Assert(getResp.Status.State, Equals, types.BackingImageStateStarting)
 
 			cli := uploadserver.UploadClient{
 				Remote:    "localhost:" + strconv.Itoa(int(uploadResp.Status.UploadPort)),
@@ -358,8 +358,8 @@ func (s *TestSuite) TestUpload(c *C) {
 				})
 				c.Assert(err, IsNil)
 				c.Assert(getResp.Spec.Name, Equals, name)
-				c.Assert(getResp.Status.State, Equals, types.DownloadStateDownloading)
-				c.Assert(getResp.Status.DownloadProgress, Not(Equals), 0)
+				c.Assert(getResp.Status.State, Equals, types.BackingImageStateInProgress)
+				c.Assert(getResp.Status.Progress, Not(Equals), 0)
 			}
 
 			err = cli.CoalesceChunk(stat.Size(), chunkCount)
@@ -374,7 +374,7 @@ func (s *TestSuite) TestUpload(c *C) {
 					Name: name,
 				})
 				c.Assert(err, IsNil)
-				if getResp.Status.State == types.DownloadStateDownloaded && getResp.Status.DownloadProgress == 100 {
+				if getResp.Status.State == types.BackingImageStateReady && getResp.Status.Progress == 100 {
 					break
 				}
 				time.Sleep(RetryInterval)
@@ -384,7 +384,7 @@ func (s *TestSuite) TestUpload(c *C) {
 			c.Assert(err, IsNil)
 			c.Assert(listResp.BackingImages[name], NotNil)
 			c.Assert(listResp.BackingImages[name].Spec.Name, Equals, name)
-			c.Assert(listResp.BackingImages[name].Status.State, Equals, types.DownloadStateDownloaded)
+			c.Assert(listResp.BackingImages[name].Status.State, Equals, types.BackingImageStateReady)
 
 			uploadedFilePath := filepath.Join(dir, types.BackingImageManagerDirectoryName,
 				GetBackingImageDirectoryName(name, uuid), types.BackingImageFileName)
