@@ -9,6 +9,7 @@ import (
 	"os/user"
 	"path/filepath"
 	"testing"
+	"time"
 
 	. "gopkg.in/check.v1"
 
@@ -23,11 +24,14 @@ type TestSuite struct{}
 var _ = Suite(&TestSuite{})
 
 func (s *TestSuite) SetUpSuite(c *C) {
-	s.getTestWorkDirectory(c)
+	_, err := getTestWorkDirectory()
+	c.Assert(err, IsNil)
 }
 
 func (s *TestSuite) TearDownSuite(c *C) {
-	os.RemoveAll(s.getTestWorkDirectory(c))
+	dir, err := getTestWorkDirectory()
+	c.Assert(err, IsNil)
+	os.RemoveAll(dir)
 }
 
 func (s *TestSuite) TestUploadService(c *C) {
@@ -36,9 +40,10 @@ func (s *TestSuite) TestUploadService(c *C) {
 		port      = "31001"
 	)
 
-	dir := s.getTestWorkDirectory(c)
+	dir, err := getTestWorkDirectory()
+	c.Assert(err, IsNil)
 	originalFilePath := filepath.Join(dir, "original")
-	err := util.GenerateRandomDataFile(originalFilePath, 100)
+	err = util.GenerateRandomDataFile(originalFilePath, 100)
 	c.Assert(err, IsNil)
 
 	stub := &progressUpdateStub{}
@@ -145,14 +150,63 @@ func (s *TestSuite) TestUploadService(c *C) {
 	c.Assert(err, IsNil)
 }
 
-func (s *TestSuite) getTestWorkDirectory(c *C) string {
+func Benchmark_NewUploadAPI(b *testing.B) {
+	const (
+		localhost = "localhost"
+		port      = "31001"
+	)
+
+	dir, err := getTestWorkDirectory()
+	if err != nil {
+		b.Fatal(err)
+	}
+	originalFilePath := filepath.Join(dir, "original")
+	err = util.GenerateRandomDataFile(originalFilePath, 500)
+	if err != nil {
+		b.Fatal(err)
+	}
+
+	b.ResetTimer()
+
+	stub := &progressUpdateStub{}
+	go TestUploadServer(context.Background(), port, dir, stub, stub)
+	time.Sleep(time.Second)
+
+	cli := UploadClient{
+		Remote:    localhost + ":" + port,
+		Directory: dir,
+	}
+	err = cli.Upload(originalFilePath)
+	if err != nil {
+		b.Fatal(err)
+	}
+	cli.Close()
+
+	uploadedFilePath := filepath.Join(dir, types.BackingImageTmpFileName)
+	err = exec.Command("diff", originalFilePath, uploadedFilePath).Run()
+	if err != nil {
+		b.Fatal(err)
+	}
+
+	// Cleanup
+	err = os.RemoveAll(dir)
+	if err != nil {
+		b.Fatal(err)
+	}
+}
+
+func getTestWorkDirectory() (string, error) {
 	currentUser, err := user.Current()
-	c.Assert(err, IsNil)
+	if err != nil {
+		return "", err
+	}
 	dir := filepath.Join(currentUser.HomeDir, "upload-test-dir")
 	if err = os.RemoveAll(dir); err != nil {
-		c.Assert(os.IsNotExist(err), Equals, true)
+		return "", err
 	}
 	err = os.Mkdir(dir, 0777)
-	c.Assert(err, IsNil)
-	return dir
+	if err != nil {
+		return "", err
+	}
+	return dir, nil
 }

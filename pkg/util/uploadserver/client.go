@@ -4,8 +4,11 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"io"
 	"io/ioutil"
+	"mime/multipart"
 	"net/http"
+	"os"
 	"strconv"
 	"strings"
 	"time"
@@ -158,6 +161,60 @@ func (client *UploadClient) UploadChunk(index int, data []byte) error {
 	resp, err := httpClient.Do(req)
 	if err != nil {
 		return fmt.Errorf("uploadChunk failed, err: %s", err)
+	}
+	if resp.StatusCode != http.StatusOK {
+		httpErr, rErr := ioutil.ReadAll(resp.Body)
+		if rErr != nil {
+			return fmt.Errorf("resp.StatusCode(%d) != http.StatusOK, err is unknown", resp.StatusCode)
+		}
+		return fmt.Errorf("resp.StatusCode(%d) != http.StatusOK, err: %v", resp.StatusCode, string(httpErr))
+	}
+	resp.Body.Close()
+
+	return nil
+}
+
+func (client *UploadClient) Upload(filePath string) error {
+	httpClient := &http.Client{Timeout: TestHTTPTimeout}
+
+	stat, err := os.Stat(filePath)
+	if err != nil {
+		return err
+	}
+
+	r, w := io.Pipe()
+	m := multipart.NewWriter(w)
+	go func() {
+		defer w.Close()
+		defer m.Close()
+		part, err := m.CreateFormFile("chunk", "blob")
+		if err != nil {
+			return
+		}
+		file, err := os.Open(filePath)
+		if err != nil {
+			return
+		}
+		defer file.Close()
+		if _, err = io.Copy(part, file); err != nil {
+			return
+		}
+	}()
+
+	url := fmt.Sprintf("http://%s/v1-bi-upload/%s", client.Remote, "upload")
+
+	req, err := http.NewRequest("POST", url, r)
+	if err != nil {
+		return err
+	}
+	q := req.URL.Query()
+	q.Add("size", strconv.Itoa(int(stat.Size())))
+	req.URL.RawQuery = q.Encode()
+	req.Header.Set("Content-Type", m.FormDataContentType())
+
+	resp, err := httpClient.Do(req)
+	if err != nil {
+		return fmt.Errorf("upload failed, err: %s", err)
 	}
 	if resp.StatusCode != http.StatusOK {
 		httpErr, rErr := ioutil.ReadAll(resp.Body)

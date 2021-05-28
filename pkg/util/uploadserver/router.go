@@ -14,6 +14,7 @@ func NewRouter(server *UploadServer) *mux.Router {
 	router.HandleFunc("/v1-bi-upload/uploadChunk", server.uploadChunk).Methods("POST")
 	router.HandleFunc("/v1-bi-upload/coalesceChunk", server.coalesceChunk).Methods("POST")
 	router.HandleFunc("/v1-bi-upload/close", server.close).Methods("POST")
+	router.HandleFunc("/v1-bi-upload/upload", server.upload).Methods("POST")
 
 	return router
 }

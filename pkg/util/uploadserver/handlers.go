@@ -1,15 +1,20 @@
 package uploadserver
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"io/ioutil"
+	"mime/multipart"
 	"net/http"
 	"os"
 	"path/filepath"
 	"sort"
 	"strconv"
 	"strings"
+	"syscall"
+	"time"
 
 	"github.com/longhorn/backing-image-manager/pkg/types"
 	"github.com/longhorn/backing-image-manager/pkg/util"
@@ -19,6 +24,8 @@ const (
 	ChunkFilePrefix = "backing-chunk-"
 
 	DefaultSectorSize = 512
+
+	ProgressUpdateInterval = 2 * time.Second
 )
 
 func getChunkFilePath(chunkIndex int64, directory, checksum string) string {
@@ -374,4 +381,88 @@ func (c sortableChunks) Less(i, j int) bool {
 		return true
 	}
 	return index1 < index2
+}
+
+func (server *UploadServer) upload(writer http.ResponseWriter, request *http.Request) {
+	err := server.doUpload(request)
+	if err != nil {
+		http.Error(writer, err.Error(), http.StatusInternalServerError)
+		return
+	}
+}
+
+func (server *UploadServer) doUpload(request *http.Request) error {
+	ctx, cancelFunc := context.WithCancel(server.ctx)
+	defer cancelFunc()
+
+	queryParams := request.URL.Query()
+	size, err := strconv.ParseInt(queryParams.Get("size"), 10, 64)
+	if err != nil {
+		return err
+	}
+	if size%DefaultSectorSize != 0 {
+		return fmt.Errorf("the uploaded file size %d should be a multiple of %d bytes since Longhorn uses directIO by default", size, DefaultSectorSize)
+	}
+	server.sizeUpdater.SetUploadSize(size)
+
+	reader, err := request.MultipartReader()
+	if err != nil {
+		return err
+	}
+	var p *multipart.Part
+	for {
+		if p, err = reader.NextPart(); err != nil {
+			return err
+		}
+		if p.FormName() != "chunk" {
+			server.log.Warnf("Unexpected form %v in upload request, will ignore it", p.FormName())
+			continue
+		}
+		break
+	}
+
+	tmpFilePath := filepath.Join(server.directory, types.BackingImageTmpFileName)
+	if err := os.Remove(tmpFilePath); err != nil && !os.IsNotExist(err) {
+		return err
+	}
+	f, err := os.OpenFile(tmpFilePath, os.O_RDWR|os.O_CREATE, 0666)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+	if err = f.Truncate(size); err != nil {
+		return err
+	}
+
+	// Since there is no way to directly track the progress of io.Copy(),
+	// We will periodically check the file size instead.
+	// In the unit test, the uploading is too fast to trigger the first
+	// file progress update.
+	go func() {
+		var st syscall.Stat_t
+		t := time.NewTicker(ProgressUpdateInterval)
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case <-t.C:
+				if err := syscall.Stat(tmpFilePath, &st); err != nil {
+					server.log.Warnf("Fail to get actual size of file: %v", err)
+				} else {
+					actualSize := st.Blocks * DefaultSectorSize
+					server.Lock()
+					increasedSize := actualSize - server.uploadedSize
+					server.uploadedSize += actualSize
+					server.Unlock()
+					server.progressUpdater.UpdateSyncFileProgress(increasedSize)
+				}
+			}
+		}
+
+	}()
+	if _, err := io.Copy(f, p); err != nil && err != io.EOF {
+		return err
+	}
+
+	return nil
 }
