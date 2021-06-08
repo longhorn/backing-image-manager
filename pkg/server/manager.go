@@ -255,7 +255,7 @@ func (m *Manager) Sync(ctx context.Context, req *rpc.SyncRequest) (resp *rpc.Bac
 	m.backingImages[req.BackingImageSpec.Name] = bi
 	m.lock.Unlock()
 
-	senderManagerAddress := fmt.Sprintf("%s:%d", req.FromHost, types.DefaultPort)
+	senderManagerAddress := fmt.Sprintf("%s:%d", req.FromHost, types.DefaultManagerPort)
 	port, err := bi.Receive(senderManagerAddress, m.allocatePorts, m.releasePorts)
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to receive backing image")

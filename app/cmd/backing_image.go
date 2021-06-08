@@ -13,6 +13,12 @@ import (
 func BackingImageCmd() cli.Command {
 	return cli.Command{
 		Name: "backing-image",
+		Flags: []cli.Flag{
+			cli.StringFlag{
+				Name:  "url",
+				Value: "localhost:8000",
+			},
+		},
 		Subcommands: []cli.Command{
 			SyncCmd(),
 			SendCmd(),

@@ -8,7 +8,8 @@ const (
 	BackingImageManagerDirectoryName = "backing-images"
 	DiskPathInContainer              = "/data/"
 
-	DefaultPort = 8000
+	DefaultManagerPort          = 8000
+	DefaultDataSourceServerPort = 8001
 
 	GRPCServiceTimeout     = 3 * time.Minute
 	FileValidationInterval = 5 * time.Second
