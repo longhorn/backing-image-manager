@@ -32,10 +32,6 @@ func main() {
 		return nil
 	}
 	a.Flags = []cli.Flag{
-		cli.StringFlag{
-			Name:  "url",
-			Value: "localhost:8000",
-		},
 		cli.BoolFlag{
 			Name: "debug",
 		},
@@ -43,6 +39,7 @@ func main() {
 	a.Commands = []cli.Command{
 		cmd.StartCmd(),
 		cmd.BackingImageCmd(),
+		cmd.DataSourceCmd(),
 		VersionCmd(),
 	}
 	if err := a.Run(os.Args); err != nil {
