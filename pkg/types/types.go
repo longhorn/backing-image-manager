@@ -16,12 +16,16 @@ const (
 
 	SendingLimit = 3
 
-	DownloadStatePending     = "pending"
-	DownloadStateStarting    = "starting"
-	DownloadStateDownloading = "downloading"
-	DownloadStateDownloaded  = "downloaded"
-	DownloadStateFailed      = "failed"
-
 	BackingImageTmpFileName = "backing.tmp"
 	BackingImageFileName    = "backing"
+)
+
+type State string
+
+const (
+	StatePending    = State("pending")
+	StateStarting   = State("starting")
+	StateInProgress = State("in-progress")
+	StateReady      = State("ready")
+	StateFailed     = State("failed")
 )

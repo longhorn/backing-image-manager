@@ -29,10 +29,9 @@ import (
 */
 
 type Manager struct {
-	diskUUID            string
-	diskPathOnHost      string
-	diskPathInContainer string
-	backingImages       map[string]*BackingImage
+	diskUUID      string
+	diskPath      string
+	backingImages map[string]*BackingImage
 
 	portRangeMin   int32
 	portRangeMax   int32
@@ -49,12 +48,12 @@ type Manager struct {
 	broadcaster *broadcaster.Broadcaster
 	broadcastCh chan interface{}
 
-	DownloaderFactory DownloaderFactory
-	Sender            func(string, string, string) error
+	HandlerFactory HandlerFactory
+	Sender         func(string, string, string) error
 }
 
-func NewManager(diskUUID, diskPathOnHost, diskPathInContainer, portRange string, shutdownCh chan error) (*Manager, error) {
-	workDir := filepath.Join(diskPathInContainer, types.BackingImageManagerDirectoryName)
+func NewManager(diskUUID, diskPath, portRange string, shutdownCh chan error) (*Manager, error) {
+	workDir := filepath.Join(diskPath, types.BackingImageManagerDirectoryName)
 	if err := os.Mkdir(workDir, 0666); err != nil && !os.IsExist(err) {
 		return nil, err
 	}
@@ -64,10 +63,9 @@ func NewManager(diskUUID, diskPathOnHost, diskPathInContainer, portRange string,
 		return nil, err
 	}
 	m := &Manager{
-		diskUUID:            diskUUID,
-		diskPathInContainer: diskPathInContainer,
-		diskPathOnHost:      diskPathOnHost,
-		backingImages:       map[string]*BackingImage{},
+		diskUUID:      diskUUID,
+		diskPath:      diskPath,
+		backingImages: map[string]*BackingImage{},
 
 		portRangeMin:   start,
 		portRangeMax:   end,
@@ -77,8 +75,7 @@ func NewManager(diskUUID, diskPathOnHost, diskPathInContainer, portRange string,
 
 		log: logrus.StandardLogger().WithFields(
 			logrus.Fields{
-				"component":      "backing-image-manager",
-				"diskPathOnHost": diskPathOnHost,
+				"component": "backing-image-manager",
 			},
 		),
 
@@ -89,8 +86,8 @@ func NewManager(diskUUID, diskPathOnHost, diskPathInContainer, portRange string,
 		broadcastCh: make(chan interface{}),
 
 		// for unit test
-		DownloaderFactory: &BackingImageDownloaderFactory{},
-		Sender:            RequestBackingImageSending,
+		HandlerFactory: &BackingImageHandlerFactory{},
+		Sender:         RequestBackingImageSending,
 	}
 
 	// help to kickstart the broadcaster
@@ -117,7 +114,7 @@ func (m *Manager) startMonitoring() {
 			done = true
 			break
 		case <-ticker.C:
-			diskUUID, err := util.GetDiskConfig(m.diskPathInContainer)
+			diskUUID, err := util.GetDiskConfig(m.diskPath)
 			if err != nil {
 				m.log.WithError(err).Error("Backing Image Manager: failed to read disk config file before validating backing image files")
 				continue
@@ -161,48 +158,6 @@ func (m *Manager) Shutdown() {
 	defer m.lock.Unlock()
 
 	m.shutdownCh <- nil
-}
-
-func (m *Manager) Pull(ctx context.Context, req *rpc.PullRequest) (ret *rpc.BackingImageResponse, err error) {
-	log := m.log.WithFields(logrus.Fields{"backingImage": req.Spec.Name, "URL": req.Spec.Url})
-	log.Info("Backing Image Manager: prepare to pull backing image")
-	defer func() {
-		if err != nil {
-			log.WithError(err).Error("Backing Image Manager: failed to pull backing image")
-		}
-	}()
-
-	if req.Spec.Name == "" || req.Spec.Url == "" || req.Spec.Uuid == "" {
-		return nil, status.Errorf(codes.InvalidArgument, "missing required argument")
-	}
-
-	m.lock.Lock()
-	bi := m.backingImages[req.Spec.Name]
-	if bi != nil {
-		biResp := bi.Get()
-		if biResp.Status.State != types.DownloadStateFailed {
-			m.lock.Unlock()
-			return nil, status.Errorf(codes.AlreadyExists, "backing image %v with state %v already exists", req.Spec.Name, biResp.Status.State)
-		}
-		log.Infof("Backing Image Manager: prepare to re-register and re-pull failed backing image")
-		delete(m.backingImages, req.Spec.Name)
-	}
-	bi = NewBackingImage(req.Spec.Name, req.Spec.Url, req.Spec.Uuid, m.diskPathOnHost, m.diskPathInContainer, m.DownloaderFactory.NewDownloader(), m.updateCh)
-	m.backingImages[req.Spec.Name] = bi
-	m.lock.Unlock()
-
-	biReps, err := bi.Pull()
-	if err != nil {
-		return nil, err
-	}
-
-	if biReps.Status.State == types.DownloadStateDownloaded {
-		log.Info("Backing Image Manager: skip pulling backing image")
-	} else {
-		log.Info("Backing Image Manager: pulling backing image")
-	}
-
-	return biReps, nil
 }
 
 func (m *Manager) Delete(ctx context.Context, req *rpc.DeleteRequest) (resp *empty.Empty, err error) {
@@ -281,7 +236,7 @@ func (m *Manager) Sync(ctx context.Context, req *rpc.SyncRequest) (resp *rpc.Bac
 		}
 	}()
 
-	if req.BackingImageSpec.Name == "" || req.BackingImageSpec.Uuid == "" || req.FromHost == "" || req.ToHost == "" || req.BackingImageSpec.Size <= 0 {
+	if req.BackingImageSpec.Name == "" || req.BackingImageSpec.Uuid == "" || req.FromHost == "" || req.ToHost == "" {
 		return nil, status.Errorf(codes.InvalidArgument, "missing required argument")
 	}
 
@@ -289,19 +244,19 @@ func (m *Manager) Sync(ctx context.Context, req *rpc.SyncRequest) (resp *rpc.Bac
 	bi := m.backingImages[req.BackingImageSpec.Name]
 	if bi != nil {
 		biResp := bi.Get()
-		if biResp.Status.State != types.DownloadStateFailed {
+		if biResp.Status.State != string(types.StateFailed) {
 			m.lock.Unlock()
 			return nil, status.Errorf(codes.AlreadyExists, "backing image %v with state %v already exists in the receiver side", req.BackingImageSpec.Name, biResp.Status.State)
 		}
 		log.Infof("Backing Image Manager: prepare to re-register and re-sync failed backing image")
 		delete(m.backingImages, req.BackingImageSpec.Name)
 	}
-	bi = NewBackingImage(req.BackingImageSpec.Name, req.BackingImageSpec.Url, req.BackingImageSpec.Uuid, m.diskPathOnHost, m.diskPathInContainer, m.DownloaderFactory.NewDownloader(), m.updateCh)
+	bi = NewBackingImage(req.BackingImageSpec.Name, req.BackingImageSpec.Uuid, m.diskPath, req.BackingImageSpec.Size, m.HandlerFactory.NewHandler(), m.updateCh)
 	m.backingImages[req.BackingImageSpec.Name] = bi
 	m.lock.Unlock()
 
 	senderManagerAddress := fmt.Sprintf("%s:%d", req.FromHost, types.DefaultPort)
-	port, err := bi.Receive(req.BackingImageSpec.Size, senderManagerAddress, m.allocatePorts, m.releasePorts)
+	port, err := bi.Receive(senderManagerAddress, m.allocatePorts, m.releasePorts)
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to receive backing image")
 	}

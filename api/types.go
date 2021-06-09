@@ -10,11 +10,9 @@ import (
 )
 
 type BackingImage struct {
-	Name      string `json:"name"`
-	URL       string `json:"url"`
-	UUID      string `json:"uuid"`
-	Size      int64  `json:"size"`
-	Directory string `json:"directory"`
+	Name string `json:"name"`
+	UUID string `json:"uuid"`
+	Size int64  `json:"size"`
 
 	Status BackingImageStatus `json:"status"`
 }
@@ -24,23 +22,21 @@ type BackingImageStatus struct {
 	SendingReference     int    `json:"sendingReference"`
 	ErrorMsg             string `json:"errorMsg"`
 	SenderManagerAddress string `json:"senderManagerAddress"`
-	DownloadProgress     int    `json:"downloadProgress"`
+	Progress             int    `json:"progress"`
 }
 
 func RPCToBackingImage(obj *rpc.BackingImageResponse) *BackingImage {
 	return &BackingImage{
-		Name:      obj.Spec.Name,
-		URL:       obj.Spec.Url,
-		UUID:      obj.Spec.Uuid,
-		Size:      obj.Spec.Size,
-		Directory: obj.Spec.Directory,
+		Name: obj.Spec.Name,
+		UUID: obj.Spec.Uuid,
+		Size: obj.Spec.Size,
 
 		Status: BackingImageStatus{
 			State:                obj.Status.State,
 			SendingReference:     int(obj.Status.SendingReference),
 			ErrorMsg:             obj.Status.ErrorMsg,
 			SenderManagerAddress: obj.Status.SenderManagerAddress,
-			DownloadProgress:     int(obj.Status.DownloadProgress),
+			Progress:             int(obj.Status.Progress),
 		},
 	}
 }

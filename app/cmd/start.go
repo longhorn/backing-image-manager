@@ -30,11 +30,6 @@ func StartCmd() cli.Command {
 				Value: "localhost:8000",
 			},
 			cli.StringFlag{
-				Name:  "disk-path",
-				Value: "/var/lib/longhorn",
-				Usage: "The corresponding host disk path of the work directory",
-			},
-			cli.StringFlag{
 				Name:  "disk-uuid",
 				Usage: "The corresponding disk uuid stored in the metafile of the disk path",
 			},
@@ -54,7 +49,6 @@ func StartCmd() cli.Command {
 func start(c *cli.Context) error {
 	listen := c.String("listen")
 	diskUUID := c.String("disk-uuid")
-	diskPathOnHost := c.String("disk-path")
 	portRange := c.String("port-range")
 
 	diskUUIDInFile, err := util.GetDiskConfig(types.DiskPathInContainer)
@@ -68,7 +62,7 @@ func start(c *cli.Context) error {
 	}
 
 	shutdownCh := make(chan error)
-	bim, err := server.NewManager(diskUUID, diskPathOnHost, types.DiskPathInContainer, portRange, shutdownCh)
+	bim, err := server.NewManager(diskUUID, types.DiskPathInContainer, portRange, shutdownCh)
 	if err != nil {
 		return err
 	}
