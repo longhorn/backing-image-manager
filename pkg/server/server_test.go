@@ -79,11 +79,11 @@ func (s *TestSuite) SetUpSuite(c *C) {
 	}
 
 	s.shutdownCh = make(chan error)
-	s.m, err = NewManager("bim-test-disk-cfg", "/var/lib/longhorn", testDiskPath, "30001-31000", s.shutdownCh)
+	s.m, err = NewManager("bim-test-disk-cfg", testDiskPath, "30001-31000", s.shutdownCh)
 	if err != nil {
 		c.Assert(os.IsExist(err), Equals, true)
 	}
-	s.m.DownloaderFactory = &MockDownloaderFactory{}
+	s.m.HandlerFactory = &MockHandlerFactory{}
 	s.m.Sender = MockSender
 }
 
@@ -94,7 +94,7 @@ func (s *TestSuite) TearDownSuite(c *C) {
 	close(s.shutdownCh)
 }
 
-func (s *TestSuite) TestManagerCRUD(c *C) {
+func (s *TestSuite) TestManagerSync(c *C) {
 	count := 100
 	wg := &sync.WaitGroup{}
 	biw := &BackingImageWatcher{}
@@ -102,69 +102,55 @@ func (s *TestSuite) TestManagerCRUD(c *C) {
 		wg.Add(1)
 		go func(i int) {
 			defer wg.Done()
-			name := "test_manager_crud_backing_image-" + strconv.Itoa(i)
+			name := "test_manager_sync_backing_image-" + strconv.Itoa(i)
 			go s.m.Watch(nil, biw)
 
-			if i%2 != 0 {
-				pullReq := &rpc.PullRequest{
-					Spec: &rpc.BackingImageSpec{
-						Name: name,
-						Url:  "https://" + name + ".com",
-						Uuid: name + "-" + "uuid",
-					},
-				}
-				pullResp, err := s.m.Pull(nil, pullReq)
-				c.Assert(err, IsNil)
-				c.Assert(pullResp.Status.State, Not(Equals), types.DownloadStateFailed)
-			} else {
-				syncReq := &rpc.SyncRequest{
-					BackingImageSpec: &rpc.BackingImageSpec{
-						Name: name,
-						Url:  "https://" + name + ".com",
-						Uuid: name + "-" + "uuid",
-						Size: MockDownloadSize,
-					},
-					FromHost: "from-host-" + strconv.Itoa(i/2),
-					ToHost:   "to-host-" + strconv.Itoa(i/2),
-				}
-				syncResp, err := s.m.Sync(nil, syncReq)
-				c.Assert(err, IsNil)
-				c.Assert(syncResp.Status.State, Not(Equals), types.DownloadStateFailed)
+			syncReq := &rpc.SyncRequest{
+				BackingImageSpec: &rpc.BackingImageSpec{
+					Name: name,
+					Uuid: name + "-" + "uuid",
+					Size: MockProcessingSize,
+				},
+				FromHost: "from-host-" + strconv.Itoa(i),
+				ToHost:   "to-host-" + strconv.Itoa(i),
 			}
+			syncResp, err := s.m.Sync(nil, syncReq)
+			c.Assert(err, IsNil)
+			c.Assert(syncResp.Status.State, Not(Equals), types.StateFailed)
 
 			getResp, err := s.m.Get(nil, &rpc.GetRequest{
 				Name: name,
 			})
 			c.Assert(err, IsNil)
 			c.Assert(getResp.Spec.Name, Equals, name)
-			c.Assert(getResp.Status.State, Not(Equals), types.DownloadStateFailed)
+			c.Assert(getResp.Status.State, Not(Equals), types.StateFailed)
 
 			listResp, err := s.m.List(nil, &empty.Empty{})
 			c.Assert(err, IsNil)
 			c.Assert(listResp.BackingImages[name], NotNil)
 			c.Assert(listResp.BackingImages[name].Spec.Name, Equals, name)
-			c.Assert(listResp.BackingImages[name].Status.State, Not(Equals), types.DownloadStateFailed)
+			c.Assert(listResp.BackingImages[name].Status.State, Not(Equals), types.StateFailed)
 
-			downloaded := false
+			isReady := false
 			for j := 0; j < RetryCount; j++ {
 				getResp, err := s.m.Get(nil, &rpc.GetRequest{
 					Name: name,
 				})
 				c.Assert(err, IsNil)
-				if getResp.Status.State == types.DownloadStateDownloaded {
-					downloaded = true
+				if getResp.Status.State == string(types.StateReady) {
+					isReady = true
 					break
 				}
 				time.Sleep(RetryInterval)
 			}
-			c.Assert(downloaded, Equals, true)
+			c.Assert(isReady, Equals, true)
 
 			deleteReq := &rpc.DeleteRequest{
 				Name: name,
 			}
 			_, err = s.m.Delete(nil, deleteReq)
 			c.Assert(err, IsNil)
-			getResp, err = s.m.Get(nil, &rpc.GetRequest{
+			_, err = s.m.Get(nil, &rpc.GetRequest{
 				Name: name,
 			})
 			c.Assert(err, NotNil)
@@ -174,96 +160,96 @@ func (s *TestSuite) TestManagerCRUD(c *C) {
 	wg.Wait()
 }
 
-func (s *TestSuite) TestSingleBackingImageCRUD(c *C) {
-	name := "test_crud_backing_image"
-	url := "https://" + name + ".com"
+func (s *TestSuite) TestSingleBackingImageSync(c *C) {
+	name := "test_backing_image_sync"
 	uuid := name + "-" + "uuid"
 
-	mockDownloaderFactory := &MockDownloaderFactory{}
+	mockHandlerFactory := &MockHandlerFactory{}
 
-	// Each iteration takes 5 seconds.
+	// Each iteration takes around 5 seconds.
 	count := 10
 	for i := 0; i < count; i++ {
-		bi := NewBackingImage(name, url, uuid, "/var/lib/longhorn", s.getTestDiskPath(c), mockDownloaderFactory.NewDownloader(), make(chan interface{}, 100))
+		updateCh := make(chan interface{}, 200)
+		bi := NewBackingImage(name, uuid, s.getTestDiskPath(c), MockProcessingSize, mockHandlerFactory.NewHandler(), updateCh)
 		var err error
 
 		err = bi.Delete()
 		c.Assert(err, IsNil)
 
-		if i%2 != 0 {
-			_, err = bi.Pull()
-		} else {
-			_, err = bi.Receive(MockDownloadSize, "SenderAddress", func(portCount int32) (int32, int32, error) {
-				return 0, 0, nil
-			}, func(start, end int32) error {
-				return nil
-			})
-		}
+		_, err = bi.Receive("SenderAddress", func(portCount int32) (int32, int32, error) {
+			return 0, 0, nil
+		}, func(start, end int32) error {
+			return nil
+		})
 		c.Assert(err, IsNil)
 
-		downloaded := false
+		isReady := false
 		for j := 0; j < RetryCount; j++ {
 			getResp := bi.Get()
-			if getResp.Status.State == types.DownloadStateDownloaded {
-				downloaded = true
+			if getResp.Status.State == string(types.StateReady) {
+				isReady = true
 				break
 			}
 			time.Sleep(RetryInterval)
 		}
-		c.Assert(downloaded, Equals, true)
+		c.Assert(isReady, Equals, true)
 
 		err = bi.Delete()
 		c.Assert(err, IsNil)
+		close(updateCh)
 	}
 }
 
-func (s *TestSuite) TestBackingImageSimultaneousDownloadingAndCancellation(c *C) {
-	name := "test_simultaneous_downloading_and_cancellation_backing_image"
-	url := "https://" + name + ".com"
+func (s *TestSuite) TestBackingImageSimultaneousProcessingAndCancellation(c *C) {
+	name := "test_simultaneous_processing_and_cancellation_backing_image"
 	uuid := name + "-" + "uuid"
 
-	mockDownloaderFactory := &MockDownloaderFactory{}
+	mockHandlerFactory := &MockHandlerFactory{}
 
 	count := 100
 	for i := 0; i < count; i++ {
-		bi := NewBackingImage(name, url, uuid, "/var/lib/longhorn", s.getTestDiskPath(c), mockDownloaderFactory.NewDownloader(), make(chan interface{}, 100))
+		bi := NewBackingImage(name, uuid, s.getTestDiskPath(c), MockProcessingSize, mockHandlerFactory.NewHandler(), make(chan interface{}, 100))
 
 		err := bi.Delete()
 		c.Assert(err, IsNil)
 
-		// Start to do Pulling and Receiving simultaneously, which is impossible ideally.
-		// Then there must an pull error or sync error.
-		var errPull, errSync error
+		// Start to do 2 Receivers simultaneously, which is impossible ideally.
+		// Then there must an error.
+		var errSync1, errSync2 error
 		wg := &sync.WaitGroup{}
 		wg.Add(2)
 		go func() {
 			defer wg.Done()
-			_, errPull = bi.Pull()
+			_, errSync1 = bi.Receive("SenderAddress1", func(portCount int32) (int32, int32, error) {
+				return 0, 0, nil
+			}, func(start, end int32) error {
+				return nil
+			})
 		}()
 		go func() {
 			defer wg.Done()
-			_, errSync = bi.Receive(MockDownloadSize, "SenderAddress", func(portCount int32) (int32, int32, error) {
+			_, errSync2 = bi.Receive("SenderAddress2", func(portCount int32) (int32, int32, error) {
 				return 0, 0, nil
 			}, func(start, end int32) error {
 				return nil
 			})
 		}()
 		wg.Wait()
-		c.Assert((errPull == nil && errSync != nil) || (errPull != nil && errSync == nil), Equals, true)
+		c.Assert((errSync1 == nil && errSync2 != nil) || (errSync1 != nil && errSync2 == nil), Equals, true)
 
-		isDownloading := false
+		isProcessing := false
 		for j := 0; j < 5; j++ {
 			getResp := bi.Get()
-			if getResp.Status.State == types.DownloadStateDownloading && getResp.Status.DownloadProgress > 0 {
-				isDownloading = true
+			if getResp.Status.State == string(types.StateInProgress) && getResp.Status.Progress > 0 {
+				isProcessing = true
 				break
 			}
 			time.Sleep(RetryInterval)
 		}
-		c.Assert(isDownloading, Equals, true)
+		c.Assert(isProcessing, Equals, true)
 		err = bi.Delete()
 		c.Assert(err, IsNil)
 		getResp := bi.Get()
-		c.Assert(getResp.Status.State, Equals, string(StateFailed))
+		c.Assert(getResp.Status.State, Equals, string(types.StateFailed))
 	}
 }

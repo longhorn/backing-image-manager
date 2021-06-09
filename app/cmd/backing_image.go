@@ -14,7 +14,6 @@ func BackingImageCmd() cli.Command {
 	return cli.Command{
 		Name: "backing-image",
 		Subcommands: []cli.Command{
-			PullCmd(),
 			SyncCmd(),
 			SendCmd(),
 			DeleteCmd(),
@@ -24,47 +23,12 @@ func BackingImageCmd() cli.Command {
 	}
 }
 
-func PullCmd() cli.Command {
-	return cli.Command{
-		Name: "pull",
-		Flags: []cli.Flag{
-			cli.StringFlag{
-				Name: "name",
-			},
-			cli.StringFlag{
-				Name: "download-url",
-			},
-			cli.StringFlag{
-				Name: "uuid",
-			},
-		},
-		Action: func(c *cli.Context) {
-			if err := pull(c); err != nil {
-				logrus.Fatalf("Error running backing image pull command: %v.", err)
-			}
-		},
-	}
-}
-
-func pull(c *cli.Context) error {
-	url := c.GlobalString("url")
-	bimClient := client.NewBackingImageManagerClient(url)
-	bi, err := bimClient.Pull(c.String("name"), c.String("download-url"), c.String("uuid"))
-	if err != nil {
-		return err
-	}
-	return util.PrintJSON(bi)
-}
-
 func SyncCmd() cli.Command {
 	return cli.Command{
 		Name: "sync",
 		Flags: []cli.Flag{
 			cli.StringFlag{
 				Name: "name",
-			},
-			cli.StringFlag{
-				Name: "download-url",
 			},
 			cli.StringFlag{
 				Name: "uuid",
@@ -90,7 +54,7 @@ func SyncCmd() cli.Command {
 func sync(c *cli.Context) error {
 	url := c.GlobalString("url")
 	bimClient := client.NewBackingImageManagerClient(url)
-	bi, err := bimClient.Sync(c.String("name"), c.String("download-url"), c.String("uuid"), c.String("from-host"), c.String("to-host"), c.Int64("size"))
+	bi, err := bimClient.Sync(c.String("name"), c.String("uuid"), c.String("from-host"), c.String("to-host"), c.Int64("size"))
 	if err != nil {
 		return err
 	}
