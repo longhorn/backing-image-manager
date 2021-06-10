@@ -75,3 +75,16 @@ func (s *BackingImageStream) Recv() error {
 	_, err := s.stream.Recv()
 	return err
 }
+
+type DataSourceInfo struct {
+	DiskUUID   string            `json:"diskUUID"`
+	SourceType string            `json:"sourceType"`
+	Parameters map[string]string `json:"parameters"`
+
+	FileName      string `json:"fileName"`
+	State         string `json:"state"`
+	Size          int64  `json:"size"`
+	Progress      int    `json:"progress"`
+	ProcessedSize int64  `json:"processedSize"`
+	Message       string `json:"message"`
+}

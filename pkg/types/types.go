@@ -7,11 +7,15 @@ import (
 const (
 	BackingImageManagerDirectoryName = "backing-images"
 	DiskPathInContainer              = "/data/"
+	DataSourceDirectoryName          = "/tmp/"
+
+	DefaultSectorSize = 512
 
 	DefaultManagerPort          = 8000
 	DefaultDataSourceServerPort = 8001
 
 	GRPCServiceTimeout     = 3 * time.Minute
+	HTTPTimeout            = 4 * time.Second
 	FileValidationInterval = 5 * time.Second
 	FileSyncTimeout        = 120
 
@@ -29,4 +33,15 @@ const (
 	StateInProgress = State("in-progress")
 	StateReady      = State("ready")
 	StateFailed     = State("failed")
+)
+
+type DataSourceType string
+
+const (
+	DataSourceTypeDownload = DataSourceType("download")
+	DataSourceTypeUpload   = DataSourceType("upload")
+)
+
+const (
+	DataSourceTypeDownloadParameterURL = "url"
 )
