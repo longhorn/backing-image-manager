@@ -275,11 +275,6 @@ func (m *Manager) Sync(ctx context.Context, req *rpc.SyncRequest) (resp *rpc.Bac
 	return bi.Get(), nil
 }
 
-func RequestBackingImageSending(senderAddress, receiverAddress, backingImageName string) error {
-	sender := client.NewBackingImageManagerClient(senderAddress)
-	return sender.Send(backingImageName, receiverAddress)
-}
-
 func (m *Manager) Send(ctx context.Context, req *rpc.SendRequest) (resp *empty.Empty, err error) {
 	log := m.log.WithFields(logrus.Fields{"backingImage": req.Name, "toAddress": req.ToAddress})
 	log.Info("Backing Image Manager: prepare to send backing image")
@@ -307,6 +302,48 @@ func (m *Manager) Send(ctx context.Context, req *rpc.SendRequest) (resp *empty.E
 
 	log.Infof("Backing Image Manager: sending backing image")
 	return &empty.Empty{}, nil
+}
+
+func RequestBackingImageSending(senderAddress, receiverAddress, backingImageName string) error {
+	sender := client.NewBackingImageManagerClient(senderAddress)
+	return sender.Send(backingImageName, receiverAddress)
+}
+
+func (m *Manager) Fetch(ctx context.Context, req *rpc.FetchRequest) (resp *rpc.BackingImageResponse, err error) {
+	log := m.log.WithFields(logrus.Fields{"backingImage": req.Spec.Name, "sourceFileName": req.SourceFileName})
+	log.Infof("Backing Image Manager: prepare to fetch backing image")
+
+	defer func() {
+		if err != nil {
+			log.WithError(err).Error("Backing Image Manager: failed to start fetching backing image")
+		}
+	}()
+
+	if req.Spec.Name == "" || req.Spec.Uuid == "" {
+		return nil, status.Errorf(codes.InvalidArgument, "missing required argument")
+	}
+
+	m.lock.Lock()
+	bi := m.backingImages[req.Spec.Name]
+	if bi != nil {
+		biResp := bi.Get()
+		if biResp.Status.State != string(types.StateFailed) {
+			m.lock.Unlock()
+			return nil, status.Errorf(codes.AlreadyExists, "backing image %v with state %v already exists", req.Spec.Name, biResp.Status.State)
+		}
+		log.Infof("Backing Image Manager: prepare to re-register and re-fetch failed backing image")
+		delete(m.backingImages, req.Spec.Name)
+	}
+	bi = NewBackingImage(req.Spec.Name, req.Spec.Uuid, m.diskPath, req.Spec.Size, m.HandlerFactory.NewHandler(), m.updateCh)
+	m.backingImages[req.Spec.Name] = bi
+	m.lock.Unlock()
+
+	if err := bi.Fetch(req.SourceFileName); err != nil {
+		return nil, errors.Wrapf(err, "failed to fetch backing image")
+	}
+
+	log.Info("Backing Image Manager: fetched or reused backing image")
+	return bi.Get(), nil
 }
 
 func (m *Manager) allocatePorts(portCount int32) (int32, int32, error) {

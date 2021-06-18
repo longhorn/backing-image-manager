@@ -177,7 +177,9 @@ func (bi *BackingImage) Receive(senderManagerAddress string, portAllocateFunc fu
 		log.Infof("Backing Image: prepare to receive backing image at port %v", port)
 
 		err := bi.handler.Receive(strconv.Itoa(int(port)), filepath.Join(bi.WorkDirectory, types.BackingImageTmpFileName), bi)
-		bi.finishFileProcessingWithLock(err)
+		bi.lock.Lock()
+		bi.finishFileProcessingWithoutLock(err)
+		bi.lock.Unlock()
 		return
 	}()
 	go bi.waitForProcessingStartWithLock()
@@ -230,6 +232,58 @@ func (bi *BackingImage) Send(address string, portAllocateFunc func(portCount int
 		}
 		log.Infof("Backing Image: done sending backing image to address %v", address)
 	}()
+
+	return nil
+}
+
+func (bi *BackingImage) Fetch(sourceFileName string) (err error) {
+	bi.lock.Lock()
+	log := bi.log
+	log.Info("Backing Image: start to fetch backing image")
+
+	defer func() {
+		bi.lock.Unlock()
+		bi.updateCh <- nil
+	}()
+
+	if bi.state != types.StatePending {
+		return fmt.Errorf("invalid state %v for fetching", bi.state)
+	}
+	bi.state = types.StateStarting
+
+	defer func() {
+		if err != nil {
+			bi.handleFailureWithoutLock(err)
+		}
+	}()
+
+	// Try to check if the file already exists first
+	sourceFilePath := filepath.Join(bi.DiskPath, types.DataSourceDirectoryName, sourceFileName)
+	if err = bi.checkAndReuseBackingImageFileWithoutLock(); err == nil {
+		log.Infof("Backing Image: succeeded to reuse the existing backing image file", sourceFilePath)
+		if sourceFileName != "" {
+			log.Infof("Backing Image: start to clean up the source file %v and skip fetching", sourceFilePath)
+			if err := os.RemoveAll(sourceFilePath); err != nil {
+				log.Errorf("Backing Image: failed to clean up the source file after skipping fetching: %v", err)
+			}
+		}
+		return nil
+	}
+	// If the source file name is empty, it means the caller is trying to reuse existing file only.
+	if sourceFileName == "" {
+		return errors.Wrapf(err, "failed to reuse file via the fetch call")
+	}
+	log.Infof("Backing Image: no existing backing image file for reusage, will start fetching from %v then: %v", sourceFilePath, err)
+
+	if err = bi.prepareWorkDirectory(); err != nil {
+		return errors.Wrapf(err, "failed to prepare for backing image fetching")
+	}
+
+	bi.log = log
+
+	err = os.Rename(sourceFilePath, filepath.Join(bi.WorkDirectory, types.BackingImageTmpFileName))
+	bi.state = types.StateInProgress
+	bi.finishFileProcessingWithoutLock(err)
 
 	return nil
 }
@@ -363,11 +417,10 @@ func (bi *BackingImage) waitForProcessingStartWithLock() {
 	}
 }
 
-func (bi *BackingImage) finishFileProcessingWithLock(err error) {
+func (bi *BackingImage) finishFileProcessingWithoutLock(err error) {
 	backingImageTmpPath := filepath.Join(bi.WorkDirectory, types.BackingImageTmpFileName)
 	backingImagePath := filepath.Join(bi.WorkDirectory, types.BackingImageFileName)
 
-	bi.lock.Lock()
 	log := bi.log
 
 	defer func() {
@@ -375,7 +428,6 @@ func (bi *BackingImage) finishFileProcessingWithLock(err error) {
 			bi.handleFailureWithoutLock(err)
 		}
 		bi.updateCh <- nil
-		bi.lock.Unlock()
 	}()
 
 	if err != nil {
