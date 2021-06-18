@@ -25,6 +25,7 @@ func BackingImageCmd() cli.Command {
 			DeleteCmd(),
 			GetCmd(),
 			ListCmd(),
+			FetchCmd(),
 		},
 	}
 }
@@ -157,4 +158,40 @@ func list(c *cli.Context) error {
 		return err
 	}
 	return util.PrintJSON(biList)
+}
+
+func FetchCmd() cli.Command {
+	return cli.Command{
+		Name: "sync",
+		Flags: []cli.Flag{
+			cli.StringFlag{
+				Name: "name",
+			},
+			cli.StringFlag{
+				Name: "uuid",
+			},
+			cli.Int64Flag{
+				Name: "size",
+			},
+			cli.StringFlag{
+				Name:  "source-file-name",
+				Value: "",
+			},
+		},
+		Action: func(c *cli.Context) {
+			if err := fetch(c); err != nil {
+				logrus.Fatalf("Error running backing image fetch command: %v.", err)
+			}
+		},
+	}
+}
+
+func fetch(c *cli.Context) error {
+	url := c.GlobalString("url")
+	bimClient := client.NewBackingImageManagerClient(url)
+	bi, err := bimClient.Fetch(c.String("name"), c.String("uuid"), c.String("source-file-name"), c.Int64("size"))
+	if err != nil {
+		return err
+	}
+	return util.PrintJSON(bi)
 }

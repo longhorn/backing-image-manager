@@ -9,6 +9,7 @@ service BackingImageManagerService {
 	rpc VersionGet(google.protobuf.Empty) returns(VersionResponse);
 	rpc Sync(SyncRequest) returns (BackingImageResponse) {}
 	rpc Send(SendRequest) returns (google.protobuf.Empty) {}
+	rpc Fetch(FetchRequest) returns (BackingImageResponse) {}
 
 	rpc Watch(google.protobuf.Empty) returns (stream google.protobuf.Empty) {}
 }
@@ -62,4 +63,9 @@ message SyncRequest {
 message SendRequest {
 	string name = 1;
 	string to_address = 2;
+}
+
+message FetchRequest {
+	BackingImageSpec spec = 1;
+	string source_file_name = 2;
 }
