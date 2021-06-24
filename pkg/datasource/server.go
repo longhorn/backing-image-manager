@@ -7,13 +7,13 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-func NewServer(listenAddr, fileName, sourceType string, parameters map[string]string, diskPathInContainer string, downloader HTTPDownloader) error {
+func NewServer(listenAddr, fileName, checksum, sourceType string, parameters map[string]string, diskPathInContainer string, downloader HTTPDownloader) error {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	srv := &http.Server{
 		Addr: listenAddr,
 	}
-	service, err := LaunchService(ctx, fileName, sourceType, parameters, diskPathInContainer, downloader)
+	service, err := LaunchService(ctx, fileName, checksum, sourceType, parameters, diskPathInContainer, downloader)
 	if err != nil {
 		return err
 	}

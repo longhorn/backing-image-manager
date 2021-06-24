@@ -29,6 +29,10 @@ func DataSourceCmd() cli.Command {
 			cli.StringSliceFlag{
 				Name: "parameters",
 			},
+			cli.StringFlag{
+				Name:  "checksum",
+				Value: "",
+			},
 		},
 		Action: func(c *cli.Context) {
 			if err := dataSource(c); err != nil {
@@ -42,12 +46,13 @@ func dataSource(c *cli.Context) error {
 	listen := c.String("listen")
 	fileName := c.String("file-name")
 	sourceType := c.String("source-type")
+	checksum := c.String("checksum")
 	parameters, err := parseSliceToMap(c.StringSlice("parameters"))
 	if err != nil {
 		return err
 	}
 
-	return datasource.NewServer(listen, fileName, sourceType, parameters, types.DiskPathInContainer, &datasource.Downloader{})
+	return datasource.NewServer(listen, fileName, checksum, sourceType, parameters, types.DiskPathInContainer, &datasource.Downloader{})
 }
 
 func parseSliceToMap(sli []string) (map[string]string, error) {

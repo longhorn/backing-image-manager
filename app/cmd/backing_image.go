@@ -49,6 +49,10 @@ func SyncCmd() cli.Command {
 			cli.StringFlag{
 				Name: "to-host",
 			},
+			cli.StringFlag{
+				Name:  "checksum",
+				Value: "",
+			},
 		},
 		Action: func(c *cli.Context) {
 			if err := sync(c); err != nil {
@@ -61,7 +65,7 @@ func SyncCmd() cli.Command {
 func sync(c *cli.Context) error {
 	url := c.GlobalString("url")
 	bimClient := client.NewBackingImageManagerClient(url)
-	bi, err := bimClient.Sync(c.String("name"), c.String("uuid"), c.String("from-host"), c.String("to-host"), c.Int64("size"))
+	bi, err := bimClient.Sync(c.String("name"), c.String("uuid"), c.String("checksum"), c.String("from-host"), c.String("to-host"), c.Int64("size"))
 	if err != nil {
 		return err
 	}
@@ -177,6 +181,10 @@ func FetchCmd() cli.Command {
 				Name:  "source-file-name",
 				Value: "",
 			},
+			cli.StringFlag{
+				Name:  "checksum",
+				Value: "",
+			},
 		},
 		Action: func(c *cli.Context) {
 			if err := fetch(c); err != nil {
@@ -189,7 +197,7 @@ func FetchCmd() cli.Command {
 func fetch(c *cli.Context) error {
 	url := c.GlobalString("url")
 	bimClient := client.NewBackingImageManagerClient(url)
-	bi, err := bimClient.Fetch(c.String("name"), c.String("uuid"), c.String("source-file-name"), c.Int64("size"))
+	bi, err := bimClient.Fetch(c.String("name"), c.String("uuid"), c.String("source-file-name"), c.String("checksum"), c.Int64("size"))
 	if err != nil {
 		return err
 	}

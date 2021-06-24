@@ -23,7 +23,7 @@ func NewBackingImageManagerClient(address string) *BackingImageManagerClient {
 	}
 }
 
-func (cli *BackingImageManagerClient) Sync(name, uuid, fromHost, toHost string, size int64) (*api.BackingImage, error) {
+func (cli *BackingImageManagerClient) Sync(name, uuid, checksum, fromHost, toHost string, size int64) (*api.BackingImage, error) {
 	if name == "" || uuid == "" || fromHost == "" || toHost == "" || size <= 0 {
 		return nil, fmt.Errorf("failed to sync backing image: missing required parameter")
 	}
@@ -40,9 +40,10 @@ func (cli *BackingImageManagerClient) Sync(name, uuid, fromHost, toHost string, 
 
 	resp, err := client.Sync(ctx, &rpc.SyncRequest{
 		BackingImageSpec: &rpc.BackingImageSpec{
-			Name: name,
-			Uuid: uuid,
-			Size: size,
+			Name:     name,
+			Uuid:     uuid,
+			Size:     size,
+			Checksum: checksum,
 		},
 		FromHost: fromHost,
 		ToHost:   toHost,
@@ -138,7 +139,7 @@ func (cli *BackingImageManagerClient) List() (map[string]*api.BackingImage, erro
 	return api.RPCToBackingImageList(resp), nil
 }
 
-func (cli *BackingImageManagerClient) Fetch(name, uuid, sourceFileName string, size int64) (*api.BackingImage, error) {
+func (cli *BackingImageManagerClient) Fetch(name, uuid, sourceFileName, checksum string, size int64) (*api.BackingImage, error) {
 	if name == "" || uuid == "" || size <= 0 {
 		return nil, fmt.Errorf("failed to fetch backing image: missing required parameter")
 	}
@@ -155,9 +156,10 @@ func (cli *BackingImageManagerClient) Fetch(name, uuid, sourceFileName string, s
 
 	resp, err := client.Fetch(ctx, &rpc.FetchRequest{
 		Spec: &rpc.BackingImageSpec{
-			Name: name,
-			Uuid: uuid,
-			Size: size,
+			Name:     name,
+			Uuid:     uuid,
+			Size:     size,
+			Checksum: checksum,
 		},
 		SourceFileName: sourceFileName,
 	})

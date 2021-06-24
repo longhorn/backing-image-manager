@@ -228,7 +228,7 @@ func (m *Manager) List(ctx context.Context, req *empty.Empty) (*rpc.ListResponse
 }
 
 func (m *Manager) Sync(ctx context.Context, req *rpc.SyncRequest) (resp *rpc.BackingImageResponse, err error) {
-	log := m.log.WithFields(logrus.Fields{"backingImage": req.BackingImageSpec.Name, "fromHost": req.FromHost, "toHost": req.ToHost})
+	log := m.log.WithFields(logrus.Fields{"backingImage": req.BackingImageSpec.Name, "fromHost": req.FromHost, "toHost": req.ToHost, "checksum": req.BackingImageSpec.Checksum})
 	log.Info("Backing Image Manager: prepare to request backing image from others")
 	defer func() {
 		if err != nil {
@@ -251,7 +251,7 @@ func (m *Manager) Sync(ctx context.Context, req *rpc.SyncRequest) (resp *rpc.Bac
 		log.Infof("Backing Image Manager: prepare to re-register and re-sync failed backing image")
 		delete(m.backingImages, req.BackingImageSpec.Name)
 	}
-	bi = NewBackingImage(req.BackingImageSpec.Name, req.BackingImageSpec.Uuid, m.diskPath, req.BackingImageSpec.Size, m.HandlerFactory.NewHandler(), m.updateCh)
+	bi = NewBackingImage(req.BackingImageSpec.Name, req.BackingImageSpec.Uuid, req.BackingImageSpec.Checksum, m.diskPath, req.BackingImageSpec.Size, m.HandlerFactory.NewHandler(), m.updateCh)
 	m.backingImages[req.BackingImageSpec.Name] = bi
 	m.lock.Unlock()
 
@@ -334,7 +334,7 @@ func (m *Manager) Fetch(ctx context.Context, req *rpc.FetchRequest) (resp *rpc.B
 		log.Infof("Backing Image Manager: prepare to re-register and re-fetch failed backing image")
 		delete(m.backingImages, req.Spec.Name)
 	}
-	bi = NewBackingImage(req.Spec.Name, req.Spec.Uuid, m.diskPath, req.Spec.Size, m.HandlerFactory.NewHandler(), m.updateCh)
+	bi = NewBackingImage(req.Spec.Name, req.Spec.Uuid, req.Spec.Checksum, m.diskPath, req.Spec.Size, m.HandlerFactory.NewHandler(), m.updateCh)
 	m.backingImages[req.Spec.Name] = bi
 	m.lock.Unlock()
 

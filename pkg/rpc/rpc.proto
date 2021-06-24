@@ -18,6 +18,7 @@ message BackingImageSpec {
 	string name = 1;
 	string uuid = 2;
 	int64 size = 3;
+	string checksum = 4;
 }
 
 message BackingImageStatus {
@@ -26,6 +27,7 @@ message BackingImageStatus {
 	int32 sending_reference = 3;
 	string sender_manager_address = 4;
 	int32 progress = 5;
+	string checksum = 6;
 }
 
 message BackingImageResponse {
