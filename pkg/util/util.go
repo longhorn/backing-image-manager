@@ -1,13 +1,18 @@
 package util
 
 import (
+	"crypto/sha512"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"os"
 	"path/filepath"
 
 	"github.com/pkg/errors"
+
+	"github.com/longhorn/sparse-tools/sparse"
 )
 
 func PrintJSON(obj interface{}) error {
@@ -18,6 +23,31 @@ func PrintJSON(obj interface{}) error {
 
 	fmt.Println(string(output))
 	return nil
+}
+
+func GetFileChecksum(filePath string) (string, error) {
+	f, err := sparse.NewDirectFileIoProcessor(filePath, os.O_RDONLY, 0)
+	if err != nil {
+		return "", err
+	}
+	defer f.Close()
+
+	// 4MB
+	buf := make([]byte, 1<<22)
+	h := sha512.New()
+
+	for {
+		nr, err := f.Read(buf)
+		if err != nil {
+			if err != io.EOF {
+				return "", err
+			}
+			break
+		}
+		h.Write(buf[:nr])
+	}
+
+	return hex.EncodeToString(h.Sum(nil)), nil
 }
 
 // DiskConfigFile should be the same as the schema in longhorn-manager/util
@@ -49,9 +79,11 @@ const (
 )
 
 type BackingImageConfig struct {
-	Name string `json:"name"`
-	UUID string `json:"uuid"`
-	Size int64  `json:"size"`
+	Name             string `json:"name"`
+	UUID             string `json:"uuid"`
+	Size             int64  `json:"size"`
+	ExpectedChecksum string `json:"expectedChecksum"`
+	CurrentChecksum  string `json:"currentChecksum"`
 }
 
 func WriteBackingImageConfigFile(workDirectory string, cfg *BackingImageConfig) error {

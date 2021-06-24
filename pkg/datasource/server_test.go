@@ -68,7 +68,7 @@ func BenchmarkDownload(b *testing.B) {
 		b.Fatal(err)
 	}
 
-	go NewServer(address, fileName, string(types.DataSourceTypeDownload), map[string]string{types.DataSourceTypeDownloadParameterURL: "http://mock-download"}, dir, &MockDownloader{})
+	go NewServer(address, fileName, "", string(types.DataSourceTypeDownload), map[string]string{types.DataSourceTypeDownloadParameterURL: "http://mock-download"}, dir, &MockDownloader{})
 	time.Sleep(time.Second)
 
 	cli := client.DataSourceClient{
@@ -81,7 +81,7 @@ func BenchmarkDownload(b *testing.B) {
 		if err != nil {
 			b.Fatal(err)
 		}
-		if dsInfo.State == string(types.StateReady) && dsInfo.Progress == 100 {
+		if dsInfo.State == string(types.StateReady) && dsInfo.Progress == 100 && dsInfo.CurrentChecksum != "" {
 			isDownloaded = true
 			break
 		}
@@ -122,8 +122,12 @@ func BenchmarkUpload(b *testing.B) {
 	if err != nil {
 		b.Fatal(err)
 	}
+	checksum, err := util.GetFileChecksum(originalFilePath)
+	if err != nil {
+		b.Fatal(err)
+	}
 
-	go NewServer(address, fileName, string(types.DataSourceTypeUpload), map[string]string{}, dir, &MockDownloader{})
+	go NewServer(address, fileName, checksum, string(types.DataSourceTypeUpload), map[string]string{}, dir, &MockDownloader{})
 	time.Sleep(time.Second)
 
 	b.ResetTimer()
@@ -143,7 +147,7 @@ func BenchmarkUpload(b *testing.B) {
 		if err != nil {
 			b.Fatal(err)
 		}
-		if dsInfo.State == string(types.StateReady) && dsInfo.Progress == 100 {
+		if dsInfo.State == string(types.StateReady) && dsInfo.Progress == 100 && dsInfo.CurrentChecksum != "" {
 			isUploaded = true
 			break
 		}

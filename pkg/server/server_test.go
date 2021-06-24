@@ -167,12 +167,15 @@ func (s *TestSuite) TestManagerSyncAndFetch(c *C) {
 				sourceFilePath := filepath.Join(testDiskPath, types.DataSourceDirectoryName, sourceFileName)
 				err := GenerateTestFile(sourceFilePath, MockProcessingSize)
 				c.Assert(err, IsNil)
+				checksum, err := util.GetFileChecksum(sourceFilePath)
+				c.Assert(err, IsNil)
 
 				fetchReq := &rpc.FetchRequest{
 					Spec: &rpc.BackingImageSpec{
-						Name: name,
-						Uuid: name + "-" + "uuid",
-						Size: MockProcessingSize,
+						Name:     name,
+						Uuid:     name + "-" + "uuid",
+						Size:     MockProcessingSize,
+						Checksum: checksum,
 					},
 					SourceFileName: sourceFileName,
 				}
@@ -186,6 +189,7 @@ func (s *TestSuite) TestManagerSyncAndFetch(c *C) {
 				c.Assert(err, IsNil)
 				c.Assert(getResp.Spec.Name, Equals, name)
 				c.Assert(getResp.Status.State, Equals, string(types.StateReady))
+				c.Assert(getResp.Status.Checksum, Equals, checksum)
 
 				_, err = os.Stat(sourceFilePath)
 				c.Assert(os.IsNotExist(err), Equals, true)
@@ -216,7 +220,7 @@ func (s *TestSuite) TestSingleBackingImageSync(c *C) {
 	count := 10
 	for i := 0; i < count; i++ {
 		updateCh := make(chan interface{}, 200)
-		bi := NewBackingImage(name, uuid, s.getTestDiskPath(c), MockProcessingSize, mockHandlerFactory.NewHandler(), updateCh)
+		bi := NewBackingImage(name, uuid, "", s.getTestDiskPath(c), MockProcessingSize, mockHandlerFactory.NewHandler(), updateCh)
 		var err error
 
 		err = bi.Delete()
@@ -259,9 +263,11 @@ func (s *TestSuite) TestSingleBackingImageFetch(c *C) {
 		sourceFilePath := filepath.Join(testDiskPath, types.DataSourceDirectoryName, sourceFileName)
 		err := GenerateTestFile(sourceFilePath, MockProcessingSize)
 		c.Assert(err, IsNil)
+		checksum, err := util.GetFileChecksum(sourceFilePath)
+		c.Assert(err, IsNil)
 
 		updateCh := make(chan interface{}, 200)
-		bi := NewBackingImage(name, uuid, testDiskPath, MockProcessingSize, mockHandlerFactory.NewHandler(), updateCh)
+		bi := NewBackingImage(name, uuid, checksum, testDiskPath, MockProcessingSize, mockHandlerFactory.NewHandler(), updateCh)
 
 		err = bi.Delete()
 		c.Assert(err, IsNil)
@@ -272,6 +278,7 @@ func (s *TestSuite) TestSingleBackingImageFetch(c *C) {
 		getResp := bi.Get()
 		c.Assert(getResp.Spec.Name, Equals, name)
 		c.Assert(getResp.Status.State, Equals, string(types.StateReady))
+		c.Assert(getResp.Status.Checksum, Equals, checksum)
 
 		_, err = os.Stat(sourceFilePath)
 		c.Assert(os.IsNotExist(err), Equals, true)
@@ -296,7 +303,7 @@ func (s *TestSuite) TestBackingImageSimultaneousProcessingAndCancellation(c *C) 
 		err := GenerateTestFile(sourceFilePath, MockProcessingSize)
 		c.Assert(err, IsNil)
 
-		bi := NewBackingImage(name, uuid, testDiskPath, MockProcessingSize, mockHandlerFactory.NewHandler(), make(chan interface{}, 100))
+		bi := NewBackingImage(name, uuid, "", testDiskPath, MockProcessingSize, mockHandlerFactory.NewHandler(), make(chan interface{}, 100))
 
 		err = bi.Delete()
 		c.Assert(err, IsNil)

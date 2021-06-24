@@ -28,24 +28,26 @@ type Service struct {
 	lock *sync.RWMutex
 	log  logrus.FieldLogger
 
-	diskUUID   string
-	sourceType types.DataSourceType
-	parameters map[string]string
+	diskUUID         string
+	sourceType       types.DataSourceType
+	parameters       map[string]string
+	expectedChecksum string
 
-	fileName      string
-	filePath      string
-	state         types.State
-	size          int64
-	progress      int
-	processedSize int64
-	message       string
+	fileName        string
+	filePath        string
+	state           types.State
+	size            int64
+	progress        int
+	processedSize   int64
+	currentChecksum string
+	message         string
 
 	// for unit test
 	downloader HTTPDownloader
 }
 
 func LaunchService(ctx context.Context,
-	fileName, sourceType string, parameters map[string]string,
+	fileName, checksum, sourceType string, parameters map[string]string,
 	diskPathInContainer string, downloader HTTPDownloader) (*Service, error) {
 	if fileName == "" {
 		return nil, fmt.Errorf("the file name is not specified")
@@ -68,9 +70,10 @@ func LaunchService(ctx context.Context,
 			},
 		),
 
-		diskUUID:   diskUUID,
-		sourceType: types.DataSourceType(sourceType),
-		parameters: parameters,
+		diskUUID:         diskUUID,
+		sourceType:       types.DataSourceType(sourceType),
+		parameters:       parameters,
+		expectedChecksum: checksum,
 
 		fileName: fileName,
 		filePath: filepath.Join(workDir, fileName),
@@ -138,6 +141,17 @@ func (s *Service) finishProcessing(err error) {
 	stat, statErr := os.Stat(s.filePath)
 	if statErr != nil {
 		err = errors.Wrapf(err, "failed to stat file %v after getting the file from source", s.filePath)
+		return
+	}
+
+	checksum, cksumErr := util.GetFileChecksum(s.filePath)
+	if cksumErr != nil {
+		err = errors.Wrapf(cksumErr, "failed to calculate checksum for file %v getting the file from source", s.filePath)
+		return
+	}
+	s.currentChecksum = checksum
+	if s.expectedChecksum != "" && s.expectedChecksum != s.currentChecksum {
+		err = fmt.Errorf("the expected checksum %v doesn't match the the file actual checksum %v", s.expectedChecksum, s.currentChecksum)
 		return
 	}
 
@@ -251,16 +265,18 @@ func (s *Service) Get(writer http.ResponseWriter, request *http.Request) {
 	s.lock.RLock()
 	s.lock.RUnlock()
 	fi := api.DataSourceInfo{
-		DiskUUID:   s.diskUUID,
-		SourceType: string(s.sourceType),
-		Parameters: s.parameters,
+		DiskUUID:         s.diskUUID,
+		SourceType:       string(s.sourceType),
+		Parameters:       s.parameters,
+		ExpectedChecksum: s.expectedChecksum,
 
-		FileName:      s.fileName,
-		State:         string(s.state),
-		Size:          s.size,
-		Progress:      s.progress,
-		ProcessedSize: s.processedSize,
-		Message:       s.message,
+		FileName:        s.fileName,
+		State:           string(s.state),
+		Size:            s.size,
+		Progress:        s.progress,
+		ProcessedSize:   s.processedSize,
+		CurrentChecksum: s.currentChecksum,
+		Message:         s.message,
 	}
 
 	outgoingJSON, err := json.Marshal(fi)

@@ -22,12 +22,14 @@ const (
 )
 
 type BackingImage struct {
-	Name          string
-	UUID          string
-	WorkDirectory string
-	DiskPath      string
-	state         types.State
-	errorMsg      string
+	Name             string
+	UUID             string
+	WorkDirectory    string
+	DiskPath         string
+	state            types.State
+	expectedChecksum string
+	currentChecksum  string
+	errorMsg         string
 
 	size          int64
 	processedSize int64
@@ -45,22 +47,24 @@ type BackingImage struct {
 	handler *BackingImageHandler
 }
 
-func NewBackingImage(name, uuid, diskPath string, size int64, handler *BackingImageHandler, updateCh chan interface{}) *BackingImage {
+func NewBackingImage(name, uuid, checksum, diskPath string, size int64, handler *BackingImageHandler, updateCh chan interface{}) *BackingImage {
 	workDir := filepath.Join(diskPath, types.BackingImageManagerDirectoryName, GetBackingImageDirectoryName(name, uuid))
 	return &BackingImage{
-		Name:          name,
-		UUID:          uuid,
-		WorkDirectory: workDir,
-		DiskPath:      diskPath,
-		state:         types.StatePending,
-		size:          size,
+		Name:             name,
+		UUID:             uuid,
+		WorkDirectory:    workDir,
+		DiskPath:         diskPath,
+		state:            types.StatePending,
+		size:             size,
+		expectedChecksum: checksum,
 		log: logrus.StandardLogger().WithFields(
 			logrus.Fields{
-				"component": "backing-image",
-				"name":      name,
-				"uuid":      uuid,
-				"size":      size,
-				"workDir":   workDir,
+				"component":        "backing-image",
+				"name":             name,
+				"uuid":             uuid,
+				"size":             size,
+				"workDir":          workDir,
+				"expectedChecksum": checksum,
 			},
 		),
 		lock:     &sync.RWMutex{},
@@ -291,9 +295,10 @@ func (bi *BackingImage) Fetch(sourceFileName string) (err error) {
 func (bi *BackingImage) rpcResponse() *rpc.BackingImageResponse {
 	resp := &rpc.BackingImageResponse{
 		Spec: &rpc.BackingImageSpec{
-			Name: bi.Name,
-			Uuid: bi.UUID,
-			Size: bi.size,
+			Name:     bi.Name,
+			Uuid:     bi.UUID,
+			Size:     bi.size,
+			Checksum: bi.expectedChecksum,
 		},
 
 		Status: &rpc.BackingImageStatus{
@@ -302,6 +307,7 @@ func (bi *BackingImage) rpcResponse() *rpc.BackingImageResponse {
 			ErrorMsg:             bi.errorMsg,
 			SenderManagerAddress: bi.senderManagerAddress,
 			Progress:             int32(bi.progress),
+			Checksum:             bi.currentChecksum,
 		},
 	}
 	return resp
@@ -317,22 +323,35 @@ func (bi *BackingImage) checkAndReuseBackingImageFileWithoutLock() error {
 		return fmt.Errorf("backing image expected size %v doesn't match the existing file size %v", bi.size, info.Size())
 	}
 
+	checksum, err := util.GetFileChecksum(backingImagePath)
+	if err != nil {
+		return errors.Wrapf(err, "failed to calculate checksum for the tmp file after processing")
+	}
+	bi.currentChecksum = checksum
+
+	if bi.expectedChecksum != "" && bi.expectedChecksum != bi.currentChecksum {
+		return fmt.Errorf("backing image expected checksum %v doesn't match the existing file checksum %v", bi.expectedChecksum, bi.currentChecksum)
+	}
+
 	bi.size = info.Size()
 	bi.processedSize = bi.size
 	bi.progress = 100
 	bi.state = types.StateReady
 	bi.handler.Cancel()
 	bi.log = bi.log.WithFields(logrus.Fields{
-		"size": bi.size,
+		"size":            bi.size,
+		"currentChecksum": bi.currentChecksum,
 	})
 
 	// Do not rely on the values in the config file to verify the backing image.
 	// The source of truth should be the file itself.
 	// The config file is used to record the meta info only.
 	if err := util.WriteBackingImageConfigFile(bi.WorkDirectory, &util.BackingImageConfig{
-		Name: bi.Name,
-		UUID: bi.UUID,
-		Size: bi.size,
+		Name:             bi.Name,
+		UUID:             bi.UUID,
+		Size:             bi.size,
+		ExpectedChecksum: bi.expectedChecksum,
+		CurrentChecksum:  bi.currentChecksum,
 	}); err != nil {
 		bi.log.Warnf("Backing Image: failed to update backing image config file when reusing existing file: %v", err)
 	}
@@ -453,6 +472,17 @@ func (bi *BackingImage) finishFileProcessingWithoutLock(err error) {
 		bi.processedSize = tmpFileStat.Size()
 	}
 
+	checksum, err := util.GetFileChecksum(backingImageTmpPath)
+	if err != nil {
+		err = errors.Wrapf(err, "failed to calculate checksum for the tmp file after processing")
+		return
+	}
+	bi.currentChecksum = checksum
+	if bi.expectedChecksum != "" && bi.expectedChecksum != bi.currentChecksum {
+		err = fmt.Errorf("backing image expected checksum %v doesn't match the processed file checksum %v", bi.expectedChecksum, bi.currentChecksum)
+		return
+	}
+
 	if err := os.Rename(backingImageTmpPath, backingImagePath); err != nil {
 		err = errors.Wrapf(err, "failed to rename backing image file after processing")
 		return
@@ -461,14 +491,17 @@ func (bi *BackingImage) finishFileProcessingWithoutLock(err error) {
 	bi.progress = 100
 	bi.state = types.StateReady
 	bi.log = bi.log.WithFields(logrus.Fields{
-		"size": bi.size,
+		"size":            bi.size,
+		"currentChecksum": bi.currentChecksum,
 	})
 	log = bi.log
 
 	if err := util.WriteBackingImageConfigFile(bi.WorkDirectory, &util.BackingImageConfig{
-		Name: bi.Name,
-		UUID: bi.UUID,
-		Size: bi.size,
+		Name:             bi.Name,
+		UUID:             bi.UUID,
+		Size:             bi.size,
+		ExpectedChecksum: bi.expectedChecksum,
+		CurrentChecksum:  bi.currentChecksum,
 	}); err != nil {
 		log.Warnf("Backing Image: Failed to write config file after processing: %v", err)
 	}

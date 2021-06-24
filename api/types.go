@@ -10,15 +10,17 @@ import (
 )
 
 type BackingImage struct {
-	Name string `json:"name"`
-	UUID string `json:"uuid"`
-	Size int64  `json:"size"`
+	Name             string `json:"name"`
+	UUID             string `json:"uuid"`
+	Size             int64  `json:"size"`
+	ExpectedChecksum string `json:"expectedChecksum"`
 
 	Status BackingImageStatus `json:"status"`
 }
 
 type BackingImageStatus struct {
 	State                string `json:"state"`
+	CurrentChecksum      string `json:"currentChecksum"`
 	SendingReference     int    `json:"sendingReference"`
 	ErrorMsg             string `json:"errorMsg"`
 	SenderManagerAddress string `json:"senderManagerAddress"`
@@ -27,12 +29,14 @@ type BackingImageStatus struct {
 
 func RPCToBackingImage(obj *rpc.BackingImageResponse) *BackingImage {
 	return &BackingImage{
-		Name: obj.Spec.Name,
-		UUID: obj.Spec.Uuid,
-		Size: obj.Spec.Size,
+		Name:             obj.Spec.Name,
+		UUID:             obj.Spec.Uuid,
+		Size:             obj.Spec.Size,
+		ExpectedChecksum: obj.Spec.Checksum,
 
 		Status: BackingImageStatus{
 			State:                obj.Status.State,
+			CurrentChecksum:      obj.Status.Checksum,
 			SendingReference:     int(obj.Status.SendingReference),
 			ErrorMsg:             obj.Status.ErrorMsg,
 			SenderManagerAddress: obj.Status.SenderManagerAddress,
@@ -77,14 +81,16 @@ func (s *BackingImageStream) Recv() error {
 }
 
 type DataSourceInfo struct {
-	DiskUUID   string            `json:"diskUUID"`
-	SourceType string            `json:"sourceType"`
-	Parameters map[string]string `json:"parameters"`
+	DiskUUID         string            `json:"diskUUID"`
+	SourceType       string            `json:"sourceType"`
+	Parameters       map[string]string `json:"parameters"`
+	ExpectedChecksum string            `json:"expectedChecksum"`
 
-	FileName      string `json:"fileName"`
-	State         string `json:"state"`
-	Size          int64  `json:"size"`
-	Progress      int    `json:"progress"`
-	ProcessedSize int64  `json:"processedSize"`
-	Message       string `json:"message"`
+	FileName        string `json:"fileName"`
+	State           string `json:"state"`
+	Size            int64  `json:"size"`
+	Progress        int    `json:"progress"`
+	ProcessedSize   int64  `json:"processedSize"`
+	CurrentChecksum string `json:"currentChecksum"`
+	Message         string `json:"message"`
 }
