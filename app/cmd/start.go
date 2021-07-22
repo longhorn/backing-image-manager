@@ -11,10 +11,8 @@ import (
 	"github.com/sirupsen/logrus"
 	"github.com/urfave/cli"
 	"google.golang.org/grpc"
-	healthpb "google.golang.org/grpc/health/grpc_health_v1"
 	"google.golang.org/grpc/reflection"
 
-	"github.com/longhorn/backing-image-manager/pkg/health"
 	"github.com/longhorn/backing-image-manager/pkg/rpc"
 	"github.com/longhorn/backing-image-manager/pkg/server"
 	"github.com/longhorn/backing-image-manager/pkg/types"
@@ -66,7 +64,6 @@ func start(c *cli.Context) error {
 	if err != nil {
 		return err
 	}
-	hc := health.NewHealthCheckServer(bim)
 
 	listenAt, err := net.Listen("tcp", listen)
 	if err != nil {
@@ -75,7 +72,6 @@ func start(c *cli.Context) error {
 
 	rpcService := grpc.NewServer()
 	rpc.RegisterBackingImageManagerServiceServer(rpcService, bim)
-	healthpb.RegisterHealthServer(rpcService, hc)
 	reflection.Register(rpcService)
 
 	go func() {
