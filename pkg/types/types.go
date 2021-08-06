@@ -28,11 +28,12 @@ const (
 type State string
 
 const (
-	StatePending    = State("pending")
-	StateStarting   = State("starting")
-	StateInProgress = State("in-progress")
-	StateReady      = State("ready")
-	StateFailed     = State("failed")
+	StatePending          = State("pending")
+	StateStarting         = State("starting")
+	StateInProgress       = State("in-progress")
+	StateReadyForTransfer = State("ready-for-transfer")
+	StateReady            = State("ready")
+	StateFailed           = State("failed")
 )
 
 type DataSourceType string
