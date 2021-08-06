@@ -108,7 +108,7 @@ func (s *Service) UpdateProgress(processedSize int64) {
 	if s.state == types.StateStarting {
 		s.state = types.StateInProgress
 	}
-	if s.state == types.StateReady {
+	if s.state == types.StateReady || s.state == types.StateReadyForTransfer {
 		return
 	}
 
@@ -159,7 +159,7 @@ func (s *Service) finishProcessing(err error) {
 	s.size = stat.Size()
 	s.processedSize = stat.Size()
 	s.progress = 100
-	s.state = types.StateReady
+	s.state = types.StateReadyForTransfer
 	s.lock.Unlock()
 
 	return
