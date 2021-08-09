@@ -17,7 +17,7 @@ ENV DEBIAN_FRONTEND=noninteractive
 
 # Install packages
 RUN apt-get update && \
-    apt-get dist-upgrade && \
+    apt-get dist-upgrade -y && \
     apt-get install -y cmake wget curl git less file \
         libglib2.0-dev libkmod-dev libnl-genl-3-dev linux-libc-dev pkg-config psmisc tox qemu-utils fuse python-dev \
         devscripts debhelper bash-completion librdmacm-dev libibverbs-dev xsltproc docbook-xsl \
