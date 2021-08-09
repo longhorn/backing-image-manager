@@ -90,6 +90,13 @@ func LaunchService(ctx context.Context,
 }
 
 func (s *Service) init() error {
+	err := s.checkAndReuseBackingImageFile()
+	if err == nil {
+		return nil
+	}
+	if err := os.RemoveAll(s.filePath); err != nil {
+		return err
+	}
 	switch s.sourceType {
 	case types.DataSourceTypeDownload:
 		return s.downloadFromURL(s.parameters)
@@ -98,6 +105,37 @@ func (s *Service) init() error {
 		return fmt.Errorf("unknown data source type: %v", s.sourceType)
 
 	}
+	return nil
+}
+
+func (s *Service) checkAndReuseBackingImageFile() error {
+	s.lock.Lock()
+	defer s.lock.Unlock()
+
+	info, err := os.Stat(s.filePath)
+	if err != nil {
+		return err
+	}
+	checksum, err := util.GetFileChecksum(s.filePath)
+	if err != nil {
+		return errors.Wrapf(err, "failed to calculate checksum for the tmp file after processing")
+	}
+	s.currentChecksum = checksum
+	if s.expectedChecksum != "" && s.expectedChecksum != s.currentChecksum {
+		return fmt.Errorf("backing image expected checksum %v doesn't match the existing file checksum %v", s.expectedChecksum, s.currentChecksum)
+	}
+
+	s.size = info.Size()
+	s.processedSize = s.size
+	s.progress = 100
+	s.state = types.StateReadyForTransfer
+	s.log = s.log.WithFields(logrus.Fields{
+		"size":            s.size,
+		"currentChecksum": s.currentChecksum,
+	})
+
+	s.log.Infof("Directly reuse/introduce the existing file in path %v", s.filePath)
+
 	return nil
 }
 
