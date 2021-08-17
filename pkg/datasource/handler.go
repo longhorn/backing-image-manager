@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"sync"
+	"time"
 
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
@@ -20,7 +21,8 @@ import (
 )
 
 const (
-	UploadBufferSize = 2 << 13
+	RetryInterval = 1 * time.Second
+	RetryCount    = 60
 )
 
 type Service struct {
@@ -82,6 +84,7 @@ func LaunchService(ctx context.Context,
 		downloader: downloader,
 	}
 
+	s.log.Debugf("Initializing data source service")
 	if err := s.init(); err != nil {
 		return nil, err
 	}
@@ -90,8 +93,7 @@ func LaunchService(ctx context.Context,
 }
 
 func (s *Service) init() error {
-	err := s.checkAndReuseBackingImageFile()
-	if err == nil {
+	if err := s.checkAndReuseBackingImageFile(); err == nil {
 		return nil
 	}
 	if err := os.RemoveAll(s.filePath); err != nil {
@@ -105,6 +107,8 @@ func (s *Service) init() error {
 		return fmt.Errorf("unknown data source type: %v", s.sourceType)
 
 	}
+	go s.waitForProcessingStart()
+
 	return nil
 }
 
@@ -225,6 +229,30 @@ func (s *Service) downloadFromURL(parameters map[string]string) error {
 	}()
 
 	return nil
+}
+
+func (s *Service) waitForProcessingStart() {
+	count := 0
+	ticker := time.NewTicker(RetryInterval)
+	defer ticker.Stop()
+	for {
+		select {
+		case <-ticker.C:
+			count++
+			s.lock.Lock()
+			if s.state == types.StateInProgress || s.state == types.StateReadyForTransfer || s.state == types.StateFailed {
+				s.lock.Unlock()
+				return
+			}
+			if count >= RetryCount {
+				s.state = types.StateFailed
+				s.message = fmt.Sprintf("failed to wait for processing start in %v seconds", RetryCount)
+				s.lock.Unlock()
+				return
+			}
+			s.lock.Unlock()
+		}
+	}
 }
 
 func (s *Service) Upload(writer http.ResponseWriter, request *http.Request) {
