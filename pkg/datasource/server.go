@@ -31,7 +31,7 @@ func NewServer(listenAddr, fileName, checksum, sourceType string, parameters map
 		}
 	}()
 
-	logrus.Infof("Starting data source server at %v", listenAddr)
+	logrus.Infof("Started data source server at %v", listenAddr)
 
 	return srv.ListenAndServe()
 }
