@@ -15,6 +15,9 @@ import (
 	"github.com/sirupsen/logrus"
 	"golang.org/x/net/context"
 
+	"github.com/longhorn/longhorn-engine/pkg/replica/client"
+	sparserest "github.com/longhorn/sparse-tools/sparse/rest"
+
 	"github.com/longhorn/backing-image-manager/api"
 	"github.com/longhorn/backing-image-manager/pkg/types"
 	"github.com/longhorn/backing-image-manager/pkg/util"
@@ -103,6 +106,8 @@ func (s *Service) init() error {
 	case types.DataSourceTypeDownload:
 		return s.downloadFromURL(s.parameters)
 	case types.DataSourceTypeUpload:
+	case types.DataSourceTypeExportFromVolume:
+		return s.exportFromVolume(s.parameters)
 	default:
 		return fmt.Errorf("unknown data source type: %v", s.sourceType)
 
@@ -144,6 +149,14 @@ func (s *Service) checkAndReuseBackingImageFile() error {
 }
 
 func (s *Service) UpdateProgress(processedSize int64) {
+	s.updateProgress(processedSize)
+}
+
+func (s *Service) UpdateSyncFileProgress(size int64) {
+	s.updateProgress(size)
+}
+
+func (s *Service) updateProgress(processedSize int64) {
 	s.lock.Lock()
 	defer s.lock.Unlock()
 
@@ -226,6 +239,97 @@ func (s *Service) downloadFromURL(parameters map[string]string) error {
 	go func() {
 		_, err := s.downloader.DownloadFile(s.ctx, url, s.filePath, s)
 		s.finishProcessing(err)
+	}()
+
+	return nil
+}
+
+func (s *Service) exportFromVolume(parameters map[string]string) error {
+	snapshotName := parameters[types.DataSourceTypeExportFromVolumeParameterSnapshotName]
+	if snapshotName == "" {
+		return fmt.Errorf("snapshot name is not specified during volume exporting")
+	}
+	senderAddress := parameters[types.DataSourceTypeExportFromVolumeParameterSenderAddress]
+	if senderAddress == "" {
+		return fmt.Errorf("avaialble replica address of the source volume is not specified during volume exporting")
+	}
+
+	qcow2ConversionRequired := false
+	if parameters[types.DataSourceTypeExportFromVolumeParameterExportType] == types.DataSourceTypeExportFromVolumeParameterExportTypeQCOW2 {
+		qcow2ConversionRequired = true
+	}
+
+	var size int64
+	var err error
+	volumeSizeStr := parameters[types.DataSourceTypeExportFromVolumeParameterVolumeSize]
+	if volumeSizeStr != "" {
+		if size, err = strconv.ParseInt(volumeSizeStr, 10, 64); err != nil {
+			s.log.Warnf("failed to parse string %v to an invalid number as size, will ignore this input parameter: %v", volumeSizeStr, err)
+		}
+	}
+
+	podIP := os.Getenv(types.EnvPodIP)
+	if podIP == "" {
+		return fmt.Errorf("can't get pod ip from environment variable")
+	}
+
+	s.lock.Lock()
+	s.size = size
+	s.lock.Unlock()
+
+	errChan := make(chan error, 1)
+	ctx, cancel := context.WithCancel(s.ctx)
+	go func() {
+		var syncErr error
+		defer func() {
+			if syncErr != nil {
+				s.log.Errorf("failed to receive backing image file from snapshot %v: %v", snapshotName, syncErr)
+			}
+			if syncErr == nil {
+				syncErr = <-errChan
+			}
+			cancel()
+			s.finishProcessing(syncErr)
+		}()
+
+		if err := sparserest.Server(ctx, strconv.Itoa(types.DefaultVolumeExportReceiverPort), s.filePath, s); err != nil && err != http.ErrServerClosed {
+			syncErr = err
+			return
+		}
+
+		// For volume export, the size of holes won't be calculated into s.processedSize.
+		// To avoid failing s.finishProcessing, we need to update s.processedSize in advance.
+		s.lock.Lock()
+		s.processedSize = s.size
+		s.lock.Unlock()
+
+		// The file size will change after conversion.
+		if qcow2ConversionRequired {
+			if syncErr = util.ConvertFromRawToQcow2(s.filePath); syncErr != nil {
+				return
+			}
+		}
+	}()
+
+	go func() {
+		var senderErr error
+		defer func() {
+			if senderErr != nil {
+				s.log.Errorf("failed to ask replica %v to send backing image file data: %v", senderAddress, senderErr)
+				cancel()
+			}
+			errChan <- senderErr
+			close(errChan)
+		}()
+		replicaClient, err := client.NewReplicaClient(senderAddress)
+		if err != nil {
+			senderErr = errors.Wrapf(err, "failed to get replica client %v", senderAddress)
+			return
+		}
+		if err := replicaClient.ExportVolume(snapshotName, podIP, types.DefaultVolumeExportReceiverPort, true); err != nil {
+			senderErr = errors.Wrapf(err, "failed to export volume snapshot %v", snapshotName)
+			return
+		}
 	}()
 
 	return nil

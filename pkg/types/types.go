@@ -9,10 +9,13 @@ const (
 	DiskPathInContainer              = "/data/"
 	DataSourceDirectoryName          = "/tmp/"
 
+	EnvPodIP = "POD_IP"
+
 	DefaultSectorSize = 512
 
-	DefaultManagerPort          = 8000
-	DefaultDataSourceServerPort = 8001
+	DefaultManagerPort              = 8000
+	DefaultDataSourceServerPort     = 8001
+	DefaultVolumeExportReceiverPort = 8002
 
 	GRPCServiceTimeout     = 3 * time.Minute
 	HTTPTimeout            = 4 * time.Second
@@ -39,10 +42,19 @@ const (
 type DataSourceType string
 
 const (
-	DataSourceTypeDownload = DataSourceType("download")
-	DataSourceTypeUpload   = DataSourceType("upload")
+	DataSourceTypeDownload         = DataSourceType("download")
+	DataSourceTypeUpload           = DataSourceType("upload")
+	DataSourceTypeExportFromVolume = DataSourceType("export-from-volume")
 )
 
 const (
-	DataSourceTypeDownloadParameterURL = "url"
+	DataSourceTypeDownloadParameterURL                   = "url"
+	DataSourceTypeExportFromVolumeParameterVolumeName    = "volume-name"
+	DataSourceTypeExportFromVolumeParameterVolumeSize    = "volume-size"
+	DataSourceTypeExportFromVolumeParameterSnapshotName  = "snapshot-name"
+	DataSourceTypeExportFromVolumeParameterSenderAddress = "sender-address"
+	DataSourceTypeExportFromVolumeParameterExportType    = "export-type"
+
+	DataSourceTypeExportFromVolumeParameterExportTypeRAW   = "raw"
+	DataSourceTypeExportFromVolumeParameterExportTypeQCOW2 = "qcow2"
 )
