@@ -40,6 +40,7 @@ type Service struct {
 
 	fileName        string
 	filePath        string
+	tmpFilePath     string
 	state           types.State
 	size            int64
 	progress        int
@@ -80,9 +81,10 @@ func LaunchService(ctx context.Context,
 		parameters:       parameters,
 		expectedChecksum: checksum,
 
-		fileName: fileName,
-		filePath: filepath.Join(workDir, fileName),
-		state:    types.StateStarting,
+		fileName:    fileName,
+		filePath:    filepath.Join(workDir, fileName),
+		tmpFilePath: filepath.Join(workDir, fileName+types.TmpFileSuffix),
+		state:       types.StateStarting,
 
 		downloader: downloader,
 	}
@@ -100,6 +102,9 @@ func (s *Service) init() error {
 		return nil
 	}
 	if err := os.RemoveAll(s.filePath); err != nil {
+		return err
+	}
+	if err := os.RemoveAll(s.tmpFilePath); err != nil {
 		return err
 	}
 	switch s.sourceType {
@@ -127,7 +132,7 @@ func (s *Service) checkAndReuseBackingImageFile() error {
 	}
 	checksum, err := util.GetFileChecksum(s.filePath)
 	if err != nil {
-		return errors.Wrapf(err, "failed to calculate checksum for the tmp file after processing")
+		return errors.Wrapf(err, "failed to calculate checksum for the existing file after processing")
 	}
 	s.currentChecksum = checksum
 	if s.expectedChecksum != "" && s.expectedChecksum != s.currentChecksum {
@@ -181,10 +186,11 @@ func (s *Service) finishProcessing(err error) {
 			s.message = err.Error()
 			s.lock.Unlock()
 		}
+		os.RemoveAll(s.tmpFilePath)
 	}()
 
 	if err != nil {
-		err = errors.Wrapf(err, "failed to finish file %v processing", s.filePath)
+		err = errors.Wrapf(err, "failed to finish file %v and %v processing", s.tmpFilePath, s.filePath)
 		return
 	}
 
@@ -193,20 +199,24 @@ func (s *Service) finishProcessing(err error) {
 		return
 	}
 
-	stat, statErr := os.Stat(s.filePath)
+	stat, statErr := os.Stat(s.tmpFilePath)
 	if statErr != nil {
-		err = errors.Wrapf(err, "failed to stat file %v after getting the file from source", s.filePath)
+		err = errors.Wrapf(err, "failed to stat file %v after getting the file from source", s.tmpFilePath)
 		return
 	}
 
-	checksum, cksumErr := util.GetFileChecksum(s.filePath)
+	checksum, cksumErr := util.GetFileChecksum(s.tmpFilePath)
 	if cksumErr != nil {
-		err = errors.Wrapf(cksumErr, "failed to calculate checksum for file %v getting the file from source", s.filePath)
+		err = errors.Wrapf(cksumErr, "failed to calculate checksum for file %v getting the file from source", s.tmpFilePath)
 		return
 	}
 	s.currentChecksum = checksum
 	if s.expectedChecksum != "" && s.expectedChecksum != s.currentChecksum {
 		err = fmt.Errorf("the expected checksum %v doesn't match the the file actual checksum %v", s.expectedChecksum, s.currentChecksum)
+		return
+	}
+	if err := os.Rename(s.tmpFilePath, s.filePath); err != nil {
+		err = fmt.Errorf("failed to rename the tmp file %v to %v at the end of processing", s.tmpFilePath, s.filePath)
 		return
 	}
 
@@ -237,7 +247,7 @@ func (s *Service) downloadFromURL(parameters map[string]string) error {
 	}
 
 	go func() {
-		_, err := s.downloader.DownloadFile(s.ctx, url, s.filePath, s)
+		_, err := s.downloader.DownloadFile(s.ctx, url, s.tmpFilePath, s)
 		s.finishProcessing(err)
 	}()
 
@@ -292,7 +302,7 @@ func (s *Service) exportFromVolume(parameters map[string]string) error {
 			s.finishProcessing(syncErr)
 		}()
 
-		if err := sparserest.Server(ctx, strconv.Itoa(types.DefaultVolumeExportReceiverPort), s.filePath, s); err != nil && err != http.ErrServerClosed {
+		if err := sparserest.Server(ctx, strconv.Itoa(types.DefaultVolumeExportReceiverPort), s.tmpFilePath, s); err != nil && err != http.ErrServerClosed {
 			syncErr = err
 			return
 		}
@@ -305,7 +315,7 @@ func (s *Service) exportFromVolume(parameters map[string]string) error {
 
 		// The file size will change after conversion.
 		if qcow2ConversionRequired {
-			if syncErr = util.ConvertFromRawToQcow2(s.filePath); syncErr != nil {
+			if syncErr = util.ConvertFromRawToQcow2(s.tmpFilePath); syncErr != nil {
 				return
 			}
 		}
@@ -405,10 +415,10 @@ func (s *Service) doUpload(request *http.Request) (err error) {
 		return fmt.Errorf("cannot get the uploaded data since the upload request doesn't contain form 'chunk'")
 	}
 
-	if err := os.Remove(s.filePath); err != nil && !os.IsNotExist(err) {
+	if err := os.Remove(s.tmpFilePath); err != nil && !os.IsNotExist(err) {
 		return err
 	}
-	f, err := os.OpenFile(s.filePath, os.O_RDWR|os.O_CREATE, 0666)
+	f, err := os.OpenFile(s.tmpFilePath, os.O_RDWR|os.O_CREATE, 0666)
 	if err != nil {
 		return err
 	}
