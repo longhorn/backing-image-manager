@@ -24,8 +24,9 @@ const (
 
 	SendingLimit = 3
 
-	BackingImageTmpFileName = "backing.tmp"
 	BackingImageFileName    = "backing"
+	TmpFileSuffix           = ".tmp"
+	BackingImageTmpFileName = BackingImageFileName + TmpFileSuffix
 )
 
 type State string
