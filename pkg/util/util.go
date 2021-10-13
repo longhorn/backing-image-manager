@@ -72,6 +72,7 @@ type DiskConfig struct {
 
 func GetDiskConfig(diskPath string) (string, error) {
 	filePath := filepath.Join(diskPath, DiskConfigFile)
+	filePath = filepath.Clean(filePath)
 	output, err := ioutil.ReadFile(filePath)
 	if err != nil {
 		return "", fmt.Errorf("cannot find disk config file %v: %v", filePath, err)
@@ -119,6 +120,7 @@ func WriteBackingImageConfigFile(workDirectory string, cfg *BackingImageConfig) 
 }
 
 func ReadBackingImageConfigFile(workDirectory string) (*BackingImageConfig, error) {
+	workDirectory = filepath.Clean(workDirectory)
 	filePath := filepath.Join(workDirectory, BackingImageConfigFile)
 	output, err := ioutil.ReadFile(filePath)
 	if err != nil {

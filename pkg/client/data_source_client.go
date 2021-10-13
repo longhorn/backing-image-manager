@@ -8,6 +8,7 @@ import (
 	"mime/multipart"
 	"net/http"
 	"os"
+	"path/filepath"
 	"strconv"
 	"time"
 
@@ -74,6 +75,7 @@ func (client *DataSourceClient) Upload(filePath string) error {
 		if err != nil {
 			return
 		}
+		filePath = filepath.Clean(filePath)
 		file, err := os.Open(filePath)
 		if err != nil {
 			return
