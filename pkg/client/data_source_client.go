@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"log"
 	"mime/multipart"
 	"net/http"
 	"os"
@@ -78,7 +79,12 @@ func (client *DataSourceClient) Upload(filePath string) error {
 		if err != nil {
 			return
 		}
-		defer file.Close()
+		defer func() {
+			if err := file.Close(); err != nil {
+				log.Printf("Error closing file: %s\n", err)
+			}
+		}()
+
 		if _, err = io.Copy(part, file); err != nil {
 			return
 		}

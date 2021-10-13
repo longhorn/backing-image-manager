@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"os"
 	"strconv"
@@ -84,7 +85,11 @@ func (d *Downloader) DownloadFile(ctx context.Context, url, filepath string, upd
 	if err != nil {
 		return 0, err
 	}
-	defer outFile.Close()
+	defer func() {
+		if err := outFile.Close(); err != nil {
+			log.Printf("Error closing file: %s\n", err)
+		}
+	}()
 
 	return IdleTimeoutCopy(ctx, cancel, resp.Body, outFile, updater)
 }

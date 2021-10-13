@@ -3,6 +3,7 @@ package datasource
 import (
 	"encoding/json"
 	"fmt"
+	"log"
 	"mime/multipart"
 	"net/http"
 	"os"
@@ -422,7 +423,12 @@ func (s *Service) doUpload(request *http.Request) (err error) {
 	if err != nil {
 		return err
 	}
-	defer f.Close()
+	defer func() {
+		if err := f.Close(); err != nil {
+			log.Printf("Error closing file: %s\n", err)
+		}
+	}()
+
 	if err = f.Truncate(size); err != nil {
 		return err
 	}

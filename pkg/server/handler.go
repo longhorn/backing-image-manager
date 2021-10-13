@@ -2,6 +2,7 @@ package server
 
 import (
 	"fmt"
+	"log"
 	"net/http"
 	"os"
 	"sync"
@@ -159,7 +160,12 @@ func GenerateTestFile(filePath string, size int64) error {
 	if err != nil {
 		return err
 	}
-	defer f.Close()
+	defer func() {
+		if err := f.Close(); err != nil {
+			log.Printf("Error closing file: %s\n", err)
+		}
+	}()
+
 	return f.Truncate(size)
 }
 
