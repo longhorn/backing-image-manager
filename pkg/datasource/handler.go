@@ -227,7 +227,6 @@ func (s *Service) finishProcessing(err error) {
 	s.state = types.StateReadyForTransfer
 	s.lock.Unlock()
 
-	return
 }
 
 func (s *Service) downloadFromURL(parameters map[string]string) error {

@@ -192,7 +192,6 @@ func (m *Manager) unregisterBackingImage(bi *BackingImage) {
 
 	delete(m.backingImages, bi.Name)
 
-	return
 }
 
 func (m *Manager) findBackingImage(name string) *BackingImage {
