@@ -186,7 +186,10 @@ func (s *Service) finishProcessing(err error) {
 			s.message = err.Error()
 			s.lock.Unlock()
 		}
-		os.RemoveAll(s.tmpFilePath)
+		err = os.RemoveAll(s.tmpFilePath)
+		if err != nil {
+			fmt.Println(err)
+		}
 	}()
 
 	if err != nil {
