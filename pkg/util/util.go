@@ -55,7 +55,10 @@ func GetFileChecksum(filePath string) (string, error) {
 			}
 			break
 		}
-		h.Write(buf[:nr])
+		_, err = h.Write(buf[:nr])
+		if err != nil {
+			return "", err
+		}
 	}
 
 	return hex.EncodeToString(h.Sum(nil)), nil

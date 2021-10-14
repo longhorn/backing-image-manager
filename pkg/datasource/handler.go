@@ -465,5 +465,8 @@ func (s *Service) Get(writer http.ResponseWriter, request *http.Request) {
 		return
 	}
 	writer.Header().Set("Content-Type", "application/json")
-	writer.Write(outgoingJSON)
+	_, err = writer.Write(outgoingJSON)
+	if err != nil {
+		http.Error(writer, err.Error(), http.StatusInternalServerError)
+	}
 }

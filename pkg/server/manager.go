@@ -375,11 +375,11 @@ func ParsePortRange(portRange string) (int32, int32, error) {
 	if len(parts) != 2 {
 		return 0, 0, fmt.Errorf("Invalid format for range: %s", portRange)
 	}
-	portStart, err := strconv.Atoi(strings.TrimSpace(parts[0]))
+	portStart, err := strconv.ParseInt(strings.TrimSpace(parts[0]), 10, 32)
 	if err != nil {
 		return 0, 0, fmt.Errorf("Invalid start port for range: %s", err)
 	}
-	portEnd, err := strconv.Atoi(strings.TrimSpace(parts[1]))
+	portEnd, err := strconv.ParseInt(strings.TrimSpace(parts[1]), 10, 32)
 	if err != nil {
 		return 0, 0, fmt.Errorf("Invalid end port for range: %s", err)
 	}
