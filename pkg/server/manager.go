@@ -2,6 +2,7 @@ package server
 
 import (
 	"fmt"
+	"net"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -255,7 +256,7 @@ func (m *Manager) Sync(ctx context.Context, req *rpc.SyncRequest) (resp *rpc.Bac
 	m.backingImages[req.BackingImageSpec.Name] = bi
 	m.lock.Unlock()
 
-	senderManagerAddress := fmt.Sprintf("%s:%d", req.FromHost, types.DefaultManagerPort)
+	senderManagerAddress := net.JoinHostPort(req.FromHost, strconv.Itoa(types.DefaultManagerPort))
 	port, err := bi.Receive(senderManagerAddress, m.allocatePorts, m.releasePorts)
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to receive backing image")
@@ -266,7 +267,7 @@ func (m *Manager) Sync(ctx context.Context, req *rpc.SyncRequest) (resp *rpc.Bac
 		return bi.Get(), nil
 	}
 
-	receiverAddress := fmt.Sprintf("%s:%d", req.ToHost, port)
+	receiverAddress := net.JoinHostPort(req.ToHost, fmt.Sprintf("%d", port))
 	if err = m.Sender(senderManagerAddress, receiverAddress, req.BackingImageSpec.Name); err != nil {
 		return nil, errors.Wrapf(err, "sender failed to ask for backing image sending")
 	}
