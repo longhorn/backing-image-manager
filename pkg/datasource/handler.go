@@ -421,7 +421,7 @@ func (s *Service) doUpload(request *http.Request) (err error) {
 	if err := os.Remove(s.tmpFilePath); err != nil && !os.IsNotExist(err) {
 		return err
 	}
-	f, err := os.OpenFile(s.tmpFilePath, os.O_RDWR|os.O_CREATE, 0666)
+	f, err := os.OpenFile(s.tmpFilePath, os.O_RDWR|os.O_CREATE, 0600)
 	if err != nil {
 		return err
 	}

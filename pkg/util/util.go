@@ -115,7 +115,7 @@ func WriteBackingImageConfigFile(workDirectory string, cfg *BackingImageConfig) 
 			}
 		}
 	}()
-	return ioutil.WriteFile(filePath, encoded, 0666)
+	return ioutil.WriteFile(filePath, encoded, 0600)
 }
 
 func ReadBackingImageConfigFile(workDirectory string) (*BackingImageConfig, error) {

@@ -365,7 +365,7 @@ func (bi *BackingImage) prepareWorkDirectory() error {
 	if err := os.RemoveAll(bi.WorkDirectory); err != nil {
 		return errors.Wrapf(err, "failed to clean up the work directory %v before processing backing image", bi.WorkDirectory)
 	}
-	if err := os.Mkdir(bi.WorkDirectory, 666); err != nil && !os.IsExist(err) {
+	if err := os.Mkdir(bi.WorkDirectory, 0750); err != nil && !os.IsExist(err) {
 		return errors.Wrapf(err, "failed to create work directory %v before processing backing image", bi.WorkDirectory)
 	}
 	return nil
