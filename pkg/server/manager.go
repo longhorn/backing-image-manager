@@ -112,7 +112,6 @@ func (m *Manager) startMonitoring() {
 		case <-m.shutdownCh:
 			m.log.Info("Backing Image Manager stops monitoring")
 			done = true
-			break
 		case <-ticker.C:
 			diskUUID, err := util.GetDiskConfig(m.diskPath)
 			if err != nil {
@@ -143,7 +142,6 @@ func (m *Manager) startBroadcasting() {
 		case <-m.shutdownCh:
 			m.log.Info("Backing Image Manager stops broadcasting")
 			done = true
-			break
 		case <-m.updateCh:
 			m.broadcastCh <- nil
 		}
