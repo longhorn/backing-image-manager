@@ -184,7 +184,6 @@ func (bi *BackingImage) Receive(senderManagerAddress string, portAllocateFunc fu
 		bi.lock.Lock()
 		bi.finishFileProcessingWithoutLock(err)
 		bi.lock.Unlock()
-		return
 	}()
 	go bi.waitForProcessingStartWithLock()
 
@@ -507,7 +506,6 @@ func (bi *BackingImage) finishFileProcessingWithoutLock(err error) {
 	}
 
 	log.Infof("Backing Image: backing image file is ready")
-	return
 }
 
 func (bi *BackingImage) UpdateSyncFileProgress(size int64) {
