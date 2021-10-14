@@ -1,6 +1,7 @@
 package server
 
 import (
+	"context"
 	"encoding/json"
 	"io/ioutil"
 	"os"
@@ -14,6 +15,7 @@ import (
 
 	"github.com/golang/protobuf/ptypes/empty"
 	"github.com/sirupsen/logrus"
+
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -132,18 +134,18 @@ func (s *TestSuite) TestManagerSyncAndFetch(c *C) {
 					FromHost: "from-host-" + strconv.Itoa(i),
 					ToHost:   "to-host-" + strconv.Itoa(i),
 				}
-				syncResp, err := s.m.Sync(nil, syncReq)
+				syncResp, err := s.m.Sync(context.TODO(), syncReq)
 				c.Assert(err, IsNil)
 				c.Assert(syncResp.Status.State, Not(Equals), string(types.StateFailed))
 
-				getResp, err := s.m.Get(nil, &rpc.GetRequest{
+				getResp, err := s.m.Get(context.TODO(), &rpc.GetRequest{
 					Name: name,
 				})
 				c.Assert(err, IsNil)
 				c.Assert(getResp.Spec.Name, Equals, name)
 				c.Assert(getResp.Status.State, Not(Equals), string(types.StateFailed))
 
-				listResp, err := s.m.List(nil, &empty.Empty{})
+				listResp, err := s.m.List(context.TODO(), &empty.Empty{})
 				c.Assert(err, IsNil)
 				c.Assert(listResp.BackingImages[name], NotNil)
 				c.Assert(listResp.BackingImages[name].Spec.Name, Equals, name)
@@ -151,7 +153,7 @@ func (s *TestSuite) TestManagerSyncAndFetch(c *C) {
 
 				isReady := false
 				for j := 0; j < RetryCount; j++ {
-					getResp, err := s.m.Get(nil, &rpc.GetRequest{
+					getResp, err := s.m.Get(context.TODO(), &rpc.GetRequest{
 						Name: name,
 					})
 					c.Assert(err, IsNil)
@@ -179,11 +181,11 @@ func (s *TestSuite) TestManagerSyncAndFetch(c *C) {
 					},
 					SourceFileName: sourceFileName,
 				}
-				fetchResp, err := s.m.Fetch(nil, fetchReq)
+				fetchResp, err := s.m.Fetch(context.TODO(), fetchReq)
 				c.Assert(err, IsNil)
 				c.Assert(fetchResp.Status.State, Equals, string(types.StateReady))
 
-				getResp, err := s.m.Get(nil, &rpc.GetRequest{
+				getResp, err := s.m.Get(context.TODO(), &rpc.GetRequest{
 					Name: name,
 				})
 				c.Assert(err, IsNil)
@@ -198,9 +200,9 @@ func (s *TestSuite) TestManagerSyncAndFetch(c *C) {
 			deleteReq := &rpc.DeleteRequest{
 				Name: name,
 			}
-			_, err := s.m.Delete(nil, deleteReq)
+			_, err := s.m.Delete(context.TODO(), deleteReq)
 			c.Assert(err, IsNil)
-			_, err = s.m.Get(nil, &rpc.GetRequest{
+			_, err = s.m.Get(context.TODO(), &rpc.GetRequest{
 				Name: name,
 			})
 			c.Assert(err, NotNil)
