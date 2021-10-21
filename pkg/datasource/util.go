@@ -1,6 +1,7 @@
 package datasource
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"io"
@@ -9,11 +10,13 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/pkg/errors"
+
 	"github.com/longhorn/backing-image-manager/pkg/types"
 )
 
 const (
-	DownloadBufferSize = 2 << 13
+	DownloadBufferSize = 1 << 12
 )
 
 type ProgressUpdater interface {
@@ -86,11 +89,20 @@ func (d *Downloader) DownloadFile(ctx context.Context, url, filepath string, upd
 	}
 	defer outFile.Close()
 
-	return IdleTimeoutCopy(ctx, cancel, resp.Body, outFile, updater)
+	copied, err := IdleTimeoutCopy(ctx, cancel, resp.Body, outFile, updater)
+	if err != nil {
+		return 0, err
+	}
+
+	if err := outFile.Truncate(copied); err != nil {
+		return 0, errors.Wrapf(err, "failed to truncate the file after download")
+	}
+
+	return copied, nil
 }
 
-func IdleTimeoutCopy(ctx context.Context, cancel context.CancelFunc, src io.Reader, dst io.Writer, updater ProgressUpdater) (written int64, err error) {
-	writeCh := make(chan int)
+func IdleTimeoutCopy(ctx context.Context, cancel context.CancelFunc, src io.Reader, dst io.WriteSeeker, updater ProgressUpdater) (copied int64, err error) {
+	writeSeekCh := make(chan int64)
 
 	go func() {
 		t := time.NewTimer(types.HTTPTimeout)
@@ -100,7 +112,7 @@ func IdleTimeoutCopy(ctx context.Context, cancel context.CancelFunc, src io.Read
 				return
 			case <-t.C:
 				cancel()
-			case <-writeCh:
+			case <-writeSeekCh:
 				if !t.Stop() {
 					<-t.C
 				}
@@ -109,26 +121,37 @@ func IdleTimeoutCopy(ctx context.Context, cancel context.CancelFunc, src io.Read
 		}
 	}()
 
+	var nr, nw int
+	var nws int64
+	var rErr, handleErr error
 	buf := make([]byte, DownloadBufferSize)
+	zeroByteArray := make([]byte, DownloadBufferSize)
 	for {
 		// Read will error out once the context is cancelled.
-		nr, readErr := src.Read(buf)
+		nr, rErr = src.Read(buf)
 		if nr > 0 {
-			nw, writeErr := dst.Write(buf[0:nr])
-			if writeErr != nil {
-				err = writeErr
+			// Skip writing zero data
+			if bytes.Equal(buf[0:nr], zeroByteArray[0:nr]) {
+				_, handleErr = dst.Seek(int64(nr), io.SeekCurrent)
+				nws = int64(nr)
+			} else {
+				nw, handleErr = dst.Write(buf[0:nr])
+				nws = int64(nw)
+			}
+			if handleErr != nil {
+				err = handleErr
 				break
 			}
-			writeCh <- nw
-			written += int64(nw)
-			updater.UpdateProgress(int64(nw))
+			writeSeekCh <- nws
+			copied += nws
+			updater.UpdateProgress(nws)
 		}
-		if readErr != nil {
-			if readErr != io.EOF {
-				err = readErr
+		if rErr != nil {
+			if rErr != io.EOF {
+				err = rErr
 			}
 			break
 		}
 	}
-	return written, err
+	return copied, err
 }
