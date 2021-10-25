@@ -153,9 +153,10 @@ func (bi *BackingImage) Receive(senderManagerAddress string, portAllocateFunc fu
 		log.Infof("Backing Image: succeeded to reuse the existing backing image file, will skip syncing")
 		return 0, nil
 	}
-	log.Infof("Backing Image: no existing backing image file for reusage, will start syncing then: %v", err)
+
+	log.Infof("Backing Image: no valid backing image file for reusage, will start syncing then: %v", err)
 	if err = bi.prepareWorkDirectory(); err != nil {
-		return 0, errors.Wrapf(err, "failed to prepare for backing image receiving")
+		return 0, errors.Wrapf(err, "failed to clean up then recreate work directory for backing image receiving")
 	}
 
 	// This means state was pending but somehow the handler had been initialized.
@@ -263,25 +264,28 @@ func (bi *BackingImage) Fetch(sourceFileName string) (err error) {
 
 	// Try to check if the file already exists first
 	sourceFilePath := filepath.Join(bi.DiskPath, types.DataSourceDirectoryName, sourceFileName)
-	if err = bi.checkAndReuseBackingImageFileWithoutLock(); err == nil {
+	reuseErr := bi.checkAndReuseBackingImageFileWithoutLock()
+	if reuseErr == nil {
 		log.Infof("Backing Image: succeeded to reuse the existing backing image file", sourceFilePath)
 		if sourceFileName != "" {
 			log.Infof("Backing Image: start to clean up the source file %v and skip fetching", sourceFilePath)
 			if err := os.RemoveAll(sourceFilePath); err != nil {
-				log.Errorf("Backing Image: failed to clean up the source file after skipping fetching: %v", err)
+				log.Warnf("Backing Image: failed to clean up the source file after skipping fetching, users may need to clean it up manually: %v", err)
 			}
 		}
 		return nil
 	}
+
+	// The existing file in the work directory is incorrect or does not exist, try to do cleanup anyway.
+	if err := bi.prepareWorkDirectory(); err != nil {
+		return errors.Wrapf(err, "failed to clean up then recreate work directory for backing image fetching")
+	}
+
 	// If the source file name is empty, it means the caller is trying to reuse existing file only.
 	if sourceFileName == "" {
-		return errors.Wrapf(err, "failed to reuse file via the fetch call")
+		return errors.Wrapf(reuseErr, "failed to reuse file via the fetch call, then reset the work directory and exited")
 	}
-	log.Infof("Backing Image: no existing backing image file for reusage, will start fetching from %v then: %v", sourceFilePath, err)
-
-	if err = bi.prepareWorkDirectory(); err != nil {
-		return errors.Wrapf(err, "failed to prepare for backing image fetching")
-	}
+	log.Infof("Backing Image: no valid backing image file for reusage, will start fetching from %v then: %v", sourceFilePath, reuseErr)
 
 	bi.log = log
 
