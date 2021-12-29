@@ -27,7 +27,7 @@ github.com/longhorn/longhorn-engine/pkg/replica/client
 github.com/longhorn/longhorn-engine/pkg/types
 github.com/longhorn/longhorn-engine/pkg/util
 github.com/longhorn/longhorn-engine/proto/ptypes
-# github.com/longhorn/sparse-tools v0.0.0-20210729195155-a0fb4226a960
+# github.com/longhorn/sparse-tools v0.0.0-20211229004436-663d2f697e2a
 github.com/longhorn/sparse-tools/sparse
 github.com/longhorn/sparse-tools/sparse/rest
 # github.com/mschoch/smat v0.0.0-20160514031455-90eadee771ae
