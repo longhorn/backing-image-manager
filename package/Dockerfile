@@ -1,22 +1,22 @@
-FROM ubuntu:20.04
+FROM registry.suse.com/bci/bci-base:15.3
 
 ARG ARCH=amd64
 
-ENV DEBIAN_FRONTEND=noninteractive
+RUN zypper -n addrepo --refresh https://download.opensuse.org/repositories/system:/snappy/SLE_15/system:snappy.repo && \
+    zypper -n addrepo --refresh https://download.opensuse.org/repositories/devel:tools:scm/SLE_15_SP3/devel:tools:scm.repo && \
+    zypper -n addrepo --refresh https://download.opensuse.org/repositories/network:utilities/SLE_15_SP3/network:utilities.repo && \
+    zypper --gpg-auto-import-keys ref
 
-RUN apt-get update && \
-    apt-get dist-upgrade -y && \
-    apt-get install -y kmod curl wget nfs-common fuse \
-    libibverbs1 librdmacm1 libconfig-general-perl libaio1 sg3-utils \
-    iputils-ping telnet iperf qemu-utils iproute2 && \
-    rm -rf /var/lib/apt/lists/*
+RUN zypper -n install kmod curl wget nfs-client nfs4-acl-tools fuse \
+	librdmacm1 librdmacm-utils libibverbs perl-Config-General libaio-devel sg3_utils \
+     iputils telnet iperf qemu-tools iproute2 e2fsprogs e2fsprogs-devel xfsprogs xfsprogs-devel
 
 COPY bin/backing-image-manager /usr/local/bin/
 
 VOLUME /usr/local/bin
 
 # Add Tini
-ENV TINI_VERSION v0.18.0
+ENV TINI_VERSION v0.19.0
 ADD https://github.com/krallin/tini/releases/download/${TINI_VERSION}/tini-${ARCH} /tini
 RUN chmod +x /tini
 ENTRYPOINT ["/tini", "--"]
