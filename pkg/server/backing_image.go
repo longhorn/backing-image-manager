@@ -130,7 +130,7 @@ func (bi *BackingImage) Get() (resp *rpc.BackingImageResponse) {
 func (bi *BackingImage) Receive(senderManagerAddress string, portAllocateFunc func(portCount int32) (int32, int32, error), portReleaseFunc func(start, end int32) error) (port int32, err error) {
 	bi.lock.Lock()
 	log := bi.log
-	log.Info("Backing Image: start to receive backing image")
+	log.Infof("Backing Image: start to receive backing image from %v", senderManagerAddress)
 
 	defer func() {
 		bi.lock.Unlock()
