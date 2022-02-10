@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"mime/multipart"
+	"net"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -26,6 +27,8 @@ import (
 const (
 	RetryInterval = 1 * time.Second
 	RetryCount    = 60
+
+	StorageNetworkInterface = "lhnet1"
 )
 
 type Service struct {
@@ -261,7 +264,7 @@ func (s *Service) exportFromVolume(parameters map[string]string) error {
 	}
 	senderAddress := parameters[types.DataSourceTypeExportFromVolumeParameterSenderAddress]
 	if senderAddress == "" {
-		return fmt.Errorf("avaialble replica address of the source volume is not specified during volume exporting")
+		return fmt.Errorf("available replica address of the source volume is not specified during volume exporting")
 	}
 
 	qcow2ConversionRequired := false
@@ -282,6 +285,14 @@ func (s *Service) exportFromVolume(parameters map[string]string) error {
 	if podIP == "" {
 		return fmt.Errorf("can't get pod ip from environment variable")
 	}
+
+	storageIP := podIP
+	if ip, err := s.getLocalIPv4fromInterface(StorageNetworkInterface); err != nil {
+		s.log.WithError(err).Debugf("Failed to get IP from %v interface, fallback to use the default pod IP %v", StorageNetworkInterface, storageIP)
+	} else {
+		storageIP = ip
+	}
+	s.log.Infof("Export volume via %v", storageIP)
 
 	s.lock.Lock()
 	s.size = size
@@ -336,7 +347,7 @@ func (s *Service) exportFromVolume(parameters map[string]string) error {
 			senderErr = errors.Wrapf(err, "failed to get replica client %v", senderAddress)
 			return
 		}
-		if err := replicaClient.ExportVolume(snapshotName, podIP, types.DefaultVolumeExportReceiverPort, true); err != nil {
+		if err := replicaClient.ExportVolume(snapshotName, storageIP, types.DefaultVolumeExportReceiverPort, true); err != nil {
 			senderErr = errors.Wrapf(err, "failed to export volume snapshot %v", snapshotName)
 			return
 		}
@@ -466,4 +477,29 @@ func (s *Service) Get(writer http.ResponseWriter, request *http.Request) {
 	}
 	writer.Header().Set("Content-Type", "application/json")
 	writer.Write(outgoingJSON)
+}
+
+func (s *Service) getLocalIPv4fromInterface(name string) (ip string, err error) {
+	iface, err := net.InterfaceByName(name)
+	if err != nil {
+		s.log.WithError(err).Debugf("interface %s doesn't exist", name)
+		return "", nil
+	}
+
+	addrs, err := iface.Addrs()
+	if err != nil {
+		return "", errors.Wrapf(err, "interface %s doesn't have address\n", name)
+	}
+
+	var ipv4 net.IP
+	for _, addr := range addrs {
+		if ipv4 = addr.(*net.IPNet).IP.To4(); ipv4 != nil {
+			break
+		}
+	}
+	if ipv4 == nil {
+		return "", errors.Errorf("interface %s don't have an IPv4 address\n", name)
+	}
+
+	return ipv4.String(), nil
 }
