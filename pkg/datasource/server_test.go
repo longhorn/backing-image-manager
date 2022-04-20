@@ -23,7 +23,7 @@ import (
 const (
 	LetterBytes = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
 
-	MockFileSize = 100
+	MockFileSize = 4096
 )
 
 type MockDownloader struct{}
@@ -47,7 +47,7 @@ func (d *MockDownloader) DownloadFile(ctx context.Context, url, filepath string,
 		case <-ctx.Done():
 			return 0, fmt.Errorf("cancelled mock processing")
 		default:
-			updater.UpdateProgress(1)
+			updater.UpdateProgress(16)
 		}
 		time.Sleep(50 * time.Millisecond)
 	}
