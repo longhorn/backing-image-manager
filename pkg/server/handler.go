@@ -140,19 +140,19 @@ func (e *MockHandlerEngine) mockProcessing(ctx context.Context, filePath string,
 		return err
 	}
 
-	for i := 1; i <= MockProcessingSize; i++ {
+	for i := 1; i <= MockProcessingSize/16; i++ {
 		select {
 		case <-ctx.Done():
 			return fmt.Errorf("cancelled mock receiving")
 		default:
-			progressUpdateFunc(1)
+			progressUpdateFunc(16)
 		}
 		time.Sleep(50 * time.Millisecond)
 	}
 	return nil
 }
 
-const MockProcessingSize = 100
+const MockProcessingSize = 4096
 
 func GenerateTestFile(filePath string, size int64) error {
 	f, err := os.Create(filePath)
