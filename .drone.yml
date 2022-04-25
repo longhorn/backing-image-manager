@@ -221,7 +221,7 @@ steps:
     path: /var/run/docker.sock
 
 - name: publish-image
-  image: plugins/docker
+  image: rancher/drone-images:docker-s390x
   settings:
     build_args:
     - ARCH=s390x
