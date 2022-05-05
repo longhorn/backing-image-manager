@@ -308,6 +308,7 @@ steps:
     platforms:
       - linux/amd64
       - linux/arm64
+      - linux/s390x
     target: "longhornio/backing-image-manager:${DRONE_BRANCH}-head"
     template: "longhornio/backing-image-manager:${DRONE_BRANCH}-head-ARCH"
   when:
