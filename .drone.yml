@@ -256,7 +256,7 @@ steps:
       from_secret: docker_username
     password:
       from_secret: docker_password
-    repo: rancherlabs/longhornonz-backing-image-manager
+    repo: longhornio/backing-image-manager
     tag: "${DRONE_TAG}-s390x"
   volumes:
     - name: socket
