@@ -227,12 +227,12 @@ steps:
     - ARCH=s390x
     custom_dns: 1.1.1.1
     dockerfile: package/Dockerfile
+    username:
+      from_secret: docker_username
     password:
       from_secret: docker_password
     repo: longhornio/backing-image-manager
     tag: "${DRONE_BRANCH}-head-s390x"
-    username:
-      from_secret: docker_username
   volumes:
     - name: socket
       path: /var/run/docker.sock
@@ -252,12 +252,12 @@ steps:
     - ARCH=s390x
     custom_dns: 1.1.1.1
     dockerfile: package/Dockerfile
+    username:
+      from_secret: docker_username
     password:
-      from_secret: docker_password_rancherlabs_dev
+      from_secret: docker_password
     repo: rancherlabs/longhornonz-backing-image-manager
     tag: "${DRONE_TAG}-s390x"
-    username:
-      from_secret: docker_username_rancherlabs_dev
   volumes:
     - name: socket
       path: /var/run/docker.sock
