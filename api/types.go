@@ -86,11 +86,30 @@ type DataSourceInfo struct {
 	Parameters       map[string]string `json:"parameters"`
 	ExpectedChecksum string            `json:"expectedChecksum"`
 
-	FileName        string `json:"fileName"`
-	State           string `json:"state"`
-	Size            int64  `json:"size"`
-	Progress        int    `json:"progress"`
-	ProcessedSize   int64  `json:"processedSize"`
-	CurrentChecksum string `json:"currentChecksum"`
-	Message         string `json:"message"`
+	FilePath         string `json:"filePath"`
+	State            string `json:"state"`
+	Size             int64  `json:"size"`
+	Progress         int    `json:"progress"`
+	ProcessedSize    int64  `json:"processedSize"`
+	ModificationTime string `json:"modificationTime"`
+	CurrentChecksum  string `json:"currentChecksum"`
+	Message          string `json:"message"`
+}
+
+type FileInfo struct {
+	DiskUUID         string            `json:"diskUUID"`
+	SourceType       string            `json:"sourceType"`
+	Parameters       map[string]string `json:"parameters"`
+	ExpectedChecksum string            `json:"expectedChecksum"`
+
+	FilePath         string `json:"filePath"`
+	UUID             string `json:"uuid"`
+	Size             int64  `json:"size"`
+	State            string `json:"state"`
+	Progress         int    `json:"progress"`
+	ProcessedSize    int64  `json:"processedSize"`
+	ModificationTime string `json:"modificationTime"`
+	CurrentChecksum  string `json:"currentChecksum"`
+	Message          string `json:"message"`
+	SendingReference int    `json:"sendingReference"`
 }
