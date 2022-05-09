@@ -1,4 +1,4 @@
-package datasource
+package sync
 
 import (
 	"bytes"
@@ -23,14 +23,14 @@ type ProgressUpdater interface {
 	UpdateProgress(size int64)
 }
 
-type HTTPDownloader interface {
-	GetDownloadSize(url string) (fileSize int64, err error)
-	DownloadFile(ctx context.Context, url, filepath string, updater ProgressUpdater) (written int64, err error)
+type Handler interface {
+	GetSizeFromURL(url string) (fileSize int64, err error)
+	DownloadFromURL(ctx context.Context, url, filePath string, updater ProgressUpdater) (written int64, err error)
 }
 
-type Downloader struct{}
+type HTTPHandler struct{}
 
-func (d *Downloader) GetDownloadSize(url string) (fileSize int64, err error) {
+func (h *HTTPHandler) GetSizeFromURL(url string) (size int64, err error) {
 	ctx, cancel := context.WithTimeout(context.Background(), types.HTTPTimeout)
 	defer cancel()
 
@@ -52,18 +52,18 @@ func (d *Downloader) GetDownloadSize(url string) (fileSize int64, err error) {
 
 	if resp.Header.Get("Content-Length") == "" {
 		// -1 indicates unknown size
-		fileSize = -1
+		size = -1
 	} else {
-		fileSize, err = strconv.ParseInt(resp.Header.Get("Content-Length"), 10, 64)
+		size, err = strconv.ParseInt(resp.Header.Get("Content-Length"), 10, 64)
 		if err != nil {
 			return 0, err
 		}
 	}
 
-	return fileSize, nil
+	return size, nil
 }
 
-func (d *Downloader) DownloadFile(ctx context.Context, url, filepath string, updater ProgressUpdater) (written int64, err error) {
+func (h *HTTPHandler) DownloadFromURL(ctx context.Context, url, filePath string, updater ProgressUpdater) (written int64, err error) {
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
@@ -83,7 +83,7 @@ func (d *Downloader) DownloadFile(ctx context.Context, url, filepath string, upd
 		return 0, fmt.Errorf("expected status code 200 from %s, got %s", url, resp.Status)
 	}
 
-	outFile, err := os.Create(filepath)
+	outFile, err := os.Create(filePath)
 	if err != nil {
 		return 0, err
 	}
@@ -101,9 +101,9 @@ func (d *Downloader) DownloadFile(ctx context.Context, url, filepath string, upd
 	return copied, nil
 }
 
-func IdleTimeoutCopy(ctx context.Context, cancel context.CancelFunc, src io.Reader, dst io.WriteSeeker, updater ProgressUpdater) (copied int64, err error) {
+// IdleTimeoutCopy relies on ctx of the reader/src or a separate timer to interrupt the processing.
+func IdleTimeoutCopy(ctx context.Context, cancel context.CancelFunc, src io.ReadCloser, dst io.WriteSeeker, updater ProgressUpdater) (copied int64, err error) {
 	writeSeekCh := make(chan int64)
-
 	go func() {
 		t := time.NewTimer(types.HTTPTimeout)
 		for {
@@ -153,5 +153,41 @@ func IdleTimeoutCopy(ctx context.Context, cancel context.CancelFunc, src io.Read
 			break
 		}
 	}
+
 	return copied, err
+}
+
+const (
+	MockFileSize = 4096
+)
+
+type MockHandler struct{}
+
+func (mh *MockHandler) GetSizeFromURL(url string) (fileSize int64, err error) {
+	return MockFileSize, nil
+}
+func (mh *MockHandler) DownloadFromURL(ctx context.Context, url, filePath string, updater ProgressUpdater) (written int64, err error) {
+	return mh.mockFile(ctx, filePath, updater)
+}
+
+func (mh *MockHandler) mockFile(ctx context.Context, filePath string, updater ProgressUpdater) (written int64, err error) {
+	f, err := os.Create(filePath)
+	if err != nil {
+		return 0, err
+	}
+	f.Close()
+	if err := os.Truncate(filePath, MockFileSize); err != nil {
+		return 0, err
+	}
+
+	for i := 1; i <= MockFileSize/16; i++ {
+		select {
+		case <-ctx.Done():
+			return 0, fmt.Errorf("cancelled mock processing")
+		default:
+			updater.UpdateProgress(16)
+		}
+		time.Sleep(50 * time.Millisecond)
+	}
+	return MockFileSize, nil
 }

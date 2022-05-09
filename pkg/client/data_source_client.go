@@ -9,13 +9,8 @@ import (
 	"net/http"
 	"os"
 	"strconv"
-	"time"
 
 	"github.com/longhorn/backing-image-manager/api"
-)
-
-const (
-	HTTPClientTimeout = 10 * time.Second
 )
 
 type DataSourceClient struct {

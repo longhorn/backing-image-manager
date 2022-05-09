@@ -14,7 +14,8 @@ const (
 	DefaultSectorSize = 512
 
 	DefaultManagerPort              = 8000
-	DefaultDataSourceServerPort     = 8001
+	DefaultDataSourceServerPort     = 8000
+	DefaultSyncServerPort           = 8001
 	DefaultVolumeExportReceiverPort = 8002
 
 	GRPCServiceTimeout     = 3 * time.Minute
@@ -35,9 +36,10 @@ const (
 	StatePending          = State("pending")
 	StateStarting         = State("starting")
 	StateInProgress       = State("in-progress")
-	StateReadyForTransfer = State("ready-for-transfer")
-	StateReady            = State("ready")
 	StateFailed           = State("failed")
+	StateUnknown          = State("unknown")
+	StateReady            = State("ready")
+	StateReadyForTransfer = State("ready-for-transfer")
 )
 
 type DataSourceType string
@@ -58,4 +60,8 @@ const (
 
 	DataSourceTypeExportFromVolumeParameterExportTypeRAW   = "raw"
 	DataSourceTypeExportFromVolumeParameterExportTypeQCOW2 = "qcow2"
+
+	SyncingFileTypeEmpty = ""
+	SyncingFileTypeRaw   = "raw"
+	SyncingFileTypeQcow2 = "qcow2"
 )

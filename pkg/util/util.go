@@ -61,6 +61,27 @@ func GetFileChecksum(filePath string) (string, error) {
 	return hex.EncodeToString(h.Sum(nil)), nil
 }
 
+func CopyFile(srcPath, dstPath string) (int64, error) {
+	src, err := os.Open(srcPath)
+	if err != nil {
+		return 0, err
+	}
+	defer src.Close()
+
+	if _, err := os.Stat(dstPath); err == nil || !os.IsNotExist(err) {
+		if err := os.RemoveAll(dstPath); err != nil {
+			return 0, errors.Wrapf(err, "failed to clean up the dst file path before copy")
+		}
+	}
+	dst, err := os.Create(dstPath)
+	if err != nil {
+		return 0, err
+	}
+	defer dst.Close()
+
+	return io.Copy(dst, src)
+}
+
 // DiskConfigFile should be the same as the schema in longhorn-manager/util
 const (
 	DiskConfigFile = "longhorn-disk.cfg"
@@ -84,7 +105,53 @@ func GetDiskConfig(diskPath string) (string, error) {
 	return cfg.DiskUUID, nil
 }
 
-// This should be the same as the schema in longhorn-manager/util
+const (
+	SyncingFileConfigFileSuffix = ".cfg"
+)
+
+type SyncingFileConfig struct {
+	FilePath         string `json:"name"`
+	UUID             string `json:"uuid"`
+	Size             int64  `json:"size"`
+	ExpectedChecksum string `json:"expectedChecksum"`
+	CurrentChecksum  string `json:"currentChecksum"`
+	ModificationTime string `json:"modificationTime"`
+}
+
+func GetSyncingFileConfigFilePath(syncingFilePath string) string {
+	return fmt.Sprintf("%s%s", syncingFilePath, SyncingFileConfigFileSuffix)
+}
+
+func WriteSyncingFileConfig(configFilePath string, config *SyncingFileConfig) (err error) {
+	encoded, err := json.Marshal(config)
+	if err != nil {
+		return errors.Wrapf(err, "BUG: Cannot marshal %+v", config)
+	}
+
+	defer func() {
+		if err != nil {
+			if delErr := os.Remove(configFilePath); delErr != nil && !os.IsNotExist(delErr) {
+				err = errors.Wrapf(err, "cleaning up syncing file config %v failed with error: %v", configFilePath, delErr)
+			}
+		}
+	}()
+	// We don't care the previous config file content.
+	return ioutil.WriteFile(configFilePath, encoded, 0666)
+}
+
+func ReadSyncingFileConfig(configFilePath string) (*SyncingFileConfig, error) {
+	output, err := ioutil.ReadFile(configFilePath)
+	if err != nil {
+		return nil, errors.Wrapf(err, "cannot find the syncing file config file %v", configFilePath)
+	}
+
+	config := &SyncingFileConfig{}
+	if err := json.Unmarshal(output, config); err != nil {
+		return nil, errors.Wrapf(err, "failed to unmarshal %v content %v", configFilePath, output)
+	}
+	return config, nil
+}
+
 const (
 	BackingImageConfigFile = "backing.cfg"
 )
@@ -228,4 +295,12 @@ func ConvertFromRawToQcow2(filePath string) error {
 		return err
 	}
 	return os.Rename(tmpFilePath, filePath)
+}
+
+func FileModificationTime(filePath string) string {
+	fi, err := os.Stat(filePath)
+	if err != nil {
+		return ""
+	}
+	return fi.ModTime().UTC().String()
 }
