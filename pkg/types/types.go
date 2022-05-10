@@ -1,6 +1,8 @@
 package types
 
 import (
+	"fmt"
+	"path/filepath"
 	"time"
 )
 
@@ -8,8 +10,6 @@ const (
 	BackingImageManagerDirectoryName = "backing-images"
 	DiskPathInContainer              = "/data/"
 	DataSourceDirectoryName          = "/tmp/"
-
-	EnvPodIP = "POD_IP"
 
 	DefaultSectorSize = 512
 
@@ -51,12 +51,12 @@ const (
 )
 
 const (
-	DataSourceTypeDownloadParameterURL                   = "url"
-	DataSourceTypeExportFromVolumeParameterVolumeName    = "volume-name"
+	DataSourceTypeDownloadParameterURL = "url"
+	DataSourceTypeFileType             = "file-type"
+
 	DataSourceTypeExportFromVolumeParameterVolumeSize    = "volume-size"
 	DataSourceTypeExportFromVolumeParameterSnapshotName  = "snapshot-name"
 	DataSourceTypeExportFromVolumeParameterSenderAddress = "sender-address"
-	DataSourceTypeExportFromVolumeParameterExportType    = "export-type"
 
 	DataSourceTypeExportFromVolumeParameterExportTypeRAW   = "raw"
 	DataSourceTypeExportFromVolumeParameterExportTypeQCOW2 = "qcow2"
@@ -65,3 +65,11 @@ const (
 	SyncingFileTypeRaw   = "raw"
 	SyncingFileTypeQcow2 = "qcow2"
 )
+
+func GetDataSourceFileName(biName, biUUID string) string {
+	return fmt.Sprintf("%s-%s", biName, biUUID)
+}
+
+func GetDataSourceFilePath(diskPath, biName, biUUID string) string {
+	return filepath.Join(diskPath, DataSourceDirectoryName, GetDataSourceFileName(biName, biUUID))
+}

@@ -32,7 +32,7 @@ func BackingImageCmd() cli.Command {
 
 func SyncCmd() cli.Command {
 	return cli.Command{
-		Name: "sync",
+		Name: "file-sync",
 		Flags: []cli.Flag{
 			cli.StringFlag{
 				Name: "name",
@@ -55,14 +55,14 @@ func SyncCmd() cli.Command {
 			},
 		},
 		Action: func(c *cli.Context) {
-			if err := sync(c); err != nil {
-				logrus.Fatalf("Error running backing image sync command: %v.", err)
+			if err := fileSync(c); err != nil {
+				logrus.Fatalf("Error running backing image file-sync command: %v.", err)
 			}
 		},
 	}
 }
 
-func sync(c *cli.Context) error {
+func fileSync(c *cli.Context) error {
 	url := c.GlobalString("url")
 	bimClient := client.NewBackingImageManagerClient(url)
 	bi, err := bimClient.Sync(c.String("name"), c.String("uuid"), c.String("checksum"), c.String("from-host"), c.String("to-host"), c.Int64("size"))
