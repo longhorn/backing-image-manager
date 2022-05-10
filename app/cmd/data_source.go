@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"context"
 	"fmt"
 	"strconv"
 	"strings"
@@ -9,6 +10,7 @@ import (
 	"github.com/urfave/cli"
 
 	"github.com/longhorn/backing-image-manager/pkg/datasource"
+	"github.com/longhorn/backing-image-manager/pkg/sync"
 	"github.com/longhorn/backing-image-manager/pkg/types"
 )
 
@@ -18,10 +20,17 @@ func DataSourceCmd() cli.Command {
 		Flags: []cli.Flag{
 			cli.StringFlag{
 				Name:  "listen",
-				Value: ":" + strconv.Itoa(types.DefaultDataSourceServerPort),
+				Value: "localhost:" + strconv.Itoa(types.DefaultDataSourceServerPort),
 			},
 			cli.StringFlag{
-				Name: "file-name",
+				Name:  "sync-listen",
+				Value: "localhost:" + strconv.Itoa(types.DefaultSyncServerPort),
+			},
+			cli.StringFlag{
+				Name: "name",
+			},
+			cli.StringFlag{
+				Name: "uuid",
 			},
 			cli.StringFlag{
 				Name: "source-type",
@@ -43,8 +52,12 @@ func DataSourceCmd() cli.Command {
 }
 
 func dataSource(c *cli.Context) error {
+	logrus.SetLevel(logrus.DebugLevel)
+
 	listen := c.String("listen")
-	fileName := c.String("file-name")
+	syncListen := c.String("sync-listen")
+	name := c.String("name")
+	uuid := c.String("uuid")
 	sourceType := c.String("source-type")
 	checksum := c.String("checksum")
 	parameters, err := parseSliceToMap(c.StringSlice("parameters"))
@@ -52,7 +65,7 @@ func dataSource(c *cli.Context) error {
 		return err
 	}
 
-	return datasource.NewServer(listen, fileName, checksum, sourceType, parameters, types.DiskPathInContainer, &datasource.Downloader{})
+	return datasource.NewServer(context.Background(), listen, syncListen, checksum, sourceType, name, uuid, types.DiskPathInContainer, parameters, &sync.HTTPHandler{})
 }
 
 func parseSliceToMap(sli []string) (map[string]string, error) {
