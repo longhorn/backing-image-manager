@@ -1,20 +1,15 @@
 package cmd
 
 import (
+	"context"
 	"fmt"
-	"net"
-	"os"
-	"os/signal"
-	"syscall"
+	"strconv"
 
-	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	"github.com/urfave/cli"
-	"google.golang.org/grpc"
-	"google.golang.org/grpc/reflection"
 
-	"github.com/longhorn/backing-image-manager/pkg/rpc"
-	"github.com/longhorn/backing-image-manager/pkg/server"
+	"github.com/longhorn/backing-image-manager/pkg/manager"
+	filesync "github.com/longhorn/backing-image-manager/pkg/sync"
 	"github.com/longhorn/backing-image-manager/pkg/types"
 	"github.com/longhorn/backing-image-manager/pkg/util"
 )
@@ -25,7 +20,11 @@ func StartCmd() cli.Command {
 		Flags: []cli.Flag{
 			cli.StringFlag{
 				Name:  "listen",
-				Value: "localhost:8000",
+				Value: "localhost:" + strconv.Itoa(types.DefaultManagerPort),
+			},
+			cli.StringFlag{
+				Name:  "sync-listen",
+				Value: "localhost:" + strconv.Itoa(types.DefaultSyncServerPort),
 			},
 			cli.StringFlag{
 				Name:  "disk-uuid",
@@ -46,6 +45,7 @@ func StartCmd() cli.Command {
 
 func start(c *cli.Context) error {
 	listen := c.String("listen")
+	syncListen := c.String("sync-listen")
 	diskUUID := c.String("disk-uuid")
 	portRange := c.String("port-range")
 
@@ -59,38 +59,5 @@ func start(c *cli.Context) error {
 		return fmt.Errorf("invalid input disk UUID %v, which doesn't match disk UUID %v the disk config file", diskUUID, diskUUIDInFile)
 	}
 
-	shutdownCh := make(chan error)
-	bim, err := server.NewManager(diskUUID, types.DiskPathInContainer, portRange, shutdownCh)
-	if err != nil {
-		return err
-	}
-
-	listenAt, err := net.Listen("tcp", listen)
-	if err != nil {
-		return errors.Wrap(err, "Failed to listen")
-	}
-
-	rpcService := grpc.NewServer()
-	rpc.RegisterBackingImageManagerServiceServer(rpcService, bim)
-	reflection.Register(rpcService)
-
-	go func() {
-		if err := rpcService.Serve(listenAt); err != nil {
-			logrus.Errorf("Stopping due to %v:", err)
-		}
-		// graceful shutdown before exit
-		bim.Shutdown()
-		close(shutdownCh)
-	}()
-	logrus.Infof("Backing Image Manager listening to %v", listen)
-
-	sigs := make(chan os.Signal, 1)
-	signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
-	go func() {
-		sig := <-sigs
-		logrus.Infof("Backing Image Manager received %v to exit", sig)
-		rpcService.Stop()
-	}()
-
-	return <-shutdownCh
+	return manager.NewServer(context.Background(), listen, syncListen, diskUUID, types.DiskPathInContainer, portRange, &filesync.HTTPHandler{})
 }

@@ -1,4 +1,4 @@
-package server
+package manager
 
 import (
 	"github.com/golang/protobuf/ptypes/empty"
