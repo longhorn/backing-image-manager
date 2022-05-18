@@ -41,10 +41,12 @@ message BackingImageResponse {
 
 message DeleteRequest {
 	string name = 1;
+	string uuid = 2;
 }
 
 message GetRequest {
 	string name = 1;
+	string uuid = 2;
 }
 
 message ListResponse{
@@ -61,17 +63,17 @@ message VersionResponse {
 }
 
 message SyncRequest {
-	BackingImageSpec backing_image_spec = 1;
-	string from_host = 2;
-	string to_host = 3;
+	BackingImageSpec spec = 1;
+	string from_address = 2;
 }
 
 message SendRequest {
 	string name = 1;
-	string to_address = 2;
+	string uuid = 2;
+	string to_address = 3;
 }
 
 message FetchRequest {
 	BackingImageSpec spec = 1;
-	string source_file_name = 2;
+	string data_source_address = 2;
 }

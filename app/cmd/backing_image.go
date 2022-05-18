@@ -1,12 +1,13 @@
 package cmd
 
 import (
-	"fmt"
+	"strconv"
 
 	"github.com/sirupsen/logrus"
 	"github.com/urfave/cli"
 
 	"github.com/longhorn/backing-image-manager/pkg/client"
+	"github.com/longhorn/backing-image-manager/pkg/types"
 	"github.com/longhorn/backing-image-manager/pkg/util"
 )
 
@@ -16,7 +17,7 @@ func BackingImageCmd() cli.Command {
 		Flags: []cli.Flag{
 			cli.StringFlag{
 				Name:  "url",
-				Value: "localhost:8000",
+				Value: "localhost:" + strconv.Itoa(types.DefaultManagerPort),
 			},
 		},
 		Subcommands: []cli.Command{
@@ -44,10 +45,7 @@ func SyncCmd() cli.Command {
 				Name: "size",
 			},
 			cli.StringFlag{
-				Name: "from-host",
-			},
-			cli.StringFlag{
-				Name: "to-host",
+				Name: "from-address",
 			},
 			cli.StringFlag{
 				Name:  "checksum",
@@ -65,7 +63,7 @@ func SyncCmd() cli.Command {
 func fileSync(c *cli.Context) error {
 	url := c.GlobalString("url")
 	bimClient := client.NewBackingImageManagerClient(url)
-	bi, err := bimClient.Sync(c.String("name"), c.String("uuid"), c.String("checksum"), c.String("from-host"), c.String("to-host"), c.Int64("size"))
+	bi, err := bimClient.Sync(c.String("name"), c.String("uuid"), c.String("checksum"), c.String("from-address"), c.Int64("size"))
 	if err != nil {
 		return err
 	}
@@ -78,6 +76,9 @@ func SendCmd() cli.Command {
 		Flags: []cli.Flag{
 			cli.StringFlag{
 				Name: "name",
+			},
+			cli.StringFlag{
+				Name: "uuid",
 			},
 			cli.StringFlag{
 				Name: "to-address",
@@ -94,12 +95,20 @@ func SendCmd() cli.Command {
 func send(c *cli.Context) error {
 	url := c.GlobalString("url")
 	bimClient := client.NewBackingImageManagerClient(url)
-	return bimClient.Send(c.String("name"), c.String("to-address"))
+	return bimClient.Send(c.String("name"), c.String("uuid"), c.String("to-address"))
 }
 
 func DeleteCmd() cli.Command {
 	return cli.Command{
-		Name:    "delete",
+		Name: "delete",
+		Flags: []cli.Flag{
+			cli.StringFlag{
+				Name: "name",
+			},
+			cli.StringFlag{
+				Name: "uuid",
+			},
+		},
 		Aliases: []string{"del"},
 		Action: func(c *cli.Context) {
 			if err := del(c); err != nil {
@@ -110,17 +119,22 @@ func DeleteCmd() cli.Command {
 }
 
 func del(c *cli.Context) error {
-	if len(c.Args()) != 1 {
-		return fmt.Errorf("receive only 1 parameter as the requested backing image name")
-	}
 	url := c.GlobalString("url")
 	bimClient := client.NewBackingImageManagerClient(url)
-	return bimClient.Delete(c.Args()[0])
+	return bimClient.Delete(c.String("name"), c.String("uuid"))
 }
 
 func GetCmd() cli.Command {
 	return cli.Command{
 		Name: "get",
+		Flags: []cli.Flag{
+			cli.StringFlag{
+				Name: "name",
+			},
+			cli.StringFlag{
+				Name: "uuid",
+			},
+		},
 		Action: func(c *cli.Context) {
 			if err := get(c); err != nil {
 				logrus.Fatalf("Error running backing image get command: %v.", err)
@@ -131,11 +145,8 @@ func GetCmd() cli.Command {
 
 func get(c *cli.Context) error {
 	url := c.GlobalString("url")
-	if len(c.Args()) != 1 {
-		return fmt.Errorf("receive only 1 parameter as the requested backing image name")
-	}
 	bimClient := client.NewBackingImageManagerClient(url)
-	bi, err := bimClient.Get(c.Args()[0])
+	bi, err := bimClient.Get(c.String("name"), c.String("uuid"))
 	if err != nil {
 		return err
 	}
@@ -178,7 +189,7 @@ func FetchCmd() cli.Command {
 				Name: "size",
 			},
 			cli.StringFlag{
-				Name:  "source-file-name",
+				Name:  "data-source-address",
 				Value: "",
 			},
 			cli.StringFlag{
@@ -197,7 +208,7 @@ func FetchCmd() cli.Command {
 func fetch(c *cli.Context) error {
 	url := c.GlobalString("url")
 	bimClient := client.NewBackingImageManagerClient(url)
-	bi, err := bimClient.Fetch(c.String("name"), c.String("uuid"), c.String("source-file-name"), c.String("checksum"), c.Int64("size"))
+	bi, err := bimClient.Fetch(c.String("name"), c.String("uuid"), c.String("checksum"), c.String("data-source-address"), c.Int64("size"))
 	if err != nil {
 		return err
 	}

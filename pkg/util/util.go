@@ -18,6 +18,8 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/connectivity"
 
 	"github.com/longhorn/sparse-tools/sparse"
 )
@@ -80,6 +82,37 @@ func CopyFile(srcPath, dstPath string) (int64, error) {
 	defer dst.Close()
 
 	return io.Copy(dst, src)
+}
+
+func DetectGRPCServerAvailability(address string, waitIntervalInSecond int, shouldAvailable bool) bool {
+	endTime := time.Now().Add(time.Duration(waitIntervalInSecond) * time.Second)
+
+	ticker := time.NewTicker(time.Second)
+	defer ticker.Stop()
+	for time.Now().Before(endTime) {
+		<-ticker.C
+
+		ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+		conn, err := grpc.DialContext(ctx, address, grpc.WithInsecure())
+		cancel()
+		if !shouldAvailable {
+			if err != nil {
+				return true
+			}
+			state := conn.GetState()
+			if state != connectivity.Ready && state != connectivity.Idle && state != connectivity.Connecting {
+				return true
+			}
+		}
+		if shouldAvailable && err == nil {
+			state := conn.GetState()
+			if state == connectivity.Ready || state == connectivity.Idle {
+				return true
+			}
+		}
+	}
+
+	return false
 }
 
 // DiskConfigFile should be the same as the schema in longhorn-manager/util
@@ -150,53 +183,6 @@ func ReadSyncingFileConfig(configFilePath string) (*SyncingFileConfig, error) {
 		return nil, errors.Wrapf(err, "failed to unmarshal %v content %v", configFilePath, output)
 	}
 	return config, nil
-}
-
-const (
-	BackingImageConfigFile = "backing.cfg"
-)
-
-type BackingImageConfig struct {
-	Name             string `json:"name"`
-	UUID             string `json:"uuid"`
-	Size             int64  `json:"size"`
-	ExpectedChecksum string `json:"expectedChecksum"`
-	CurrentChecksum  string `json:"currentChecksum"`
-}
-
-func WriteBackingImageConfigFile(workDirectory string, cfg *BackingImageConfig) error {
-	filePath := filepath.Join(workDirectory, BackingImageConfigFile)
-	if _, err := os.Stat(filePath); os.IsExist(err) {
-		return fmt.Errorf("backing image cfg on %v exists, cannot override", filePath)
-	}
-
-	encoded, err := json.Marshal(cfg)
-	if err != nil {
-		return errors.Wrapf(err, "BUG: Cannot marshal %+v", cfg)
-	}
-
-	defer func() {
-		if err != nil {
-			if delErr := os.Remove(filePath); delErr != nil && !os.IsNotExist(delErr) {
-				err = errors.Wrapf(err, "cleaning up backing image config path %v failed with error: %v", filePath, delErr)
-			}
-		}
-	}()
-	return ioutil.WriteFile(filePath, encoded, 0666)
-}
-
-func ReadBackingImageConfigFile(workDirectory string) (*BackingImageConfig, error) {
-	filePath := filepath.Join(workDirectory, BackingImageConfigFile)
-	output, err := ioutil.ReadFile(filePath)
-	if err != nil {
-		return nil, errors.Wrapf(err, "cannot find backing image config file %v", filePath)
-	}
-
-	cfg := &BackingImageConfig{}
-	if err := json.Unmarshal(output, cfg); err != nil {
-		return nil, errors.Wrapf(err, "failed to unmarshal %v content %v", filePath, output)
-	}
-	return cfg, nil
 }
 
 func Execute(envs []string, binary string, args ...string) (string, error) {

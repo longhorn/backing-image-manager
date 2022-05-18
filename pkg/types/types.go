@@ -3,6 +3,7 @@ package types
 import (
 	"fmt"
 	"path/filepath"
+	"strings"
 	"time"
 )
 
@@ -18,10 +19,10 @@ const (
 	DefaultSyncServerPort           = 8001
 	DefaultVolumeExportReceiverPort = 8002
 
-	GRPCServiceTimeout     = 3 * time.Minute
-	HTTPTimeout            = 4 * time.Second
-	FileValidationInterval = 5 * time.Second
-	FileSyncTimeout        = 120
+	GRPCServiceTimeout = 1 * time.Minute
+	HTTPTimeout        = 4 * time.Second
+	MonitorInterval    = 3 * time.Second
+	FileSyncTimeout    = 120
 
 	SendingLimit = 3
 
@@ -72,4 +73,21 @@ func GetDataSourceFileName(biName, biUUID string) string {
 
 func GetDataSourceFilePath(diskPath, biName, biUUID string) string {
 	return filepath.Join(diskPath, DataSourceDirectoryName, GetDataSourceFileName(biName, biUUID))
+}
+
+func GetBackingImageDirectoryName(biName, biUUID string) string {
+	return fmt.Sprintf("%s-%s", biName, biUUID)
+}
+
+func GetBackingImageDirectory(diskPath, biName, biUUID string) string {
+	return filepath.Join(diskPath, BackingImageManagerDirectoryName, GetBackingImageDirectoryName(biName, biUUID))
+}
+
+func GetBackingImageFilePath(diskPath, biName, biUUID string) string {
+	return filepath.Join(GetBackingImageDirectory(diskPath, biName, biUUID), BackingImageFileName)
+}
+
+func GetBackingImageNameFromFilePath(biFilePath, biUUID string) string {
+	biDirName := filepath.Join(filepath.Base(filepath.Dir(biFilePath)))
+	return strings.TrimSuffix(biDirName, "-"+biUUID)
 }
