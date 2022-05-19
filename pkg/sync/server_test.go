@@ -440,6 +440,54 @@ func (s *SyncTestSuite) TestFetch(c *C) {
 	c.Assert(err, IsNil)
 }
 
+func (s *SyncTestSuite) TestDownloadToDst(c *C) {
+	logrus.Debugf("Testing sync server: TestDownloadToDst")
+
+	fileName := "sync-download-src-file"
+	curPath := filepath.Join(s.dir, fileName)
+	sizeInMB := int64(1024)
+
+	logrus.Debugf("preparing the src file %v with format qcow2 for the test, this may be time-consuming", curPath)
+	err := generateRandomDataFile(curPath, strconv.FormatInt(sizeInMB, 10))
+	c.Assert(err, IsNil)
+	err = util.ConvertFromRawToQcow2(curPath)
+	c.Assert(err, IsNil)
+	// File size will change after the conversion.
+	stat, err := os.Stat(curPath)
+	c.Assert(err, IsNil)
+	logrus.Debugf("the src file %v with format qcow2 for the test is ready", curPath)
+
+	checksum, err := util.GetFileChecksum(curPath)
+	c.Assert(err, IsNil)
+	c.Assert(checksum, Not(Equals), "")
+
+	go NewServer(s.ctx, s.addr, &HTTPHandler{})
+	isRunning := util.DetectHTTPServerAvailability(s.httpAddr, 5, true)
+	c.Assert(isRunning, Equals, true)
+
+	cli := &client.SyncClient{
+		Remote: s.addr,
+	}
+
+	err = cli.Fetch(curPath, curPath, TestSyncingFileUUID, TestDiskUUID, checksum, stat.Size())
+	c.Assert(err, IsNil)
+	_, err = getAndWaitFileState(cli, curPath, string(types.StateReady), 60)
+	c.Assert(err, IsNil)
+
+	downloadFileName := "sync-download-dst-file"
+	downloadFilePath := filepath.Join(s.dir, downloadFileName)
+	err = cli.DownloadToDst(curPath, downloadFilePath)
+	c.Assert(err, IsNil)
+
+	downloadChecksum, err := util.GetFileChecksum(downloadFilePath)
+	c.Assert(err, IsNil)
+	c.Assert(downloadChecksum, Equals, checksum)
+	// Downloaded file can be identified as a qcow2 file as well.
+	downloadFileFormat, err := util.DetectFileFormat(downloadFilePath)
+	c.Assert(err, IsNil)
+	c.Assert(downloadFileFormat, Equals, "qcow2")
+}
+
 func (s *SyncTestSuite) TestDuplicateCalls(c *C) {
 	logrus.Debugf("Testing sync server: TestDuplicateCalls")
 

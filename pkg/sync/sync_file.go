@@ -378,6 +378,19 @@ func (sf *SyncingFile) Delete() {
 	return
 }
 
+func (sf *SyncingFile) GetFileReader() (io.ReadCloser, error) {
+	sf.log.Infof("SyncingFile: prepare a reader for the sync file")
+
+	sf.lock.RLock()
+	if sf.state != types.StateReady {
+		sf.lock.RUnlock()
+		return nil, fmt.Errorf("cannot get the reader for a non-ready file, current state %v", sf.state)
+	}
+	sf.lock.RUnlock()
+
+	return os.Open(sf.filePath)
+}
+
 func (sf *SyncingFile) stateCheckBeforeProcessing() (bool, error) {
 	sf.lock.RLock()
 	defer sf.lock.RUnlock()

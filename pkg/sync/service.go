@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"mime/multipart"
 	"net/http"
 	"net/url"
@@ -198,6 +199,46 @@ func (s *Service) cleanup(filePath string, deleteFile bool) {
 
 	if sf != nil && deleteFile {
 		sf.Delete()
+	}
+	return
+}
+
+func (s *Service) DownloadToDst(writer http.ResponseWriter, request *http.Request) {
+	var err error
+	defer func() {
+		if err != nil {
+			s.log.Errorf("Sync Service: failed to do download to dst, err: %v", err)
+			http.Error(writer, err.Error(), http.StatusInternalServerError)
+			return
+		}
+	}()
+
+	var filePath string
+	if filePath, err = url.QueryUnescape(mux.Vars(request)["id"]); err != nil {
+		return
+	}
+	s.lock.RLock()
+	sf := s.filePathMap[filePath]
+	s.lock.RUnlock()
+
+	if sf == nil {
+		err = fmt.Errorf("nil sync file %v", filePath)
+		return
+	}
+
+	src, sfErr := sf.GetFileReader()
+	if sfErr != nil {
+		err = sfErr
+		return
+	}
+	defer src.Close()
+
+	writer.Header().Set("Content-Disposition", "attachment; filename="+sf.uuid)
+	writer.Header().Set("Content-Type", "application/octet-stream")
+	writer.Header().Set("Content-Length", strconv.FormatInt(sf.size, 10))
+	if _, ioErr := io.Copy(writer, src); ioErr != nil {
+		err = ioErr
+		return
 	}
 	return
 }
