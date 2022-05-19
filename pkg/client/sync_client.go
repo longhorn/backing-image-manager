@@ -12,6 +12,8 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/pkg/errors"
+
 	"github.com/longhorn/backing-image-manager/api"
 	"github.com/longhorn/backing-image-manager/pkg/util"
 )
@@ -341,5 +343,42 @@ func (client *SyncClient) Send(filePath, toAddress string) error {
 		return fmt.Errorf("%s, response body content: %v", util.GetHTTPClientErrorPrefix(resp.StatusCode), string(bodyContent))
 	}
 
+	return nil
+}
+
+func (client *SyncClient) DownloadToDst(srcFilePath, dstFilePath string) error {
+	if _, err := os.Stat(dstFilePath); err == nil || !os.IsNotExist(err) {
+		if err := os.RemoveAll(dstFilePath); err != nil {
+			return errors.Wrapf(err, "failed to clean up the dst file path before download")
+		}
+	}
+	dst, err := os.Create(dstFilePath)
+	defer dst.Close()
+
+	httpClient := &http.Client{Timeout: 0}
+
+	requestURL := fmt.Sprintf("http://%s/v1/files/%s/download", client.Remote, url.QueryEscape(srcFilePath))
+	req, err := http.NewRequest("GET", requestURL, nil)
+	if err != nil {
+		return err
+	}
+
+	resp, err := httpClient.Do(req)
+	if err != nil {
+		return fmt.Errorf("download to dst failed, err: %s", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("%s, skip reading the response body content", util.GetHTTPClientErrorPrefix(resp.StatusCode))
+	}
+
+	copied, err := io.Copy(dst, resp.Body)
+	if err != nil {
+		return err
+	}
+	if err := dst.Truncate(copied); err != nil {
+		return errors.Wrapf(err, "failed to truncate the file after download")
+	}
 	return nil
 }

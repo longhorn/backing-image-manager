@@ -15,11 +15,11 @@ func NewRouter(service *Service) *mux.Router {
 	router.HandleFunc("/v1/files/{id}", service.Delete).Methods("DELETE")
 	router.HandleFunc("/v1/files/{id}", service.Forget).Methods("POST").Queries("action", "forget")
 	router.HandleFunc("/v1/files/{id}", service.SendToPeer).Methods("POST").Queries("action", "sendToPeer")
+	router.HandleFunc("/v1/files/{id}/download", service.DownloadToDst).Methods("GET")
 
 	// Launch a new file
 	router.HandleFunc("/v1/files", service.Fetch).Methods("POST").Queries("action", "fetch")
 	router.HandleFunc("/v1/files", service.DownloadFromURL).Methods("POST").Queries("action", "downloadFromURL")
-	// router.HandleFunc("/v1/files", service.DownloadToDest).Methods("POST").Queries("action", "downloadToDest")
 	router.HandleFunc("/v1/files", service.UploadFromRequest).Methods("POST").Queries("action", "upload")
 	router.HandleFunc("/v1/files", service.ReceiveFromPeer).Methods("POST").Queries("action", "receiveFromPeer")
 
