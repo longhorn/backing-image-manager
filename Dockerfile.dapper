@@ -20,7 +20,7 @@ RUN zypper -n addrepo --refresh https://download.opensuse.org/repositories/syste
 
 # Install packages
 RUN zypper -n install cmake wget curl git less file \
-        libkmod-devel libnl3-devel linux-glibc-devel pkg-config psmisc python3-tox fuse python3-devel \
+        libkmod-devel libnl3-devel linux-glibc-devel pkg-config psmisc python3-tox fuse python3-devel qemu-tools \
         bash-completion librdmacm1 librdmacm-utils libibverbs xsltproc docbook-xsl-stylesheets \
         perl-Config-General libaio-devel glibc-devel-static glibc-devel iptables libltdl7 libdevmapper1_03 iproute2 jq docker gcc
 
