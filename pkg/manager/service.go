@@ -414,6 +414,43 @@ func (m *Manager) Fetch(ctx context.Context, req *rpc.FetchRequest) (resp *rpc.B
 	return m.getAndUpdate(req.Spec.Name, req.Spec.Uuid)
 }
 
+func (m *Manager) PrepareDownload(ctx context.Context, req *rpc.PrepareDownloadRequest) (resp *rpc.PrepareDownloadResponse, err error) {
+	log := m.log.WithFields(logrus.Fields{"biName": req.Name, "biUUID": req.Uuid})
+	log.Infof("Backing Image Manager: start to make preparation for backing image download")
+
+	defer func() {
+		if err != nil {
+			log.WithError(err).Error("Backing Image Manager: failed to make preparation for backing image download")
+		}
+	}()
+
+	if req.Name == "" || req.Uuid == "" {
+		return nil, status.Errorf(codes.InvalidArgument, "missing required argument")
+	}
+
+	bi, err := m.getAndUpdate(req.Name, req.Uuid)
+	if err != nil {
+		return nil, err
+	}
+
+	if bi.Status.State != string(types.StateReady) {
+		return nil, status.Errorf(codes.FailedPrecondition, "invalid backing image state %v for the download", bi.Status.State)
+	}
+
+	address, err := util.ConvertToStorageAddress(m.syncAddress)
+	if err != nil {
+		return nil, status.Errorf(codes.Unknown, "failed to detect the storage address of the sync server for the download: %v", err)
+	}
+	srcFilePath := types.GetBackingImageFilePath(m.diskPath, req.Name, req.Uuid)
+
+	log.Infof("Backing Image Manager: prepared for backing image download, file path %v, address %v", srcFilePath, address)
+
+	return &rpc.PrepareDownloadResponse{
+		SrcFilePath: srcFilePath,
+		Address:     address,
+	}, nil
+}
+
 func (m *Manager) allocatePorts(portCount int32) (int32, int32, error) {
 	if portCount < 0 {
 		return 0, 0, fmt.Errorf("invalid port count %v", portCount)
