@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"fmt"
 	"strconv"
 
 	"github.com/sirupsen/logrus"
@@ -27,6 +28,7 @@ func BackingImageCmd() cli.Command {
 			GetCmd(),
 			ListCmd(),
 			FetchCmd(),
+			PrepareDownloadCmd(),
 		},
 	}
 }
@@ -213,4 +215,35 @@ func fetch(c *cli.Context) error {
 		return err
 	}
 	return util.PrintJSON(bi)
+}
+
+func PrepareDownloadCmd() cli.Command {
+	return cli.Command{
+		Name: "prepare-download",
+		Flags: []cli.Flag{
+			cli.StringFlag{
+				Name: "name",
+			},
+			cli.StringFlag{
+				Name: "uuid",
+			},
+		},
+		Action: func(c *cli.Context) {
+			if err := prepareDownload(c); err != nil {
+				logrus.Fatalf("Error running backing image prepare download command: %v.", err)
+			}
+		},
+	}
+}
+
+func prepareDownload(c *cli.Context) error {
+	url := c.GlobalString("url")
+	bimClient := client.NewBackingImageManagerClient(url)
+	srcFilePath, address, err := bimClient.PrepareDownload(c.String("name"), c.String("uuid"))
+	if err != nil {
+		return err
+	}
+	fmt.Println("Source file path:", srcFilePath)
+	fmt.Println("Download server address:", address)
+	return nil
 }

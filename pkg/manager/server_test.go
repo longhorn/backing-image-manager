@@ -380,6 +380,60 @@ func (s *TestSuite) TestSingleBackingImageSync(c *C) {
 	}
 }
 
+func (s *TestSuite) TestBackingImageDownloadToLocal(c *C) {
+	biName := "test-download-src-sync-file"
+	biUUID := TestBackingImageUUID
+	biFilePath1 := types.GetBackingImageFilePath(s.testDiskPath1, biName, biUUID)
+
+	biFileDir1 := filepath.Dir(biFilePath1)
+	err := os.MkdirAll(biFileDir1, 0777)
+	c.Assert(err, IsNil)
+
+	sizeInMB := 1024
+	size := int64(sizeInMB * MB)
+	logrus.Debugf("preparing the original file %v for the test, this may be time-consuming", biFilePath1)
+	err = generateRandomDataFile(biFilePath1, sizeInMB)
+	c.Assert(err, IsNil)
+	defer os.RemoveAll(biFilePath1)
+	checksum, err := util.GetFileChecksum(biFilePath1)
+	c.Assert(err, IsNil)
+	logrus.Debugf("the original file %v for the test is ready", biFilePath1)
+
+	cli1 := client.NewBackingImageManagerClient(s.addr1)
+
+	// The 1st manager directly reuses the file.
+	bi, err := cli1.Fetch(biName, biUUID, checksum, "", size)
+	c.Assert(err, IsNil)
+	c.Assert(bi.Status.State, Not(Equals), string(types.StateFailed))
+	bi, err = getAndWaitFileState(cli1, biName, biUUID, string(types.StateReady), 30)
+	c.Assert(err, IsNil)
+	c.Assert(bi.Status.CurrentChecksum, Equals, checksum)
+	_, err = os.Stat(biFilePath1)
+	c.Assert(err, IsNil)
+	defer s.deleteBackingImage(c, s.addr1, s.testDiskPath1, biName, biUUID)
+
+	// Prepare the download
+	downloadFilePath := filepath.Join(s.testBIMDir1, "test-download-dst-sync-file")
+	srcFilePath, addr, err := cli1.PrepareDownload(biName, biUUID)
+	c.Assert(err, IsNil)
+	c.Assert(addr, Equals, s.syncAddr1)
+	c.Assert(srcFilePath, Equals, biFilePath1)
+
+	// Start the actual download
+	syncCli1 := &client.SyncClient{
+		Remote: addr,
+	}
+	err = syncCli1.DownloadToDst(srcFilePath, downloadFilePath)
+	c.Assert(err, IsNil)
+	defer os.RemoveAll(downloadFilePath)
+
+	downloadChecksum, err := util.GetFileChecksum(downloadFilePath)
+	c.Assert(err, IsNil)
+	c.Assert(downloadChecksum, Equals, checksum)
+
+	s.deleteBackingImage(c, s.addr1, s.testDiskPath1, biName, biUUID)
+}
+
 func (s *TestSuite) TestDuplicateCalls(c *C) {
 	biName := "test-duplicate-calls-file"
 	biUUID := TestBackingImageUUID
