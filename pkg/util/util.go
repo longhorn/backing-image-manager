@@ -20,8 +20,6 @@ import (
 	"github.com/sirupsen/logrus"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/connectivity"
-
-	"github.com/longhorn/sparse-tools/sparse"
 )
 
 const (
@@ -39,25 +37,15 @@ func PrintJSON(obj interface{}) error {
 }
 
 func GetFileChecksum(filePath string) (string, error) {
-	f, err := sparse.NewDirectFileIoProcessor(filePath, os.O_RDONLY, 0)
+	f, err := os.Open(filePath)
 	if err != nil {
 		return "", err
 	}
 	defer f.Close()
 
-	// 4MB
-	buf := make([]byte, 1<<22)
 	h := sha512.New()
-
-	for {
-		nr, err := f.Read(buf)
-		if err != nil {
-			if err != io.EOF {
-				return "", err
-			}
-			break
-		}
-		h.Write(buf[:nr])
+	if _, err := io.Copy(h, f); err != nil {
+		return "", err
 	}
 
 	return hex.EncodeToString(h.Sum(nil)), nil
