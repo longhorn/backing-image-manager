@@ -423,7 +423,7 @@ func (s *Service) doUploadFromRequest(request *http.Request) (err error) {
 	s.log.Info("Sync Service: start uploading file")
 
 	// Prepare the src/reader
-	reader, err := request.Clone(sf.GetContext()).MultipartReader()
+	reader, err := request.MultipartReader()
 	if err != nil {
 		return err
 	}
