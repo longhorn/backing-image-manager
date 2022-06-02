@@ -290,12 +290,6 @@ func (sf *SyncingFile) WaitForStateNonPending() error {
 	}
 }
 
-func (sf *SyncingFile) GetContext() context.Context {
-	sf.lock.RLock()
-	defer sf.lock.RUnlock()
-	return sf.ctx
-}
-
 func (sf *SyncingFile) Get() api.FileInfo {
 	sf.lock.Lock()
 	defer sf.lock.Unlock()
