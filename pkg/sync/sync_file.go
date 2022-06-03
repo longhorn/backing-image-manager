@@ -427,7 +427,10 @@ func (sf *SyncingFile) Fetch(srcFilePath string) (err error) {
 		return nil
 	}
 
-	defer sf.finishProcessing(err)
+	defer func() {
+		sf.finishProcessing(err)
+	}()
+
 	if shouldReuseFile {
 		return fmt.Errorf("syncing file should be directly reused but failed")
 	}
@@ -470,7 +473,10 @@ func (sf *SyncingFile) DownloadFromURL(url string) (written int64, err error) {
 		return 0, nil
 	}
 
-	defer sf.finishProcessing(err)
+	defer func() {
+		sf.finishProcessing(err)
+	}()
+
 	size, err := sf.handler.GetSizeFromURL(url)
 	if err != nil {
 		return 0, err
@@ -485,6 +491,12 @@ func (sf *SyncingFile) DownloadFromURL(url string) (written int64, err error) {
 
 func (sf *SyncingFile) IdleTimeoutCopyToFile(src io.ReadCloser) (copied int64, err error) {
 	sf.log.Infof("SyncingFile: start to copy data to sync file")
+
+	defer func() {
+		if err != nil {
+			sf.log.Errorf("SyncingFile: failed IdleTimeoutCopyToFile: %v", err)
+		}
+	}()
 
 	needProcessing, err := sf.stateCheckBeforeProcessing()
 	if err != nil {
@@ -503,8 +515,15 @@ func (sf *SyncingFile) IdleTimeoutCopyToFile(src io.ReadCloser) (copied int64, e
 		return 0, err
 	}
 
-	defer sf.finishProcessing(err)
-	return IdleTimeoutCopy(sf.ctx, sf.cancel, src, f, sf)
+	defer func() {
+		sf.finishProcessing(err)
+	}()
+
+	nw, err := IdleTimeoutCopy(sf.ctx, sf.cancel, src, f, sf)
+	if err != nil {
+		err = errors.Wrapf(err, "failed to copy the data with timeout")
+	}
+	return nw, err
 }
 
 func (sf *SyncingFile) Receive(port int, fileType string) (err error) {
@@ -518,7 +537,9 @@ func (sf *SyncingFile) Receive(port int, fileType string) (err error) {
 		return nil
 	}
 
-	defer sf.finishProcessing(err)
+	defer func() {
+		sf.finishProcessing(err)
+	}()
 
 	// TODO: After merging the sparse tool repo into this sync service, we don't need to launch a separate server here.
 	//  Instead, this SyncingFile is responsible for punching hole, reading/writing data, and computing checksum.
