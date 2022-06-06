@@ -104,19 +104,15 @@ func (m *Manager) startBroadcasting(ctx context.Context) {
 	defer ticker.Stop()
 
 	done := false
-	for {
+	for !done {
 		select {
 		case <-ctx.Done():
 			m.log.Info("Backing Image Manager: stopped broadcasting due to context done")
 			done = true
-			break
 		case <-ticker.C:
 			if m.checkBroadcasting() {
 				m.broadcastCh <- nil
 			}
-		}
-		if done {
-			break
 		}
 	}
 }
@@ -231,7 +227,7 @@ func (m *Manager) listAndUpdate() (biFileInfoMap map[string]*api.FileInfo, err e
 	for filePath, fInfo := range fInfoList {
 		biName := types.GetBackingImageNameFromFilePath(filePath, fInfo.UUID)
 		newBiFileInfoMap[biName] = fInfo
-		if !m.broadcastRequired && reflect.DeepEqual(m.biFileInfoMap[biName], fInfo) {
+		if !m.broadcastRequired && !reflect.DeepEqual(m.biFileInfoMap[biName], fInfo) {
 			m.broadcastRequired = true
 		}
 	}
