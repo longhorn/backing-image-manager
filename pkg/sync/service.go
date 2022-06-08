@@ -293,9 +293,6 @@ func (s *Service) doFetch(request *http.Request) (err error) {
 		return fmt.Errorf("no diskUUID for existing file fetch")
 	}
 	expectedChecksum := queryParams.Get("expected-checksum")
-	if expectedChecksum == "" {
-		return fmt.Errorf("no expectedChecksum for existing file fetch")
-	}
 	size, err := strconv.ParseInt(queryParams.Get("size"), 10, 64)
 	if err != nil {
 		return err
