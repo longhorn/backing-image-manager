@@ -527,7 +527,7 @@ func (sf *SyncingFile) IdleTimeoutCopyToFile(src io.ReadCloser) (copied int64, e
 }
 
 func (sf *SyncingFile) Receive(port int, fileType string) (err error) {
-	sf.log.Infof("SyncingFile: start to launch a receiver")
+	sf.log.Infof("SyncingFile: start to launch a receiver at port %v", port)
 
 	needProcessing, err := sf.stateCheckBeforeProcessing()
 	if err != nil {
@@ -543,7 +543,8 @@ func (sf *SyncingFile) Receive(port int, fileType string) (err error) {
 
 	// TODO: After merging the sparse tool repo into this sync service, we don't need to launch a separate server here.
 	//  Instead, this SyncingFile is responsible for punching hole, reading/writing data, and computing checksum.
-	if err = sparserest.Server(sf.ctx, strconv.Itoa(port), sf.tmpFilePath, sf); err != nil && err != http.ErrServerClosed {
+	if serverErr := sparserest.Server(sf.ctx, strconv.Itoa(port), sf.tmpFilePath, sf); serverErr != nil && serverErr != http.ErrServerClosed {
+		err = serverErr
 		return err
 	}
 
