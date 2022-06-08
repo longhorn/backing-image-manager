@@ -217,7 +217,7 @@ func (m *Manager) List(ctx context.Context, req *empty.Empty) (*rpc.ListResponse
 func (m *Manager) listAndUpdate() (biFileInfoMap map[string]*api.FileInfo, err error) {
 	defer func() {
 		if err != nil {
-			m.log.Errorf("Backing Image Manager: failed to list and update backing image backing image files")
+			m.log.WithError(err).Errorf("Backing Image Manager: failed to list and update backing image backing image files")
 		}
 	}()
 
@@ -245,10 +245,14 @@ func (m *Manager) listAndUpdate() (biFileInfoMap map[string]*api.FileInfo, err e
 			break
 		}
 	}
-
 	m.biFileInfoMap = newBiFileInfoMap
 
-	return newBiFileInfoMap, nil
+	copiedMap := map[string]*api.FileInfo{}
+	for biName, fInfo := range m.biFileInfoMap {
+		copiedInfo := *fInfo
+		copiedMap[biName] = &copiedInfo
+	}
+	return copiedMap, nil
 }
 
 func backingImageResponse(fInfo *api.FileInfo) *rpc.BackingImageResponse {
