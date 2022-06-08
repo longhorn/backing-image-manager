@@ -603,8 +603,9 @@ func (sf *SyncingFile) finishProcessing(err error) {
 }
 
 func (sf *SyncingFile) finishProcessingNoLock(err error) {
-	defer sf.handleFailureNoLock(err)
+	sf.cancel()
 
+	defer sf.handleFailureNoLock(err)
 	if err != nil {
 		return
 	}
