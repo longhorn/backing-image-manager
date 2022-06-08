@@ -197,10 +197,6 @@ func (sf *SyncingFile) checkAndReuseFile() (err error) {
 		}
 	}()
 
-	if expectedChecksum == "" {
-		return fmt.Errorf("cannot try to reuse a sync file when the expected checksum is unknown")
-	}
-
 	info, err := os.Stat(filePath)
 	if err != nil {
 		return err
@@ -221,7 +217,7 @@ func (sf *SyncingFile) checkAndReuseFile() (err error) {
 			return errors.Wrapf(err, "failed to calculate checksum for the existing file during init")
 		}
 	}
-	if expectedChecksum != currentChecksum {
+	if expectedChecksum != "" && expectedChecksum != currentChecksum {
 		return fmt.Errorf("file expected checksum %v doesn't match the existing file checksum %v", expectedChecksum, currentChecksum)
 	}
 
