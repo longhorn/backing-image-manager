@@ -179,14 +179,20 @@ func (m *Manager) getAndUpdate(name, uuid string) (*rpc.BackingImageResponse, er
 	fInfo, err := m.syncClient.Get(types.GetBackingImageFilePath(m.diskPath, name, uuid))
 	if err != nil {
 		if util.IsHTTPClientErrorNotFound(err) {
+			m.lock.Lock()
+			if _, exists := m.biFileInfoMap[name]; exists {
+				delete(m.biFileInfoMap, name)
+				m.broadcastRequired = true
+			}
+			m.lock.Unlock()
 			return nil, status.Errorf(codes.NotFound, "cannot find backing image %v(%v)", name, uuid)
 		}
 		return nil, err
 	}
 
 	m.lock.Lock()
-	if bi := m.biFileInfoMap[name]; bi != nil && !reflect.DeepEqual(bi, fInfo) {
-		bi = fInfo
+	if !reflect.DeepEqual(m.biFileInfoMap[name], fInfo) {
+		m.biFileInfoMap[name] = fInfo
 		m.broadcastRequired = true
 	}
 	m.lock.Unlock()
