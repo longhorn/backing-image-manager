@@ -163,8 +163,26 @@ func (m *Manager) Delete(ctx context.Context, req *rpc.DeleteRequest) (resp *emp
 		return nil, err
 	}
 
+	if err := m.waitForFileDeleted(req.Name, req.Uuid, 3); err != nil {
+		return nil, err
+	}
+
 	log.Info("Backing Image Manager: deleted backing image")
 	return &empty.Empty{}, nil
+}
+
+func (m *Manager) waitForFileDeleted(name, uuid string, waitIntervalInSecond int) (err error) {
+	endTime := time.Now().Add(time.Duration(waitIntervalInSecond) * time.Second)
+
+	ticker := time.NewTicker(time.Second)
+	defer ticker.Stop()
+	for time.Now().Before(endTime) {
+		<-ticker.C
+		if _, err := m.getAndUpdate(name, uuid); util.IsGRPCErrorNotFound(err) {
+			return nil
+		}
+	}
+	return fmt.Errorf("failed to wait for the backing image %v(%v) deleted within %v second", name, uuid, waitIntervalInSecond)
 }
 
 func (m *Manager) Get(ctx context.Context, req *rpc.GetRequest) (*rpc.BackingImageResponse, error) {
