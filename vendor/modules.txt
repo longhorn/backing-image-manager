@@ -16,18 +16,20 @@ github.com/golang/protobuf/ptypes/empty
 github.com/golang/protobuf/ptypes/timestamp
 # github.com/golang/snappy v0.0.1
 github.com/golang/snappy
+# github.com/google/uuid v1.3.0
+github.com/google/uuid
 # github.com/gorilla/handlers v1.4.2
 github.com/gorilla/handlers
 # github.com/gorilla/mux v1.7.3
 github.com/gorilla/mux
 # github.com/longhorn/go-iscsi-helper v0.0.0-20210330030558-49a327fb024e
 github.com/longhorn/go-iscsi-helper/util
-# github.com/longhorn/longhorn-engine v1.2.0-preview1.0.20210818142058-32cb7dfd0630
+# github.com/longhorn/longhorn-engine v1.3.0
 github.com/longhorn/longhorn-engine/pkg/replica/client
 github.com/longhorn/longhorn-engine/pkg/types
 github.com/longhorn/longhorn-engine/pkg/util
 github.com/longhorn/longhorn-engine/proto/ptypes
-# github.com/longhorn/sparse-tools v0.0.0-20211229004436-663d2f697e2a
+# github.com/longhorn/sparse-tools v0.0.0-20220323120706-0bd9b4129826
 github.com/longhorn/sparse-tools/sparse
 github.com/longhorn/sparse-tools/sparse/rest
 # github.com/mschoch/smat v0.0.0-20160514031455-90eadee771ae
@@ -38,8 +40,6 @@ github.com/philhofer/fwd
 github.com/pkg/errors
 # github.com/russross/blackfriday/v2 v2.0.1
 github.com/russross/blackfriday/v2
-# github.com/satori/go.uuid v1.2.0
-github.com/satori/go.uuid
 # github.com/shurcooL/sanitized_anchor_name v1.0.0
 github.com/shurcooL/sanitized_anchor_name
 # github.com/sirupsen/logrus v1.8.1
@@ -50,7 +50,7 @@ github.com/tinylib/msgp/msgp
 github.com/urfave/cli
 # github.com/willf/bitset v1.1.10
 github.com/willf/bitset
-# golang.org/x/net v0.0.0-20190522155817-f3200d17e092
+# golang.org/x/net v0.0.0-20200202094626-16171245cfb2
 golang.org/x/net/context
 golang.org/x/net/http/httpguts
 golang.org/x/net/http2
