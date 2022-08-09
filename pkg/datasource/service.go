@@ -144,6 +144,8 @@ func (s *Service) init() (err error) {
 		return s.prepareForUpload()
 	case types.DataSourceTypeExportFromVolume:
 		return s.exportFromVolume(s.parameters)
+	case types.DataSourceTypeDownloadFromBackupTarget:
+		return s.downloadFromBackupTarget(s.parameters)
 	default:
 		return fmt.Errorf("unknown data source type: %v", s.sourceType)
 	}
@@ -193,6 +195,16 @@ func (s *Service) downloadFromURL(parameters map[string]string) (err error) {
 	}
 
 	return s.syncClient.DownloadFromURL(url, s.filePath, s.uuid, s.diskUUID, s.expectedChecksum)
+}
+
+func (s *Service) downloadFromBackupTarget(parameters map[string]string) (err error) {
+	backupTarget := parameters[types.DataSourceTypeDownloadFromBackupTargetParameterBackupTarget]
+	backupTargetPath := parameters[types.DataSourceTypeDownloadFromBackupTargetParameterBackupTargetPath]
+	if backupTarget == "" || backupTargetPath == "" {
+		return fmt.Errorf("no backup-target/backup-target-path for file downloading")
+	}
+
+	return s.syncClient.DownloadFromBackupTarget(backupTarget, backupTargetPath, s.filePath, s.uuid, s.diskUUID, s.expectedChecksum)
 }
 
 func (s *Service) prepareForUpload() (err error) {

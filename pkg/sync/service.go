@@ -553,3 +553,60 @@ func (s *Service) doSendToPeer(request *http.Request) (err error) {
 
 	return sf.Send(toAddress, s.sender)
 }
+
+func (s *Service) DownloadFromBackupTarget(writer http.ResponseWriter, request *http.Request) {
+	err := s.doDownloadFromBackupTarget(request)
+	if err != nil {
+		http.Error(writer, err.Error(), http.StatusInternalServerError)
+		return
+	}
+}
+
+func (s *Service) doDownloadFromBackupTarget(request *http.Request) (err error) {
+	defer func() {
+		if err != nil {
+			s.log.Errorf("Sync Service: failed to do download from backup target, err: %v", err)
+		}
+	}()
+
+	queryParams := request.URL.Query()
+	filePath := queryParams.Get("file-path")
+	if filePath == "" {
+		return fmt.Errorf("no filePath for file downloading")
+	}
+	uuid := queryParams.Get("uuid")
+	if uuid == "" {
+		return fmt.Errorf("no uuid for downloading file")
+	}
+	backupTarget := queryParams.Get("backup-target")
+	if backupTarget == "" {
+		return fmt.Errorf("no backup-target for file downloading")
+	}
+	backupTargetPath := queryParams.Get("backup-target-path")
+	if backupTargetPath == "" {
+		return fmt.Errorf("no backup-target-path for file downloading")
+	}
+	diskUUID := queryParams.Get("disk-uuid")
+	expectedChecksum := queryParams.Get("expected-checksum")
+
+	sf, err := s.checkAndInitSyncFile(filePath, uuid, diskUUID, expectedChecksum, 0)
+	if err != nil {
+		return err
+	}
+
+	go func() {
+		// Wait for the file reuse check & download preparation complete
+		if err := sf.WaitForStateNonPending(); err != nil {
+			s.log.Errorf("Sync Service: failed to wait for sync file %v becoming non-pending state before starting the actual download: %v", filePath, err)
+			// SyncFile will mark itself as Failed if the processing is not started on time. There is no need to handle it here.
+			return
+		}
+
+		if _, err := sf.DownloadFromBackupTarget(backupTarget, backupTargetPath); err != nil {
+			s.log.Errorf("Sync Service: failed to download sync file %v: %v", filePath, err)
+			return
+		}
+	}()
+
+	return nil
+}

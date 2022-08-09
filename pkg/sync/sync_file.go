@@ -3,14 +3,16 @@ package sync
 import (
 	"context"
 	"fmt"
-	sparserest "github.com/longhorn/sparse-tools/sparse/rest"
 	"io"
+	"io/ioutil"
 	"net/http"
 	"os"
 	"path/filepath"
 	"strconv"
 	"sync"
 	"time"
+
+	sparserest "github.com/longhorn/sparse-tools/sparse/rest"
 
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
@@ -713,4 +715,68 @@ func (sf *SyncingFile) writeConfigNoLock() {
 		sf.log.Warnf("SyncingFile: failed to write config file when the file becomes ready: %v", err)
 	}
 	return
+}
+
+func (sf *SyncingFile) DownloadFromBackupTarget(backupTarget, backupTargetPath string) (written int64, err error) {
+	sf.log.Infof("SyncingFile: start to download sync file %s from backup target %s", backupTargetPath, backupTarget)
+
+	needProcessing, err := sf.stateCheckBeforeProcessing()
+	if err != nil {
+		return 0, err
+	}
+	if !needProcessing {
+		return 0, nil
+	}
+
+	defer func() {
+		sf.finishProcessing(err)
+	}()
+
+	// get s3 backup target credential
+	credential := map[string]string{}
+	secretFileNames := []string{types.AWSAccessKey, types.AWSSecretKey, types.AWSEndPoint, types.HTTPProxy, types.HTTPSProxy, types.NOProxy, types.VirtualHostedStyle, types.AWSCert}
+	for _, secretKeyName := range secretFileNames {
+		secretFilePath := fmt.Sprintf("/backup-target-credential/%s", secretKeyName)
+		if _, err := os.Stat(secretFilePath); !os.IsNotExist(err) {
+			content, err := ioutil.ReadFile(secretFilePath)
+			if err != nil {
+				return 0, err
+			}
+			credential[secretKeyName] = string(content)
+		}
+	}
+
+	bsDriver, err := util.GetBackupDriver(backupTarget, credential)
+	if err != nil {
+		return 0, err
+	}
+
+	if !bsDriver.FileExists(backupTargetPath) {
+		return 0, fmt.Errorf("file %s is in backup target %s", backupTargetPath, backupTarget)
+	}
+
+	size := bsDriver.FileSize(backupTargetPath)
+	sf.lock.Lock()
+	sf.size = size
+	sf.log.WithField("size", size)
+	sf.lock.Unlock()
+
+	rc, err := bsDriver.Read(backupTargetPath)
+	if err != nil {
+		return 0, err
+	}
+	defer rc.Close()
+
+	outFile, err := os.Create(sf.tmpFilePath)
+	defer outFile.Close()
+
+	ctx, cancel := context.WithCancel(sf.ctx)
+	defer cancel()
+
+	copied, err := IdleTimeoutCopy(ctx, cancel, rc, outFile, sf)
+	if err != nil {
+		return 0, err
+	}
+
+	return copied, nil
 }

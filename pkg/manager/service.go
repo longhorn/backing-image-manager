@@ -1,7 +1,9 @@
 package manager
 
 import (
+	"bytes"
 	"fmt"
+	"io/ioutil"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -26,6 +28,7 @@ import (
 )
 
 type Manager struct {
+	rpc.UnimplementedBackingImageManagerServiceServer
 	ctx context.Context
 
 	syncAddress  string
@@ -547,6 +550,54 @@ func ParsePortRange(portRange string) (int32, int32, error) {
 		return 0, 0, fmt.Errorf("Invalid end port for range: %s", err)
 	}
 	return int32(portStart), int32(portEnd), nil
+}
+
+func (m *Manager) Backup(ctx context.Context, req *rpc.BackupRequest) (resp *empty.Empty, err error) {
+	log := m.log.WithFields(logrus.Fields{"biName": req.Name, "biUUID": req.Uuid})
+	log.Info("Backing Image Manager: prepare to backup backing image")
+
+	defer func() {
+		if err != nil {
+			log.WithError(err).Error("Backing Image Manager: failed to backup backing image")
+		}
+	}()
+
+	bi, err := m.getAndUpdate(req.Name, req.Uuid)
+	if err != nil {
+		return nil, err
+	}
+
+	if bi.Status.State != string(types.StateReady) {
+		return nil, status.Errorf(codes.FailedPrecondition, "invalid backing image state %v for the download", bi.Status.State)
+	}
+
+	srcFilePath := types.GetBackingImageFilePath(m.diskPath, req.Name, req.Uuid)
+
+	log.Infof("Backing Image Manager: backup backing image, file path %v", srcFilePath)
+
+	bsDriver, err := util.GetBackupDriver(req.BackupTarget, req.Credential)
+	if err != nil {
+		return nil, err
+	}
+
+	dstFilePath := fmt.Sprintf("backupstore/backingimages/%s/backingimage", req.Name)
+
+	if bsDriver.FileExists(dstFilePath) {
+		st, err := os.Stat(srcFilePath)
+		if err != nil {
+			return nil, err
+		}
+		if st.Size() == bsDriver.FileSize(dstFilePath) {
+			return &empty.Empty{}, nil
+		}
+	}
+
+	file, err := ioutil.ReadFile(srcFilePath)
+	if err != nil {
+		return nil, err
+	}
+
+	return &empty.Empty{}, bsDriver.Write(dstFilePath, bytes.NewReader(file))
 }
 
 func (m *Manager) Watch(req *empty.Empty, srv rpc.BackingImageManagerService_WatchServer) (err error) {

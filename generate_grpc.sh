@@ -11,4 +11,4 @@ if [ ! -e ./proto/vendor/protobuf/src/google/protobuf ]; then
 fi
 
 # backing image manager
-protoc -I pkg/rpc/ -I proto/vendor/protobuf/src/ pkg/rpc/rpc.proto --go_out=plugins=grpc:pkg/rpc
+protoc -I pkg/rpc/ -I proto/vendor/protobuf/src/ pkg/rpc/rpc.proto --go_out=./pkg/rpc --go-grpc_out=./pkg/rpc
