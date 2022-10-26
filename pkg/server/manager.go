@@ -31,6 +31,7 @@ import (
 type Manager struct {
 	diskUUID      string
 	diskPath      string
+	workDir       string
 	backingImages map[string]*BackingImage
 
 	portRangeMin   int32
@@ -65,6 +66,7 @@ func NewManager(diskUUID, diskPath, portRange string, shutdownCh chan error) (*M
 	m := &Manager{
 		diskUUID:      diskUUID,
 		diskPath:      diskPath,
+		workDir:       workDir,
 		backingImages: map[string]*BackingImage{},
 
 		portRangeMin:   start,
@@ -129,6 +131,17 @@ func (m *Manager) startMonitoring() {
 				}
 			}
 			m.lock.RUnlock()
+
+			if workDirStat, err := os.Stat(m.workDir); os.IsNotExist(err) || (workDirStat != nil && !workDirStat.IsDir()) {
+				if err := os.RemoveAll(m.workDir); err != nil {
+					m.log.WithError(err).Error("Backing Image Manager: detected the backing image work directory becoming invalid but failed to do cleanup")
+					continue
+				}
+				if err := os.Mkdir(m.workDir, 0666); err != nil && !os.IsExist(err) {
+					m.log.WithError(err).Error("Backing Image Manager: failed to recreate the backing image work directory after cleaning up the invalid one")
+					continue
+				}
+			}
 		}
 		if done {
 			break
