@@ -3,7 +3,6 @@ package sync
 import (
 	"context"
 	"fmt"
-	sparserest "github.com/longhorn/sparse-tools/sparse/rest"
 	"io"
 	"net/http"
 	"os"
@@ -11,6 +10,8 @@ import (
 	"strconv"
 	"sync"
 	"time"
+
+	sparserest "github.com/longhorn/sparse-tools/sparse/rest"
 
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
@@ -424,7 +425,9 @@ func (sf *SyncingFile) Fetch(srcFilePath string) (err error) {
 	}
 
 	defer func() {
-		sf.finishProcessing(err)
+		if finalErr := sf.finishProcessing(err); finalErr != nil {
+			err = finalErr
+		}
 	}()
 
 	if shouldReuseFile {
@@ -470,7 +473,9 @@ func (sf *SyncingFile) DownloadFromURL(url string) (written int64, err error) {
 	}
 
 	defer func() {
-		sf.finishProcessing(err)
+		if finalErr := sf.finishProcessing(err); finalErr != nil {
+			err = finalErr
+		}
 	}()
 
 	size, err := sf.handler.GetSizeFromURL(url)
@@ -512,7 +517,9 @@ func (sf *SyncingFile) IdleTimeoutCopyToFile(src io.ReadCloser) (copied int64, e
 	}
 
 	defer func() {
-		sf.finishProcessing(err)
+		if finalErr := sf.finishProcessing(err); finalErr != nil {
+			err = finalErr
+		}
 	}()
 
 	nw, err := IdleTimeoutCopy(sf.ctx, sf.cancel, src, f, sf)
@@ -534,7 +541,9 @@ func (sf *SyncingFile) Receive(port int, fileType string) (err error) {
 	}
 
 	defer func() {
-		sf.finishProcessing(err)
+		if finalErr := sf.finishProcessing(err); finalErr != nil {
+			err = finalErr
+		}
 	}()
 
 	// TODO: After merging the sparse tool repo into this sync service, we don't need to launch a separate server here.
@@ -597,17 +606,21 @@ func (sf *SyncingFile) Send(toAddress string, sender Sender) (err error) {
 	return nil
 }
 
-func (sf *SyncingFile) finishProcessing(err error) {
+func (sf *SyncingFile) finishProcessing(err error) error {
 	sf.lock.Lock()
 	defer sf.lock.Unlock()
-	sf.finishProcessingNoLock(err)
+	return sf.finishProcessingNoLock(err)
 }
 
-func (sf *SyncingFile) finishProcessingNoLock(err error) {
+func (sf *SyncingFile) finishProcessingNoLock(err error) (finalErr error) {
 	sf.cancel()
 
-	defer sf.handleFailureNoLock(err)
+	defer func() {
+		sf.handleFailureNoLock(finalErr)
+	}()
+
 	if err != nil {
+		finalErr = err
 		return
 	}
 
@@ -616,13 +629,13 @@ func (sf *SyncingFile) finishProcessingNoLock(err error) {
 		return
 	}
 	if sf.size > 0 && sf.processedSize != sf.size {
-		err = fmt.Errorf("processed data size %v does not match the expected file size %v", sf.processedSize, sf.size)
+		finalErr = fmt.Errorf("processed data size %v does not match the expected file size %v", sf.processedSize, sf.size)
 		return
 	}
 
 	stat, statErr := os.Stat(sf.tmpFilePath)
 	if statErr != nil {
-		err = errors.Wrapf(err, "failed to stat tmp file %v after getting the file from source", sf.tmpFilePath)
+		finalErr = errors.Wrapf(err, "failed to stat tmp file %v after getting the file from source", sf.tmpFilePath)
 		return
 	}
 	if stat.Size() != sf.processedSize {
@@ -636,7 +649,7 @@ func (sf *SyncingFile) finishProcessingNoLock(err error) {
 	config, confReadErr := util.ReadSyncingFileConfig(configFilePath)
 	if confReadErr != nil {
 		if err = os.RemoveAll(configFilePath); err != nil {
-			err = errors.Wrapf(err, "failed to clean up the config file %v after read failure", configFilePath)
+			finalErr = errors.Wrapf(err, "failed to clean up the config file %v after read failure", configFilePath)
 			return
 		}
 	}
@@ -648,18 +661,18 @@ func (sf *SyncingFile) finishProcessingNoLock(err error) {
 		// This operation may be time-consuming.
 		sf.currentChecksum, err = util.GetFileChecksum(sf.tmpFilePath)
 		if err != nil {
-			err = errors.Wrapf(err, "failed to calculate checksum for tmp file %v", sf.tmpFilePath)
+			finalErr = errors.Wrapf(err, "failed to calculate checksum for tmp file %v", sf.tmpFilePath)
 			return
 		}
 	}
 	if sf.expectedChecksum != "" && sf.expectedChecksum != sf.currentChecksum {
-		err = fmt.Errorf("the expected checksum %v doesn't match the the file actual checksum %v", sf.expectedChecksum, sf.currentChecksum)
+		finalErr = fmt.Errorf("the expected checksum %v doesn't match the the file actual checksum %v", sf.expectedChecksum, sf.currentChecksum)
 		return
 	}
 
 	// Renaming won't change the file modification time.
 	if err := os.Rename(sf.tmpFilePath, sf.filePath); err != nil {
-		err = errors.Wrapf(err, "failed to rename tmp file %v to file %v", sf.tmpFilePath, sf.filePath)
+		finalErr = errors.Wrapf(err, "failed to rename tmp file %v to file %v", sf.tmpFilePath, sf.filePath)
 		return
 	}
 
