@@ -69,7 +69,7 @@ func InitService(ctx context.Context, listenAddr string, handler Handler) (*Serv
 }
 
 func RequestBackingImageSending(filePath, receiverAddress string) error {
-	return sparse.SyncFile(filePath, receiverAddress, types.FileSyncTimeout, false, false)
+	return sparse.SyncFile(filePath, receiverAddress, types.FileSyncHTTPClientTimeout, false, false)
 }
 
 // func (s *Service) autoForget() {
