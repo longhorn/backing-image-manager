@@ -40,10 +40,12 @@ github.com/longhorn/longhorn-engine/pkg/replica/client
 github.com/longhorn/longhorn-engine/pkg/types
 github.com/longhorn/longhorn-engine/pkg/util
 github.com/longhorn/longhorn-engine/proto/ptypes
-# github.com/longhorn/sparse-tools v0.0.0-20220323120706-0bd9b4129826
+# github.com/longhorn/sparse-tools v0.0.0-20221221020038-f6f1ea623675
 ## explicit; go 1.13
 github.com/longhorn/sparse-tools/sparse
 github.com/longhorn/sparse-tools/sparse/rest
+github.com/longhorn/sparse-tools/types
+github.com/longhorn/sparse-tools/util
 # github.com/mschoch/smat v0.0.0-20160514031455-90eadee771ae
 ## explicit
 github.com/mschoch/smat
