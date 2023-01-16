@@ -10,7 +10,7 @@ require (
 	github.com/longhorn/sparse-tools v0.0.0-20221221020038-f6f1ea623675
 	github.com/pkg/errors v0.9.1
 	github.com/sirupsen/logrus v1.8.1
-	github.com/urfave/cli v1.22.1
+	github.com/urfave/cli v1.22.11
 	golang.org/x/net v0.0.0-20200202094626-16171245cfb2
 	google.golang.org/grpc v1.21.0
 	gopkg.in/check.v1 v1.0.0-20160105164936-4f90aeace3a2
