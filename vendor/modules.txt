@@ -1,15 +1,16 @@
-# github.com/RoaringBitmap/roaring v0.4.18
-## explicit; go 1.12
+# github.com/RoaringBitmap/roaring v1.2.2
+## explicit; go 1.14
 github.com/RoaringBitmap/roaring
+github.com/RoaringBitmap/roaring/internal
+# github.com/bits-and-blooms/bitset v1.2.0
+## explicit; go 1.14
+github.com/bits-and-blooms/bitset
 # github.com/c9s/goprocinfo v0.0.0-20190309065803-0b2ad9ac246b
 ## explicit
 github.com/c9s/goprocinfo/linux
 # github.com/cpuguy83/go-md2man/v2 v2.0.0-20190314233015-f79a8a8ca69d
 ## explicit; go 1.12
 github.com/cpuguy83/go-md2man/v2/md2man
-# github.com/glycerine/go-unsnap-stream v0.0.0-20181221182339-f9677308dec2
-## explicit
-github.com/glycerine/go-unsnap-stream
 # github.com/golang/protobuf v1.3.3-0.20190920234318-1680a479a2cf
 ## explicit; go 1.12
 github.com/golang/protobuf/proto
@@ -19,9 +20,6 @@ github.com/golang/protobuf/ptypes/any
 github.com/golang/protobuf/ptypes/duration
 github.com/golang/protobuf/ptypes/empty
 github.com/golang/protobuf/ptypes/timestamp
-# github.com/golang/snappy v0.0.1
-## explicit
-github.com/golang/snappy
 # github.com/google/uuid v1.3.0
 ## explicit
 github.com/google/uuid
@@ -46,12 +44,9 @@ github.com/longhorn/sparse-tools/sparse
 github.com/longhorn/sparse-tools/sparse/rest
 github.com/longhorn/sparse-tools/types
 github.com/longhorn/sparse-tools/util
-# github.com/mschoch/smat v0.0.0-20160514031455-90eadee771ae
-## explicit
+# github.com/mschoch/smat v0.2.0
+## explicit; go 1.13
 github.com/mschoch/smat
-# github.com/philhofer/fwd v1.0.0
-## explicit
-github.com/philhofer/fwd
 # github.com/pkg/errors v0.9.1
 ## explicit
 github.com/pkg/errors
@@ -64,15 +59,9 @@ github.com/shurcooL/sanitized_anchor_name
 # github.com/sirupsen/logrus v1.8.1
 ## explicit; go 1.13
 github.com/sirupsen/logrus
-# github.com/tinylib/msgp v1.1.1-0.20190612170807-0573788bc2a8
-## explicit
-github.com/tinylib/msgp/msgp
 # github.com/urfave/cli v1.22.1
 ## explicit; go 1.11
 github.com/urfave/cli
-# github.com/willf/bitset v1.1.10
-## explicit
-github.com/willf/bitset
 # golang.org/x/net v0.0.0-20200202094626-16171245cfb2
 ## explicit; go 1.11
 golang.org/x/net/context
