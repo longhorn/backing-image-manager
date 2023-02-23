@@ -30,7 +30,7 @@ require (
 	github.com/shurcooL/sanitized_anchor_name v1.0.0 // indirect
 	github.com/tinylib/msgp v1.1.1-0.20190612170807-0573788bc2a8 // indirect
 	github.com/willf/bitset v1.1.10 // indirect
-	golang.org/x/sys v0.0.0-20210630005230-0f9fa26af87c // indirect
-	golang.org/x/text v0.3.3 // indirect
+	golang.org/x/sys v0.0.0-20220722155257-8c9f86f7a55f // indirect
+	golang.org/x/text v0.3.8 // indirect
 	google.golang.org/genproto v0.0.0-20180817151627-c66870c02cf8 // indirect
 )
