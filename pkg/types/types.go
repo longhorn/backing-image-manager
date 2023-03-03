@@ -39,6 +39,7 @@ const (
 	StateStarting         = State("starting")
 	StateInProgress       = State("in-progress")
 	StateFailed           = State("failed")
+	StateFailedAndCleanUp = State("failed-and-cleanup")
 	StateUnknown          = State("unknown")
 	StateReady            = State("ready")
 	StateReadyForTransfer = State("ready-for-transfer")
