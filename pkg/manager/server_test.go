@@ -434,6 +434,30 @@ func (s *TestSuite) TestBackingImageDownloadToLocal(c *C) {
 	s.deleteBackingImage(c, s.addr1, s.testDiskPath1, biName, biUUID)
 }
 
+func (s *TestSuite) TestCleanUpOrphan(c *C) {
+	biName := "test-delete-orphan-file"
+	biUUID := TestBackingImageUUID
+
+	cli := client.NewBackingImageManagerClient(s.addr1)
+
+	// Create the data source dir
+	dsFilePath := types.GetDataSourceFilePath(s.testDiskPath1, biName, biUUID)
+	dsTmpFilePath := fmt.Sprintf("%s%s", dsFilePath, types.TmpFileSuffix)
+	err := os.MkdirAll(filepath.Dir(dsTmpFilePath), 0777)
+	c.Assert(err, IsNil)
+
+	// Prepare the the data source tmp file as orphan file
+	err = generateSimpleTestFile(dsTmpFilePath, MockFileSize)
+	c.Assert(err, IsNil)
+
+	// Clean up the orphan file
+	err = cli.CleanUpOrphan(biName, biUUID)
+	c.Assert(err, IsNil)
+
+	_, err = os.Stat(dsTmpFilePath)
+	c.Assert(os.IsNotExist(err), Equals, true)
+}
+
 func (s *TestSuite) TestDuplicateCalls(c *C) {
 	biName := "test-duplicate-calls-file"
 	biUUID := TestBackingImageUUID
