@@ -635,7 +635,7 @@ func (sf *SyncingFile) finishProcessingNoLock(err error) (finalErr error) {
 
 	stat, statErr := os.Stat(sf.tmpFilePath)
 	if statErr != nil {
-		finalErr = errors.Wrapf(err, "failed to stat tmp file %v after getting the file from source", sf.tmpFilePath)
+		finalErr = errors.Wrapf(statErr, "failed to stat tmp file %v after getting the file from source", sf.tmpFilePath)
 		return
 	}
 	if stat.Size() != sf.processedSize {
