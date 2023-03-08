@@ -225,15 +225,9 @@ func (sf *SyncingFile) checkAndReuseFile() (err error) {
 	sf.lock.Lock()
 	sf.cancel()
 	sf.currentChecksum = currentChecksum
-	sf.size = info.Size()
+	sf.processedSize = info.Size()
 	sf.modificationTime = info.ModTime().UTC().String()
-	sf.processedSize = sf.size
-	sf.progress = 100
-	sf.state = types.StateReady
-	sf.log = sf.log.WithFields(logrus.Fields{
-		"size":            sf.size,
-		"currentChecksum": sf.currentChecksum,
-	})
+	sf.updateSyncReadyNoLock()
 	sf.writeConfigNoLock()
 	sf.lock.Unlock()
 
@@ -606,13 +600,10 @@ func (sf *SyncingFile) Send(toAddress string, sender Sender) (err error) {
 	return nil
 }
 
-func (sf *SyncingFile) finishProcessing(err error) error {
+func (sf *SyncingFile) finishProcessing(err error) (finalErr error) {
 	sf.lock.Lock()
 	defer sf.lock.Unlock()
-	return sf.finishProcessingNoLock(err)
-}
 
-func (sf *SyncingFile) finishProcessingNoLock(err error) (finalErr error) {
 	sf.cancel()
 
 	defer func() {
@@ -656,19 +647,56 @@ func (sf *SyncingFile) finishProcessingNoLock(err error) (finalErr error) {
 	if config != nil && config.ModificationTime == sf.modificationTime {
 		logrus.Debugf("SyncingFile: directly get the checksum from the valid config during processing wrap-up: %v", config.CurrentChecksum)
 		sf.currentChecksum = config.CurrentChecksum
-	} else {
-		logrus.Debugf("SyncingFile: failed to get the checksum from a valid config during processing wrap-up, will directly calculated it then")
-		// This operation may be time-consuming.
-		sf.currentChecksum, err = util.GetFileChecksum(sf.tmpFilePath)
-		if err != nil {
-			finalErr = errors.Wrapf(err, "failed to calculate checksum for tmp file %v", sf.tmpFilePath)
+		sf.updateSyncReadyNoLock()
+		sf.writeConfigNoLock()
+
+		// Renaming won't change the file modification time.
+		if err := os.Rename(sf.tmpFilePath, sf.filePath); err != nil {
+			finalErr = errors.Wrapf(err, "failed to rename tmp file %v to file %v", sf.tmpFilePath, sf.filePath)
 			return
 		}
-	}
-	if sf.expectedChecksum != "" && sf.expectedChecksum != sf.currentChecksum {
-		finalErr = fmt.Errorf("the expected checksum %v doesn't match the the file actual checksum %v", sf.expectedChecksum, sf.currentChecksum)
+		sf.log.Info("SyncingFile: succeeded processing file")
 		return
 	}
+
+	logrus.Debug("SyncingFile: failed to get the checksum from a valid config during processing wrap-up, will directly calculated it then")
+	// GetFileChecksum is time consuming, so we make it async as post process function to prevent client timeout,
+	go sf.postProcessSyncFile()
+	return
+}
+
+func (sf *SyncingFile) postProcessSyncFile() {
+	var finalErr error
+	defer func() {
+		sf.lock.Lock()
+		sf.handleFailureNoLock(finalErr)
+		sf.lock.Unlock()
+	}()
+
+	currentChecksum, err := util.GetFileChecksum(sf.tmpFilePath)
+	if err != nil {
+		finalErr = errors.Wrapf(err, "failed to calculate checksum for tmp file %v", sf.tmpFilePath)
+		return
+	}
+
+	sf.lock.Lock()
+	defer sf.lock.Unlock()
+	if modificationTime := util.FileModificationTime(sf.tmpFilePath); modificationTime != sf.modificationTime {
+		finalErr = fmt.Errorf("tmp file %v has been modified while calculaing checksum", sf.tmpFilePath)
+		return
+	}
+	sf.currentChecksum = currentChecksum
+	if sf.expectedChecksum != "" && sf.expectedChecksum != sf.currentChecksum {
+		finalErr = fmt.Errorf("the expected checksum %v doesn't match the file actual checksum %v", sf.expectedChecksum, sf.currentChecksum)
+		return
+	}
+
+	// If the state is already failed, there is no need to update the state
+	if sf.state == types.StateFailed {
+		return
+	}
+	sf.updateSyncReadyNoLock()
+	sf.writeConfigNoLock()
 
 	// Renaming won't change the file modification time.
 	if err := os.Rename(sf.tmpFilePath, sf.filePath); err != nil {
@@ -676,6 +704,10 @@ func (sf *SyncingFile) finishProcessingNoLock(err error) (finalErr error) {
 		return
 	}
 
+	sf.log.Info("SyncingFile: succeeded processing file")
+}
+
+func (sf *SyncingFile) updateSyncReadyNoLock() {
 	sf.progress = 100
 	sf.size = sf.processedSize
 	sf.state = types.StateReady
@@ -683,12 +715,6 @@ func (sf *SyncingFile) finishProcessingNoLock(err error) (finalErr error) {
 		"size":            sf.size,
 		"currentChecksum": sf.currentChecksum,
 	})
-
-	sf.writeConfigNoLock()
-
-	sf.log.Infof("SyncingFile: succeeded processing file")
-
-	return
 }
 
 func (sf *SyncingFile) handleFailureNoLock(err error) {
@@ -725,5 +751,4 @@ func (sf *SyncingFile) writeConfigNoLock() {
 	}); err != nil {
 		sf.log.Warnf("SyncingFile: failed to write config file when the file becomes ready: %v", err)
 	}
-	return
 }
