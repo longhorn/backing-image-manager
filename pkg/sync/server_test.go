@@ -386,7 +386,7 @@ func (s *SyncTestSuite) TestFetch(c *C) {
 	err = cli.Forget(curPath)
 	c.Assert(err, IsNil)
 
-	// Reusing the existing file without the config file would skip the checksum calculation.
+	// Reusing the existing file with the config file would skip the checksum calculation.
 	err = cli.Fetch(curPath, curPath, TestSyncingFileUUID, TestDiskUUID, checksum, sizeInMB*MB)
 	c.Assert(err, IsNil)
 	_, err = getAndWaitFileState(cli, curPath, string(types.StateReady), 3)
