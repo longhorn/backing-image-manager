@@ -21,26 +21,33 @@ func DataSourceCmd() cli.Command {
 			cli.StringFlag{
 				Name:  "listen",
 				Value: "localhost:" + strconv.Itoa(types.DefaultDataSourceServerPort),
+				Usage: "Specify the data source server endpoint to listen on host:port. Defaults to localhost:8000",
 			},
 			cli.StringFlag{
 				Name:  "sync-listen",
 				Value: "localhost:" + strconv.Itoa(types.DefaultSyncServerPort),
+				Usage: "Specify the sync server endpoint to listen on host:port. Defaults to localhost:8001",
 			},
 			cli.StringFlag{
-				Name: "name",
+				Name:  "name",
+				Usage: "The name of the backing image",
 			},
 			cli.StringFlag{
-				Name: "uuid",
+				Name:  "uuid",
+				Usage: "The uuid of the backing image",
 			},
 			cli.StringFlag{
-				Name: "source-type",
+				Name:  "source-type",
+				Usage: "There are 3 ways to prepare a backing image file data: download, upload and export-from-volume",
 			},
 			cli.StringSliceFlag{
-				Name: "parameters",
+				Name:  "parameters",
+				Usage: "Parameters for backing image of different source type.",
 			},
 			cli.StringFlag{
 				Name:  "checksum",
 				Value: "",
+				Usage: "The SHA512 checksum of the backing images",
 			},
 		},
 		Action: func(c *cli.Context) {
