@@ -57,7 +57,7 @@ func SyncCmd() cli.Command {
 		},
 		Action: func(c *cli.Context) {
 			if err := fileSync(c); err != nil {
-				logrus.Fatalf("Error running backing image file-sync command: %v.", err)
+				logrus.WithError(err).Fatalf("Error running backing image file-sync command")
 			}
 		},
 	}
@@ -89,7 +89,7 @@ func SendCmd() cli.Command {
 		},
 		Action: func(c *cli.Context) {
 			if err := send(c); err != nil {
-				logrus.Fatalf("Error running backing image send command: %v.", err)
+				logrus.WithError(err).Fatalf("Error running backing image send command")
 			}
 		},
 	}
@@ -115,7 +115,7 @@ func DeleteCmd() cli.Command {
 		Aliases: []string{"del"},
 		Action: func(c *cli.Context) {
 			if err := del(c); err != nil {
-				logrus.Fatalf("Error running backing image delete command: %v.", err)
+				logrus.WithError(err).Fatalf("Error running backing image delete command")
 			}
 		},
 	}
@@ -140,7 +140,7 @@ func GetCmd() cli.Command {
 		},
 		Action: func(c *cli.Context) {
 			if err := get(c); err != nil {
-				logrus.Fatalf("Error running backing image get command: %v.", err)
+				logrus.WithError(err).Fatalf("Error running backing image get command")
 			}
 		},
 	}
@@ -162,7 +162,7 @@ func ListCmd() cli.Command {
 		Aliases: []string{"ls"},
 		Action: func(c *cli.Context) {
 			if err := list(c); err != nil {
-				logrus.Fatalf("Error running backing image list command: %v.", err)
+				logrus.WithError(err).Fatalf("Error running backing image list command")
 			}
 		},
 	}
@@ -202,7 +202,7 @@ func FetchCmd() cli.Command {
 		},
 		Action: func(c *cli.Context) {
 			if err := fetch(c); err != nil {
-				logrus.Fatalf("Error running backing image fetch command: %v.", err)
+				logrus.WithError(err).Fatalf("Error running backing image fetch command")
 			}
 		},
 	}
@@ -231,7 +231,7 @@ func PrepareDownloadCmd() cli.Command {
 		},
 		Action: func(c *cli.Context) {
 			if err := prepareDownload(c); err != nil {
-				logrus.Fatalf("Error running backing image prepare download command: %v.", err)
+				logrus.WithError(err).Fatalf("Error running backing image prepare download command")
 			}
 		},
 	}

@@ -45,7 +45,7 @@ func DataSourceCmd() cli.Command {
 		},
 		Action: func(c *cli.Context) {
 			if err := dataSource(c); err != nil {
-				logrus.Fatalf("Error running data-source command: %v.", err)
+				logrus.WithError(err).Fatalf("Error running data-source command")
 			}
 		},
 	}

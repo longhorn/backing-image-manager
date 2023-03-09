@@ -47,7 +47,7 @@ func NewServer(parentCtx context.Context, listenAddr, syncListenAddr, diskUUID, 
 	reflection.Register(rpcService)
 	go func() {
 		if err := rpcService.Serve(listenAt); err != nil {
-			logrus.Errorf("Stopping due to %v:", err)
+			logrus.WithError(err).Errorf("stopping the server due to there is an error")
 		}
 		// graceful shutdown before exit
 		cancel()
