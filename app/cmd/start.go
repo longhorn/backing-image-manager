@@ -21,10 +21,12 @@ func StartCmd() cli.Command {
 			cli.StringFlag{
 				Name:  "listen",
 				Value: "localhost:" + strconv.Itoa(types.DefaultManagerPort),
+				Usage: "Specify the manager server endpoint to listen on host:port. Defaults to localhost:8000",
 			},
 			cli.StringFlag{
 				Name:  "sync-listen",
 				Value: "localhost:" + strconv.Itoa(types.DefaultSyncServerPort),
+				Usage: "Specify the sync server endpoint to listen on host:port. Defaults to localhost:8001",
 			},
 			cli.StringFlag{
 				Name:  "disk-uuid",
@@ -33,6 +35,7 @@ func StartCmd() cli.Command {
 			cli.StringFlag{
 				Name:  "port-range",
 				Value: "30001-31000",
+				Usage: "The port is used for starting temporary sparse file server when syncing backing image, Defaults to 30001-31000",
 			},
 		},
 		Action: func(c *cli.Context) {
