@@ -19,6 +19,7 @@ func BackingImageCmd() cli.Command {
 			cli.StringFlag{
 				Name:  "url",
 				Value: "localhost:" + strconv.Itoa(types.DefaultManagerPort),
+				Usage: "Specify the manager server endpoint to listen on host:port. Defaults to localhost:8000",
 			},
 		},
 		Subcommands: []cli.Command{
@@ -39,20 +40,25 @@ func SyncCmd() cli.Command {
 		Name: "file-sync",
 		Flags: []cli.Flag{
 			cli.StringFlag{
-				Name: "name",
+				Name:  "name",
+				Usage: "The name of the backing image to be synced",
 			},
 			cli.StringFlag{
-				Name: "uuid",
+				Name:  "uuid",
+				Usage: "The uuid of the backing image to be synced",
 			},
 			cli.Int64Flag{
-				Name: "size",
+				Name:  "size",
+				Usage: "The size of the backing images to be synced",
 			},
 			cli.StringFlag{
-				Name: "from-address",
+				Name:  "from-address",
+				Usage: "Backing image manager address, will request sending backing image from the address",
 			},
 			cli.StringFlag{
 				Name:  "checksum",
 				Value: "",
+				Usage: "The SHA512 checksum of the backing images to be synced",
 			},
 		},
 		Action: func(c *cli.Context) {
@@ -78,13 +84,16 @@ func SendCmd() cli.Command {
 		Name: "send",
 		Flags: []cli.Flag{
 			cli.StringFlag{
-				Name: "name",
+				Name:  "name",
+				Usage: "The name of the backing image",
 			},
 			cli.StringFlag{
-				Name: "uuid",
+				Name:  "uuid",
+				Usage: "The name of the backing image",
 			},
 			cli.StringFlag{
-				Name: "to-address",
+				Name:  "to-address",
+				Usage: "Backing image manager address, will send backing image to this address",
 			},
 		},
 		Action: func(c *cli.Context) {
@@ -106,10 +115,12 @@ func DeleteCmd() cli.Command {
 		Name: "delete",
 		Flags: []cli.Flag{
 			cli.StringFlag{
-				Name: "name",
+				Name:  "name",
+				Usage: "The name of the backing image",
 			},
 			cli.StringFlag{
-				Name: "uuid",
+				Name:  "uuid",
+				Usage: "The name of the backing image",
 			},
 		},
 		Aliases: []string{"del"},
@@ -132,10 +143,12 @@ func GetCmd() cli.Command {
 		Name: "get",
 		Flags: []cli.Flag{
 			cli.StringFlag{
-				Name: "name",
+				Name:  "name",
+				Usage: "The name of the backing image",
 			},
 			cli.StringFlag{
-				Name: "uuid",
+				Name:  "uuid",
+				Usage: "The name of the backing image",
 			},
 		},
 		Action: func(c *cli.Context) {
@@ -183,21 +196,26 @@ func FetchCmd() cli.Command {
 		Name: "sync",
 		Flags: []cli.Flag{
 			cli.StringFlag{
-				Name: "name",
+				Name:  "name",
+				Usage: "The name of the backing image",
 			},
 			cli.StringFlag{
-				Name: "uuid",
+				Name:  "uuid",
+				Usage: "The uuid of the backing image",
 			},
 			cli.Int64Flag{
-				Name: "size",
+				Name:  "size",
+				Usage: "The size of the backing image to be fetched",
 			},
 			cli.StringFlag{
 				Name:  "data-source-address",
 				Value: "",
+				Usage: "Data source server address, will fetch the file from this server",
 			},
 			cli.StringFlag{
 				Name:  "checksum",
 				Value: "",
+				Usage: "The SHA512 checksum of the backing image to be fetched",
 			},
 		},
 		Action: func(c *cli.Context) {
@@ -223,10 +241,12 @@ func PrepareDownloadCmd() cli.Command {
 		Name: "prepare-download",
 		Flags: []cli.Flag{
 			cli.StringFlag{
-				Name: "name",
+				Name:  "name",
+				Usage: "The name of the backing image",
 			},
 			cli.StringFlag{
-				Name: "uuid",
+				Name:  "uuid",
+				Usage: "The uuid of the backing image",
 			},
 		},
 		Action: func(c *cli.Context) {
