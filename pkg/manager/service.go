@@ -152,10 +152,15 @@ func (m *Manager) Delete(ctx context.Context, req *rpc.DeleteRequest) (resp *emp
 	log.Info("Backing Image Manager: prepare to delete backing image")
 	defer func() {
 		if err != nil {
-			log.WithError(err).Error("Backing Image Manager: failed to delete backing image, will continue to do directory cleanup anyway")
+			log.WithError(err).Warn("Backing Image Manager: failed to delete backing image, will continue to do directory cleanup anyway")
 		}
 		if rmDirErr := os.RemoveAll(types.GetBackingImageDirectory(m.diskPath, req.Name, req.Uuid)); rmDirErr != nil {
-			log.WithError(rmDirErr).Errorf("Backing Image Manager: failed to remove the backing image work directory at the end of the deletion")
+			log.WithError(rmDirErr).Warn("Backing Image Manager: failed to remove the backing image work directory at the end of the deletion")
+		}
+		// Delete cmd is used to remove the tmp file left on the host as well when preparing backing image file failed.
+		tmpFilePath := fmt.Sprintf("%s%s", types.GetDataSourceFilePath(m.diskPath, req.Name, req.Uuid), types.TmpFileSuffix)
+		if rmTmpFileErr := os.RemoveAll(tmpFilePath); rmTmpFileErr != nil {
+			log.WithError(rmTmpFileErr).Warn("Backing Image Manager: failed to remove the data source tmp file at the end of the deletion")
 		}
 	}()
 
