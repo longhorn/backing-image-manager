@@ -30,7 +30,6 @@ func BackingImageCmd() cli.Command {
 			ListCmd(),
 			FetchCmd(),
 			PrepareDownloadCmd(),
-			CleanUpOrphanCmd(),
 		},
 	}
 }
@@ -267,31 +266,4 @@ func prepareDownload(c *cli.Context) error {
 	fmt.Println("Source file path:", srcFilePath)
 	fmt.Println("Download server address:", address)
 	return nil
-}
-
-func CleanUpOrphanCmd() cli.Command {
-	return cli.Command{
-		Name: "clean-up-orphan",
-		Flags: []cli.Flag{
-			cli.StringFlag{
-				Name:  "name",
-				Usage: "The name of the backing image",
-			},
-			cli.StringFlag{
-				Name:  "uuid",
-				Usage: "The uuid of the backing image",
-			},
-		},
-		Action: func(c *cli.Context) {
-			if err := cleanUpOrphan(c); err != nil {
-				logrus.WithError(err).Fatalf("Error running backing image clean up orphan command")
-			}
-		},
-	}
-}
-
-func cleanUpOrphan(c *cli.Context) error {
-	url := c.GlobalString("url")
-	bimClient := client.NewBackingImageManagerClient(url)
-	return bimClient.CleanUpOrphan(c.String("name"), c.String("uuid"))
 }
