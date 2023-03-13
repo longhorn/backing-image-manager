@@ -4,7 +4,6 @@ import (
 	"fmt"
 
 	"github.com/golang/protobuf/ptypes/empty"
-	"github.com/pkg/errors"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 
@@ -196,27 +195,6 @@ func (cli *BackingImageManagerClient) PrepareDownload(name, uuid string) (string
 		return "", "", err
 	}
 	return resp.SrcFilePath, resp.Address, nil
-}
-
-func (cli *BackingImageManagerClient) CleanUpOrphan(name, uuid string) error {
-	if name == "" || uuid == "" {
-		return fmt.Errorf("failed to clean up orphan: missing required parameter")
-	}
-	conn, err := grpc.Dial(cli.Address, grpc.WithInsecure())
-	if err != nil {
-		return errors.Wrapf(err, "cannot connect backing image manager service to %v", cli.Address)
-	}
-	defer conn.Close()
-
-	client := rpc.NewBackingImageManagerServiceClient(conn)
-	ctx, cancel := context.WithTimeout(context.Background(), types.GRPCServiceTimeout)
-	defer cancel()
-
-	_, err = client.CleanUpOrphan(ctx, &rpc.CleanUpOrphanRequest{
-		Name: name,
-		Uuid: uuid,
-	})
-	return err
 }
 
 func (cli *BackingImageManagerClient) VersionGet() (*meta.VersionOutput, error) {
