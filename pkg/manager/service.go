@@ -509,29 +509,6 @@ func (m *Manager) PrepareDownload(ctx context.Context, req *rpc.PrepareDownloadR
 	}, nil
 }
 
-func (m *Manager) CleanUpOrphan(ctx context.Context, req *rpc.CleanUpOrphanRequest) (resp *empty.Empty, err error) {
-	log := m.log.WithFields(logrus.Fields{"biName": req.Name, "biUUID": req.Uuid})
-	defer func() {
-		if err != nil {
-			log.WithError(err).Error("Backing Image Manager: failed to clean up orphan files")
-		}
-	}()
-
-	if req.Name == "" || req.Uuid == "" {
-		return nil, status.Errorf(codes.InvalidArgument, "missing required argument")
-	}
-
-	dsFilePath := types.GetDataSourceFilePath(m.diskPath, req.Name, req.Uuid)
-	orphanTmpFilePath := fmt.Sprintf("%s%s", dsFilePath, types.TmpFileSuffix)
-
-	log.Infof("Backing Image Manager: prepare to clean up orphan files %v", orphanTmpFilePath)
-	if err := os.RemoveAll(orphanTmpFilePath); err != nil {
-		return nil, err
-	}
-	log.Info("Backing Image Manager: orphan files has been cleaned up")
-	return &empty.Empty{}, nil
-}
-
 func (m *Manager) allocatePorts(portCount int32) (int32, int32, error) {
 	if portCount < 0 {
 		return 0, 0, fmt.Errorf("invalid port count %v", portCount)
