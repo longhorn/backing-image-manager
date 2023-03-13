@@ -15,7 +15,6 @@ service BackingImageManagerService {
 	rpc Send(SendRequest) returns (google.protobuf.Empty) {}
 	rpc Fetch(FetchRequest) returns (BackingImageResponse) {}
 	rpc PrepareDownload(PrepareDownloadRequest) returns (PrepareDownloadResponse) {}
-	rpc CleanUpOrphan(CleanUpOrphanRequest) returns (google.protobuf.Empty) {}
 
 	rpc Watch(google.protobuf.Empty) returns (stream google.protobuf.Empty) {}
 }
@@ -88,9 +87,4 @@ message PrepareDownloadRequest {
 message PrepareDownloadResponse {
 	string src_file_path = 1;
 	string address = 2;
-}
-
-message CleanUpOrphanRequest {
-	string name = 1;
-    string uuid = 2;
 }
