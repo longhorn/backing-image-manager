@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"os/exec"
 	"os/user"
@@ -272,7 +271,7 @@ func generateDiskConfigFile(dir string) error {
 		if err != nil {
 			return err
 		}
-		err = ioutil.WriteFile(diskCfgPath, encodedDiskCfg, 0777)
+		err = os.WriteFile(diskCfgPath, encodedDiskCfg, 0777)
 		if err != nil {
 			return err
 		}
