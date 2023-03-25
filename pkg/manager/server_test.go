@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"os/exec"
 	"os/user"
@@ -85,7 +84,7 @@ func (s *TestSuite) prepareDirs(c *C) {
 	}
 	encodedDiskCfg1, err := json.Marshal(diskCfg1)
 	c.Assert(err, IsNil)
-	err = ioutil.WriteFile(diskCfgPath1, encodedDiskCfg1, 0777)
+	err = os.WriteFile(diskCfgPath1, encodedDiskCfg1, 0777)
 	c.Assert(err, IsNil)
 
 	// 2nd manager dir
@@ -102,7 +101,7 @@ func (s *TestSuite) prepareDirs(c *C) {
 	}
 	encodedDiskCfg2, err := json.Marshal(diskCfg2)
 	c.Assert(err, IsNil)
-	err = ioutil.WriteFile(diskCfgPath2, encodedDiskCfg2, 0777)
+	err = os.WriteFile(diskCfgPath2, encodedDiskCfg2, 0777)
 	c.Assert(err, IsNil)
 }
 
@@ -162,7 +161,7 @@ func (s *TestSuite) TearDownTest(c *C) {
 	}
 
 	if s.testDiskPath1 != "" {
-		fList, err := ioutil.ReadDir(s.testDiskPath1)
+		fList, err := os.ReadDir(s.testDiskPath1)
 		c.Assert(err, IsNil)
 		for _, fInfo := range fList {
 			if fInfo.Name() == types.BackingImageManagerDirectoryName || fInfo.Name() == util.DiskConfigFile {
@@ -173,7 +172,7 @@ func (s *TestSuite) TearDownTest(c *C) {
 		}
 	}
 	if s.testDiskPath2 != "" {
-		fList, err := ioutil.ReadDir(s.testDiskPath2)
+		fList, err := os.ReadDir(s.testDiskPath2)
 		c.Assert(err, IsNil)
 		for _, fInfo := range fList {
 			if fInfo.Name() == types.BackingImageManagerDirectoryName || fInfo.Name() == util.DiskConfigFile {

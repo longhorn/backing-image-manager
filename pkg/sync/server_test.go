@@ -3,7 +3,7 @@ package sync
 import (
 	"context"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"os"
 	"os/exec"
 	"os/user"
@@ -598,7 +598,7 @@ func (s *SyncTestSuite) TestReadyFileValidation(c *C) {
 	// Change the file modification time without affecting the data.
 	// File state should be state unknown with a different modification time,
 	// then be back to state ready.
-	content, err := ioutil.ReadAll(f)
+	content, err := io.ReadAll(f)
 	c.Assert(err, IsNil)
 	_, err = f.WriteAt([]byte("invalid data"), 0)
 	c.Assert(err, IsNil)
