@@ -4,7 +4,7 @@ go 1.17
 
 require (
 	github.com/RoaringBitmap/roaring v0.4.18
-	github.com/golang/protobuf v1.3.3-0.20190920234318-1680a479a2cf
+	github.com/golang/protobuf v1.5.3
 	github.com/gorilla/mux v1.8.0
 	github.com/longhorn/longhorn-engine v1.3.0
 	github.com/longhorn/sparse-tools v0.0.0-20230327064700-b60b990a105b
@@ -32,4 +32,5 @@ require (
 	golang.org/x/sys v0.0.0-20220722155257-8c9f86f7a55f // indirect
 	golang.org/x/text v0.3.8 // indirect
 	google.golang.org/genproto v0.0.0-20180817151627-c66870c02cf8 // indirect
+	google.golang.org/protobuf v1.26.0 // indirect
 )
