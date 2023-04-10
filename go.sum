@@ -55,6 +55,8 @@ github.com/longhorn/sparse-tools v0.0.0-20221221020038-f6f1ea623675 h1:ITvyedoxF
 github.com/longhorn/sparse-tools v0.0.0-20221221020038-f6f1ea623675/go.mod h1:PC6PdgrTPkma/TMx14GO/swm4UHC6PVKAI/U4fpTWFE=
 github.com/longhorn/sparse-tools v0.0.0-20230327064700-b60b990a105b h1:e0M+P+Zpsmps/nUXVDjonPSchpqRXgcwkVcvRRPQSDM=
 github.com/longhorn/sparse-tools v0.0.0-20230327064700-b60b990a105b/go.mod h1:qhbarWiCtB2FFqg7v3KBSRshU7oQgrabmIuN3Sh0cMo=
+github.com/longhorn/sparse-tools v0.0.0-20230408015858-c849def39d3c h1:EAE/cBOWZUL9CDiI4xbOr1IudQUa2e6u/pdScytEcvo=
+github.com/longhorn/sparse-tools v0.0.0-20230408015858-c849def39d3c/go.mod h1:qhbarWiCtB2FFqg7v3KBSRshU7oQgrabmIuN3Sh0cMo=
 github.com/mattn/go-colorable v0.1.4/go.mod h1:U0ppj6V5qS13XJ6of8GYAs25YV2eR4EVcfRqFIhoBtE=
 github.com/mattn/go-isatty v0.0.8/go.mod h1:Iq45c/XA43vh69/j3iqttzPXn0bhXyGjM0Hdxcsrc5s=
 github.com/mattn/go-runewidth v0.0.5-0.20181218000649-703b5e6b11ae/go.mod h1:H031xJmbD/WCDINGzjvQ9THkh0rPKHF+m2gUSrubnMI=
