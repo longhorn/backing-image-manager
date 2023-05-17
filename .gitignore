@@ -23,3 +23,6 @@
 # Rancher
 .dapper
 /bin
+
+# Protocol buffer compilation
+.protobuild
