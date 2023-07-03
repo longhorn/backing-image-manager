@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/gorilla/mux"
+	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 
 	"github.com/longhorn/sparse-tools/sparse"
@@ -380,6 +381,7 @@ func (s *Service) doDownloadFromURL(request *http.Request) (err error) {
 func (s *Service) UploadFromRequest(writer http.ResponseWriter, request *http.Request) {
 	err := s.doUploadFromRequest(request)
 	if err != nil {
+		err = errors.Wrapf(err, "please make sure the file is qcow2 or raw image")
 		http.Error(writer, err.Error(), http.StatusInternalServerError)
 		return
 	}
