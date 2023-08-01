@@ -409,7 +409,7 @@ func (s *Service) doUploadFromRequest(request *http.Request) (err error) {
 		return err
 	}
 	if size%types.DefaultSectorSize != 0 {
-		return fmt.Errorf("the uploaded file size %d should be a multiple of %d bytes since Longhorn uses directIO by default", size, types.DefaultSectorSize)
+		return fmt.Errorf("the uploaded file size %d should be a multiple of %d bytes since Longhorn uses directIO by default, the file should also be qcow2 or raw image", size, types.DefaultSectorSize)
 	}
 
 	sf, err := s.checkAndInitSyncFile(filePath, uuid, diskUUID, expectedChecksum, size)
