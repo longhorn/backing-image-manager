@@ -9,9 +9,11 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"net/url"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"time"
 
@@ -104,7 +106,7 @@ func DetectGRPCServerAvailability(address string, waitIntervalInSecond int, shou
 		}
 		if shouldAvailable && err == nil {
 			state := conn.GetState()
-			if state == connectivity.Ready || state == connectivity.Idle {
+			if state == connectivity.Ready || state == connectivity.Idle || state == connectivity.Connecting {
 				return true
 			}
 		}
@@ -287,4 +289,25 @@ func FileModificationTime(filePath string) string {
 		return ""
 	}
 	return fi.ModTime().UTC().String()
+}
+
+var (
+	MaximumBackingImageNameSize = 64
+	validBackingImageName       = regexp.MustCompile(`^[a-zA-Z0-9][a-zA-Z0-9_.-]+$`)
+)
+
+func CheckBackupType(backupTarget string) (string, error) {
+	u, err := url.Parse(backupTarget)
+	if err != nil {
+		return "", err
+	}
+
+	return u.Scheme, nil
+}
+
+func ValidBackingImageName(name string) bool {
+	if len(name) > MaximumBackingImageNameSize {
+		return false
+	}
+	return validBackingImageName.MatchString(name)
 }

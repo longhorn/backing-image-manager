@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/gorilla/mux"
+	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 
 	"github.com/longhorn/sparse-tools/sparse"
@@ -375,6 +376,71 @@ func (s *Service) doDownloadFromURL(request *http.Request) (err error) {
 	}()
 
 	return nil
+}
+
+func (s *Service) RestoreFromBackupURL(writer http.ResponseWriter, request *http.Request) {
+	err := s.doRestoreFromBackupURL(request)
+	if err != nil {
+		http.Error(writer, err.Error(), http.StatusInternalServerError)
+		return
+	}
+}
+
+func (s *Service) doRestoreFromBackupURL(request *http.Request) (err error) {
+	defer func() {
+		if err != nil {
+			s.log.WithError(err).Errorf("Sync Service: failed to do restore from backup URL")
+		}
+	}()
+
+	queryParams := request.URL.Query()
+	filePath := queryParams.Get("file-path")
+	if filePath == "" {
+		return fmt.Errorf("no filePath restoring file")
+	}
+	uuid := queryParams.Get("uuid")
+	if uuid == "" {
+		return fmt.Errorf("no uuid for restoring file")
+	}
+	backupURL := queryParams.Get(types.DataSourceTypeRestoreParameterBackupURL)
+	if backupURL == "" {
+		return fmt.Errorf("no %v for restoring file", types.DataSourceTypeRestoreParameterBackupURL)
+	}
+	diskUUID := queryParams.Get("disk-uuid")
+	expectedChecksum := queryParams.Get("expected-checksum")
+
+	concurrentLimitStr := queryParams.Get("concurrent-limit")
+	concurrentLimit, err := strconv.Atoi(concurrentLimitStr)
+	if err != nil {
+		return errors.Wrapf(err, "failed to get valid concurrentLimit for restoring file")
+	}
+
+	credential := map[string]string{}
+	if err := json.NewDecoder(request.Body).Decode(&credential); err != nil {
+		if err != io.EOF {
+			return fmt.Errorf("get credential failed from request")
+		}
+	}
+
+	sf, err := s.checkAndInitSyncFile(filePath, uuid, diskUUID, expectedChecksum, 0)
+	if err != nil {
+		return err
+	}
+
+	go func() {
+		if err := sf.WaitForStateNonPending(); err != nil {
+			s.log.Errorf("Sync Service: failed to wait for sync file %v becoming non-pending state before starting the actual restoration: %v", filePath, err)
+			return
+		}
+
+		if err := sf.RestoreFromBackupURL(backupURL, credential, concurrentLimit); err != nil {
+			s.log.Errorf("Sync Service: failed to download sync file %v: %v", filePath, err)
+			return
+		}
+	}()
+
+	return nil
+
 }
 
 func (s *Service) UploadFromRequest(writer http.ResponseWriter, request *http.Request) {

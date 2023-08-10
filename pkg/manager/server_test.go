@@ -618,7 +618,7 @@ func checkAndWaitForServer(address string, waitIntervalInSecond int, shouldAvail
 func launchAndWaitTestDataSourceServer(ctx context.Context, addr, syncAddr, biName, biUUID, checksum, diskPath string) bool {
 	go datasource.NewServer(ctx, addr, syncAddr,
 		checksum, string(types.DataSourceTypeDownload), biName, biUUID, diskPath,
-		map[string]string{types.DataSourceTypeDownloadParameterURL: "http://mock-download"},
+		map[string]string{types.DataSourceTypeDownloadParameterURL: "http://mock-download"}, map[string]string{},
 		&filesync.MockHandler{},
 	)
 	return util.DetectHTTPServerAvailability("http://"+addr, 5, true) &&

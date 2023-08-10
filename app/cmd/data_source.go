@@ -49,6 +49,10 @@ func DataSourceCmd() cli.Command {
 				Value: "",
 				Usage: "The SHA512 checksum of the backing images",
 			},
+			cli.StringSliceFlag{
+				Name:  "credential",
+				Usage: "Credential for restoring backing image from backup store.",
+			},
 		},
 		Action: func(c *cli.Context) {
 			if err := dataSource(c); err != nil {
@@ -71,17 +75,18 @@ func dataSource(c *cli.Context) error {
 	if err != nil {
 		return err
 	}
+	credential, err := parseSliceToMap(c.StringSlice("credential"))
+	if err != nil {
+		return err
+	}
 
-	return datasource.NewServer(context.Background(), listen, syncListen, checksum, sourceType, name, uuid, types.DiskPathInContainer, parameters, &sync.HTTPHandler{})
+	return datasource.NewServer(context.Background(), listen, syncListen, checksum, sourceType, name, uuid, types.DiskPathInContainer, parameters, credential, &sync.HTTPHandler{})
 }
 
 func parseSliceToMap(sli []string) (map[string]string, error) {
 	res := map[string]string{}
 	for _, s := range sli {
-		kvPair := strings.Split(s, "=")
-		if len(kvPair) != 2 {
-			return nil, fmt.Errorf("invalid slice input %v since it cannot be converted to a map entry", kvPair)
-		}
+		kvPair := strings.SplitN(s, "=", 2)
 		if kvPair[0] == "" {
 			return nil, fmt.Errorf("invalid slice input %v due to the empty key", kvPair)
 		}

@@ -22,6 +22,7 @@ func NewRouter(service *Service) *mux.Router {
 	// Launch a new file
 	router.HandleFunc("/v1/files", service.Fetch).Methods("POST").Queries("action", "fetch")
 	router.HandleFunc("/v1/files", service.DownloadFromURL).Methods("POST").Queries("action", "downloadFromURL")
+	router.HandleFunc("/v1/files", service.RestoreFromBackupURL).Methods("POST").Queries("action", "restoreFromBackupURL")
 	router.HandleFunc("/v1/files", service.UploadFromRequest).Methods("POST").Queries("action", "upload")
 	router.HandleFunc("/v1/files", service.ReceiveFromPeer).Methods("POST").Queries("action", "receiveFromPeer")
 

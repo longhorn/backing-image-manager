@@ -17,8 +17,10 @@ import (
 	"github.com/sirupsen/logrus"
 
 	"github.com/longhorn/backing-image-manager/api"
+	"github.com/longhorn/backing-image-manager/pkg/backup"
 	"github.com/longhorn/backing-image-manager/pkg/types"
 	"github.com/longhorn/backing-image-manager/pkg/util"
+	engineutil "github.com/longhorn/longhorn-engine/pkg/util"
 )
 
 // SyncFile state machine:
@@ -60,6 +62,8 @@ const (
 	RetryCount      = 60
 	LargeRetryCount = 10 * 60
 
+	PeriodicRefreshIntervalInSeconds = 2
+
 	TmpFileSuffix = ".tmp"
 )
 
@@ -88,6 +92,26 @@ type SyncingFile struct {
 
 	// for unit test
 	handler Handler
+}
+
+func (sf *SyncingFile) UpdateRestoreProgress(processedSize int, err error) {
+	sf.lock.Lock()
+	defer sf.lock.Unlock()
+
+	if sf.state == types.StateStarting {
+		sf.state = types.StateInProgress
+	}
+	if sf.state == types.StateReady {
+		return
+	}
+	sf.processedSize = int64(processedSize)
+	if sf.size > 0 {
+		sf.progress = int((float32(sf.processedSize) / float32(sf.size)) * 100)
+	}
+
+	if err != nil {
+		sf.message = errors.Wrapf(err, "failed to restore backing image").Error()
+	}
 }
 
 func (sf *SyncingFile) UpdateProgress(processedSize int64) {
@@ -482,6 +506,77 @@ func (sf *SyncingFile) DownloadFromURL(url string) (written int64, err error) {
 	sf.lock.Unlock()
 
 	return sf.handler.DownloadFromURL(sf.ctx, url, sf.tmpFilePath, sf)
+}
+
+func (sf *SyncingFile) RestoreFromBackupURL(backupURL string, credential map[string]string, concurrentLimit int) (err error) {
+	sf.log.Infof("SyncingFile: start to restore sync file from backup URL %v", backupURL)
+
+	needProcessing, err := sf.stateCheckBeforeProcessing()
+	if err != nil {
+		return err
+	}
+	if !needProcessing {
+		return nil
+	}
+
+	defer func() {
+		if finalErr := sf.finishProcessing(err); finalErr != nil {
+			err = finalErr
+		}
+	}()
+
+	backupType, err := util.CheckBackupType(backupURL)
+	if err != nil {
+		return errors.Wrapf(err, "failed to check the type for backup %v", backupURL)
+	}
+
+	if err := engineutil.SetupCredential(backupType, credential); err != nil {
+		return err
+	}
+
+	backupURL = engineutil.UnescapeURL(backupURL)
+
+	info, err := backup.GetBackupInfo(backupURL)
+	if err != nil {
+		return err
+	}
+
+	sf.lock.Lock()
+	sf.size = info.Size
+	sf.lock.Unlock()
+
+	// async call to start restoration
+	if err := backup.DoBackupRestore(backupURL, sf.tmpFilePath, concurrentLimit, sf); err != nil {
+		return err
+	}
+
+	// wait until restoration is complete or failed
+	err = sf.waitForRestoreComplete()
+	return err
+}
+
+func (sf *SyncingFile) waitForRestoreComplete() (err error) {
+	var (
+		restoreProgress int
+		restoreError    string
+	)
+	periodicChecker := time.NewTicker(PeriodicRefreshIntervalInSeconds * time.Second)
+
+	for range periodicChecker.C {
+		sf.lock.Lock()
+		restoreProgress = sf.progress
+		restoreError = sf.message
+		sf.lock.Unlock()
+		if restoreProgress == 100 {
+			periodicChecker.Stop()
+			return nil
+		}
+		if restoreError != "" {
+			periodicChecker.Stop()
+			return fmt.Errorf("%v", restoreError)
+		}
+	}
+	return nil
 }
 
 func (sf *SyncingFile) IdleTimeoutCopyToFile(src io.ReadCloser) (copied int64, err error) {
