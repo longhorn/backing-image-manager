@@ -7,8 +7,9 @@ import (
 )
 
 const (
-	DockerdProcess    = "dockerd"
-	ContainerdProcess = "containerd"
+	DockerdProcess        = "dockerd"
+	ContainerdProcess     = "containerd"
+	ContainerdProcessShim = "containerd-shim"
 )
 
 type ProcessFinder struct {
@@ -48,18 +49,17 @@ func (p *ProcessFinder) FindAncestorByName(ancestorProcess string) (*linuxproc.P
 		}
 	}
 
-	return nil, fmt.Errorf("Failed to find the ancestor process: %s", ancestorProcess)
+	return nil, fmt.Errorf("failed to find the ancestor process: %s", ancestorProcess)
 }
 
 func GetHostNamespacePath(hostProcPath string) string {
 	pf := NewProcessFinder(hostProcPath)
-	proc, err := pf.FindAncestorByName(DockerdProcess)
-	if err != nil {
-		proc, err = pf.FindAncestorByName(ContainerdProcess)
-		// fall back to use pid 1
-		if err != nil {
-			return fmt.Sprintf("%s/%d/ns/", hostProcPath, 1)
+	containerNames := []string{DockerdProcess, ContainerdProcess, ContainerdProcessShim}
+	for _, name := range containerNames {
+		proc, err := pf.FindAncestorByName(name)
+		if err == nil {
+			return fmt.Sprintf("%s/%d/ns/", hostProcPath, proc.Pid)
 		}
 	}
-	return fmt.Sprintf("%s/%d/ns/", hostProcPath, proc.Pid)
+	return fmt.Sprintf("%s/%d/ns/", hostProcPath, 1)
 }
