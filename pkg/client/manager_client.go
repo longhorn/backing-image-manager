@@ -3,9 +3,9 @@ package client
 import (
 	"fmt"
 
-	"github.com/golang/protobuf/ptypes/empty"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
+	"google.golang.org/protobuf/types/known/emptypb"
 
 	"github.com/longhorn/backing-image-manager/api"
 	"github.com/longhorn/backing-image-manager/pkg/meta"
@@ -135,7 +135,7 @@ func (cli *BackingImageManagerClient) List() (map[string]*api.BackingImage, erro
 	ctx, cancel := context.WithTimeout(context.Background(), types.GRPCServiceTimeout)
 	defer cancel()
 
-	resp, err := client.List(ctx, &empty.Empty{})
+	resp, err := client.List(ctx, &emptypb.Empty{})
 	if err != nil {
 		return nil, err
 	}
@@ -208,7 +208,7 @@ func (cli *BackingImageManagerClient) VersionGet() (*meta.VersionOutput, error) 
 	ctx, cancel := context.WithTimeout(context.Background(), types.GRPCServiceTimeout)
 	defer cancel()
 
-	resp, err := client.VersionGet(ctx, &empty.Empty{})
+	resp, err := client.VersionGet(ctx, &emptypb.Empty{})
 	if err != nil {
 		return nil, fmt.Errorf("failed to get version: %v", err)
 	}
@@ -232,7 +232,7 @@ func (cli *BackingImageManagerClient) Watch() (*api.BackingImageStream, error) {
 	// and allow the user to take care of it.
 	client := rpc.NewBackingImageManagerServiceClient(conn)
 	ctx, cancel := context.WithCancel(context.Background())
-	stream, err := client.Watch(ctx, &empty.Empty{})
+	stream, err := client.Watch(ctx, &emptypb.Empty{})
 	if err != nil {
 		return nil, err
 	}

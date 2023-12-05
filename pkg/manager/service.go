@@ -10,12 +10,12 @@ import (
 	"sync"
 	"time"
 
-	"github.com/golang/protobuf/ptypes/empty"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+	"google.golang.org/protobuf/types/known/emptypb"
 
 	"github.com/longhorn/backing-image-manager/api"
 	"github.com/longhorn/backing-image-manager/pkg/client"
@@ -147,7 +147,7 @@ func (m *Manager) monitoring() {
 	}
 }
 
-func (m *Manager) Delete(ctx context.Context, req *rpc.DeleteRequest) (resp *empty.Empty, err error) {
+func (m *Manager) Delete(ctx context.Context, req *rpc.DeleteRequest) (resp *emptypb.Empty, err error) {
 	log := m.log.WithFields(logrus.Fields{"biName": req.Name, "biUUID": req.Uuid})
 	log.Info("Backing Image Manager: prepare to delete backing image")
 	defer func() {
@@ -173,7 +173,7 @@ func (m *Manager) Delete(ctx context.Context, req *rpc.DeleteRequest) (resp *emp
 	}
 
 	log.Info("Backing Image Manager: deleted backing image")
-	return &empty.Empty{}, nil
+	return &emptypb.Empty{}, nil
 }
 
 func (m *Manager) waitForFileDeleted(name, uuid string, waitIntervalInSecond int) (err error) {
@@ -223,7 +223,7 @@ func (m *Manager) getAndUpdate(name, uuid string) (*rpc.BackingImageResponse, er
 	return backingImageResponse(fInfo), nil
 }
 
-func (m *Manager) List(ctx context.Context, req *empty.Empty) (*rpc.ListResponse, error) {
+func (m *Manager) List(ctx context.Context, req *emptypb.Empty) (*rpc.ListResponse, error) {
 	biFileInfoMap, err := m.listAndUpdate()
 	if err != nil {
 		return nil, err
@@ -411,7 +411,7 @@ func (m *Manager) waitForEndingFileState(name, uuid string, waitInterval int) (b
 	return nil, fmt.Errorf("failed to wait for backing image %v(%v) becoming an ending state, current state %v", name, uuid, state)
 }
 
-func (m *Manager) Send(ctx context.Context, req *rpc.SendRequest) (resp *empty.Empty, err error) {
+func (m *Manager) Send(ctx context.Context, req *rpc.SendRequest) (resp *emptypb.Empty, err error) {
 	log := m.log.WithFields(logrus.Fields{"biName": req.Name, "biUUID": req.Uuid, "toAddress": req.ToAddress})
 	log.Info("Backing Image Manager: prepare to send backing image")
 	defer func() {
@@ -430,7 +430,7 @@ func (m *Manager) Send(ctx context.Context, req *rpc.SendRequest) (resp *empty.E
 	}
 
 	log.Infof("Backing Image Manager: started sending backing image")
-	return &empty.Empty{}, nil
+	return &emptypb.Empty{}, nil
 }
 
 func (m *Manager) Fetch(ctx context.Context, req *rpc.FetchRequest) (resp *rpc.BackingImageResponse, err error) {
@@ -554,7 +554,7 @@ func ParsePortRange(portRange string) (int32, int32, error) {
 	return int32(portStart), int32(portEnd), nil
 }
 
-func (m *Manager) Watch(req *empty.Empty, srv rpc.BackingImageManagerService_WatchServer) (err error) {
+func (m *Manager) Watch(req *emptypb.Empty, srv rpc.BackingImageManagerService_WatchServer) (err error) {
 	m.log.Info("Backing Image Manager: prepare to start backing image update watch")
 
 	responseChan, err := m.Subscribe()
@@ -573,7 +573,7 @@ func (m *Manager) Watch(req *empty.Empty, srv rpc.BackingImageManagerService_Wat
 	m.log.Info("Backing Image Manager: backing image update watch started")
 
 	for range responseChan {
-		if err := srv.Send(&empty.Empty{}); err != nil {
+		if err := srv.Send(&emptypb.Empty{}); err != nil {
 			return err
 		}
 	}

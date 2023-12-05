@@ -225,6 +225,13 @@ func (s *Service) exportFromVolume(parameters map[string]string) error {
 			parameters[types.DataSourceTypeExportFromVolumeParameterVolumeSize], err)
 	}
 
+	var timeout int
+	if timeout, err = strconv.Atoi(parameters[types.DataSourceTypeExportFromVolumeParameterFileSyncHTTPClientTimeout]); err != nil {
+		s.log.Warnf("DataSource Service: Failed to parse string %v to an valie timeout integer, will ignore this input parameter: %v",
+			parameters[types.DataSourceTypeExportFromVolumeParameterFileSyncHTTPClientTimeout], err)
+		timeout = 60
+	}
+
 	// TODO: Use the storage IP of the sync service after launching the separate sync server pod.
 	storageIP, err := util.GetIPForPod()
 	if err != nil {
@@ -249,7 +256,7 @@ func (s *Service) exportFromVolume(parameters map[string]string) error {
 			senderErr = errors.Wrapf(err, "failed to get replica client %v", senderAddress)
 			return
 		}
-		if err := replicaClient.ExportVolume(snapshotName, storageIP, types.DefaultVolumeExportReceiverPort, true); err != nil {
+		if err := replicaClient.ExportVolume(snapshotName, storageIP, types.DefaultVolumeExportReceiverPort, true, timeout); err != nil {
 			senderErr = errors.Wrapf(err, "failed to export volume snapshot %v", snapshotName)
 			return
 		}

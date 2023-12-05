@@ -7,7 +7,7 @@ if [ ! -e ./proto/vendor/protobuf/src/google/protobuf ]; then
     rm -rf ./proto/vendor/protobuf/src/google/protobuf
     DIR="./proto/vendor/protobuf/src/google/protobuf"
     mkdir -p $DIR
-    wget https://raw.githubusercontent.com/protocolbuffers/protobuf/v3.9.0/src/google/protobuf/empty.proto -P $DIR
+    wget https://raw.githubusercontent.com/protocolbuffers/protobuf/v24.3/src/google/protobuf/empty.proto -P $DIR
 fi
 
 # Due to https://github.com/golang/protobuf/issues/1122, our .proto file names must be globally unique to avoid
