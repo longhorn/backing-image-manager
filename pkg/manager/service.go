@@ -500,9 +500,9 @@ func (m *Manager) PrepareDownload(ctx context.Context, req *rpc.PrepareDownloadR
 		return nil, status.Errorf(codes.FailedPrecondition, "invalid backing image state %v for the download", bi.Status.State)
 	}
 
-	address, err := util.ConvertToStorageAddress(m.syncAddress)
+	address, err := util.GetSyncServiceAddressWithPodIP(m.syncAddress)
 	if err != nil {
-		return nil, status.Errorf(codes.Unknown, "failed to detect the storage address of the sync server for the download: %v", err)
+		return nil, status.Errorf(codes.Internal, "failed to get sync service address: %v", err)
 	}
 	srcFilePath := types.GetBackingImageFilePath(m.diskPath, req.Name, req.Uuid)
 
