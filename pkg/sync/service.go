@@ -1,6 +1,7 @@
 package sync
 
 import (
+	"compress/gzip"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -9,6 +10,7 @@ import (
 	"net/http"
 	"net/url"
 	"strconv"
+	"strings"
 	"sync"
 	"time"
 
@@ -233,10 +235,16 @@ func (s *Service) DownloadToDst(writer http.ResponseWriter, request *http.Reques
 	}
 	defer src.Close()
 
-	writer.Header().Set("Content-Disposition", "attachment; filename="+sf.uuid)
+	gzipWriter := gzip.NewWriter(writer)
+	defer gzipWriter.Close()
+
+	// e.g. filePath=/data/backing-images/parrot-6846a0b2/backing
+	filePathSlices := strings.Split(sf.filePath, "/")
+	backingImageNameUUID := filePathSlices[len(filePathSlices)-2]
+
+	writer.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=%s.gz", strings.Split(backingImageNameUUID, "-")[0]))
 	writer.Header().Set("Content-Type", "application/octet-stream")
-	writer.Header().Set("Content-Length", strconv.FormatInt(sf.size, 10))
-	if _, ioErr := io.Copy(writer, src); ioErr != nil {
+	if _, ioErr := io.Copy(gzipWriter, src); ioErr != nil {
 		err = ioErr
 		return
 	}
