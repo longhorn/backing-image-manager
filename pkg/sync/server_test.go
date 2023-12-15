@@ -479,11 +479,15 @@ func (s *SyncTestSuite) TestDownloadToDst(c *C) {
 	err = cli.DownloadToDst(curPath, downloadFilePath)
 	c.Assert(err, IsNil)
 
-	downloadChecksum, err := util.GetFileChecksum(downloadFilePath)
+	unzipDownloadFilePath := downloadFilePath + "-unzip"
+	err = util.GunzipFile(downloadFilePath, unzipDownloadFilePath)
+	c.Assert(err, IsNil)
+
+	downloadChecksum, err := util.GetFileChecksum(unzipDownloadFilePath)
 	c.Assert(err, IsNil)
 	c.Assert(downloadChecksum, Equals, checksum)
 	// Downloaded file can be identified as a qcow2 file as well.
-	downloadFileFormat, err := util.DetectFileFormat(downloadFilePath)
+	downloadFileFormat, err := util.DetectFileFormat(unzipDownloadFilePath)
 	c.Assert(err, IsNil)
 	c.Assert(downloadFileFormat, Equals, "qcow2")
 }
