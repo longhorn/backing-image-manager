@@ -426,7 +426,11 @@ func (s *TestSuite) TestBackingImageDownloadToLocal(c *C) {
 	c.Assert(err, IsNil)
 	defer os.RemoveAll(downloadFilePath)
 
-	downloadChecksum, err := util.GetFileChecksum(downloadFilePath)
+	unzipDownloadFilePath := downloadFilePath + "-unzip"
+	err = util.GunzipFile(downloadFilePath, unzipDownloadFilePath)
+	c.Assert(err, IsNil)
+
+	downloadChecksum, err := util.GetFileChecksum(unzipDownloadFilePath)
 	c.Assert(err, IsNil)
 	c.Assert(downloadChecksum, Equals, checksum)
 
