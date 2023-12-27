@@ -82,7 +82,9 @@ func (s *SyncTestSuite) BenchmarkMultipleDownload(c *C) {
 	fileName := "sync-download-file"
 	downloadedFilePathBase := filepath.Join(s.dir, fileName)
 
-	go NewServer(s.ctx, s.addr, &MockHandler{})
+	go func() {
+		_ = NewServer(s.ctx, s.addr, &MockHandler{})
+	}()
 	isRunning := util.DetectHTTPServerAvailability(s.httpAddr, 5, true)
 	c.Assert(isRunning, Equals, true)
 
@@ -137,7 +139,9 @@ func (s *SyncTestSuite) BenchmarkUpload(c *C) {
 	expectedChecksum, err := util.GetFileChecksum(originalFilePath)
 	c.Assert(err, IsNil)
 
-	go NewServer(s.ctx, s.addr, &MockHandler{})
+	go func() {
+		_ = NewServer(s.ctx, s.addr, &MockHandler{})
+	}()
 	isRunning := util.DetectHTTPServerAvailability(s.httpAddr, 5, true)
 	c.Assert(isRunning, Equals, true)
 
@@ -188,7 +192,9 @@ func (s *SyncTestSuite) BenchmarkOneReceiveAndMultiSendWithSendingLimit(c *C) {
 	c.Assert(err, IsNil)
 	c.Assert(checksum, Not(Equals), "")
 
-	go NewServer(s.ctx, s.addr, &MockHandler{})
+	go func() {
+		_ = NewServer(s.ctx, s.addr, &MockHandler{})
+	}()
 	if !util.DetectHTTPServerAvailability(s.httpAddr, 5, true) {
 		logrus.Fatal("failed to wait for sync service running in 5 second")
 	}
@@ -259,7 +265,9 @@ func (s *SyncTestSuite) BenchmarkMultiReceiveAndMultiSend(c *C) {
 	c.Assert(err, IsNil)
 	c.Assert(checksum, Not(Equals), "")
 
-	go NewServer(s.ctx, s.addr, &MockHandler{})
+	go func() {
+		_ = NewServer(s.ctx, s.addr, &MockHandler{})
+	}()
 	if !util.DetectHTTPServerAvailability(s.httpAddr, 5, true) {
 		logrus.Fatal("failed to wait for sync service running in 5 second")
 	}
@@ -330,7 +338,9 @@ func (s *SyncTestSuite) TestTimeoutReceiveFromPeers(c *C) {
 	fileName := "sync-receive-file-timeout"
 	curPath := filepath.Join(s.dir, fileName)
 
-	go NewServer(s.ctx, s.addr, &MockHandler{})
+	go func() {
+		_ = NewServer(s.ctx, s.addr, &MockHandler{})
+	}()
 	if !util.DetectHTTPServerAvailability(s.httpAddr, 5, true) {
 		logrus.Fatal("failed to wait for sync service running in 5 second")
 	}
@@ -370,7 +380,9 @@ func (s *SyncTestSuite) TestFetch(c *C) {
 	c.Assert(err, IsNil)
 	c.Assert(checksum, Not(Equals), "")
 
-	go NewServer(s.ctx, s.addr, &MockHandler{})
+	go func() {
+		_ = NewServer(s.ctx, s.addr, &MockHandler{})
+	}()
 	isRunning := util.DetectHTTPServerAvailability(s.httpAddr, 5, true)
 	c.Assert(isRunning, Equals, true)
 
@@ -461,7 +473,9 @@ func (s *SyncTestSuite) TestDownloadToDst(c *C) {
 	c.Assert(err, IsNil)
 	c.Assert(checksum, Not(Equals), "")
 
-	go NewServer(s.ctx, s.addr, &HTTPHandler{})
+	go func() {
+		_ = NewServer(s.ctx, s.addr, &MockHandler{})
+	}()
 	isRunning := util.DetectHTTPServerAvailability(s.httpAddr, 5, true)
 	c.Assert(isRunning, Equals, true)
 
@@ -498,7 +512,9 @@ func (s *SyncTestSuite) TestDuplicateCalls(c *C) {
 	fileName := "sync-download-file-for-dup-calls"
 	curPath := filepath.Join(s.dir, fileName)
 
-	go NewServer(s.ctx, s.addr, &MockHandler{})
+	go func() {
+		_ = NewServer(s.ctx, s.addr, &MockHandler{})
+	}()
 	isRunning := util.DetectHTTPServerAvailability(s.httpAddr, 5, true)
 	c.Assert(isRunning, Equals, true)
 
@@ -546,7 +562,9 @@ func (s *SyncTestSuite) TestForgetFile(c *C) {
 	expectedChecksum, err := util.GetFileChecksum(originalFilePath)
 	c.Assert(err, IsNil)
 
-	go NewServer(s.ctx, s.addr, &MockHandler{})
+	go func() {
+		_ = NewServer(s.ctx, s.addr, &MockHandler{})
+	}()
 	isRunning := util.DetectHTTPServerAvailability(s.httpAddr, 5, true)
 	c.Assert(isRunning, Equals, true)
 
@@ -580,7 +598,9 @@ func (s *SyncTestSuite) TestReadyFileValidation(c *C) {
 	fileName := "sync-download-file-ready-validation"
 	curPath := filepath.Join(s.dir, fileName)
 
-	go NewServer(s.ctx, s.addr, &MockHandler{})
+	go func() {
+		_ = NewServer(s.ctx, s.addr, &MockHandler{})
+	}()
 	isRunning := util.DetectHTTPServerAvailability(s.httpAddr, 5, true)
 	c.Assert(isRunning, Equals, true)
 
