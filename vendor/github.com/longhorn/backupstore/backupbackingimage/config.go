@@ -36,10 +36,10 @@ func addBackingImageConfigInBackupStore(driver backupstore.BackupStoreDriver, ba
 	}
 
 	if err := saveBackingImageConfig(driver, backupBackingImage); err != nil {
-		return false, errors.Wrapf(err, "failed to add backing image config to backupstore", backupBackingImage.Name)
+		return false, errors.Wrap(err, "failed to add backing image config to backupstore")
 	}
 
-	log.Infof("Added backing image config to backupstore", backupBackingImage.Name)
+	log.Info("Added backing image config to backupstore")
 	return false, nil
 }
 

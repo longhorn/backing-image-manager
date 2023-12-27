@@ -120,7 +120,7 @@ github.com/kr/pretty
 # github.com/kr/text v0.2.0
 ## explicit
 github.com/kr/text
-# github.com/longhorn/backupstore v0.0.0-20231226052341-0a7ef320e10e => github.com/ChanYiLin/backupstore v0.0.0-20231227083647-0ae49d216a16
+# github.com/longhorn/backupstore v0.0.0-20231227154627-8a80904e9077
 ## explicit; go 1.21
 github.com/longhorn/backupstore
 github.com/longhorn/backupstore/azblob
