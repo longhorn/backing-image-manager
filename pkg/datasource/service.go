@@ -46,6 +46,7 @@ type Service struct {
 	diskUUID         string
 	sourceType       types.DataSourceType
 	parameters       map[string]string
+	credential       map[string]string
 	expectedChecksum string
 
 	syncListenAddr string
@@ -54,7 +55,7 @@ type Service struct {
 
 func LaunchService(ctx context.Context, cancel context.CancelFunc,
 	syncListenAddr, checksum, sourceType, name, uuid, diskPathInContainer string,
-	parameters map[string]string) (*Service, error) {
+	parameters map[string]string, credential map[string]string) (*Service, error) {
 
 	if name == "" || uuid == "" {
 		return nil, fmt.Errorf("the backing image name or uuid is not specified")
@@ -84,6 +85,7 @@ func LaunchService(ctx context.Context, cancel context.CancelFunc,
 		diskUUID:         diskUUID,
 		sourceType:       types.DataSourceType(sourceType),
 		parameters:       parameters,
+		credential:       credential,
 		expectedChecksum: checksum,
 
 		syncListenAddr: syncListenAddr,
@@ -138,6 +140,8 @@ func (s *Service) init() (err error) {
 	}()
 
 	switch s.sourceType {
+	case types.DataSourceTypeRestore:
+		return s.restoreFromBackupURL()
 	case types.DataSourceTypeDownload:
 		return s.downloadFromURL(s.parameters)
 	case types.DataSourceTypeUpload:
@@ -184,6 +188,19 @@ func (s *Service) waitForBeginning() {
 		}
 	}
 
+}
+
+func (s *Service) restoreFromBackupURL() (err error) {
+	backupURL := s.parameters[types.DataSourceTypeRestoreParameterBackupURL]
+	if backupURL == "" {
+		return fmt.Errorf("no %v for restore", types.DataSourceTypeRestoreParameterBackupURL)
+	}
+	concurrentLimit := s.parameters[types.DataSourceTypeRestoreParameterConcurrentLimit]
+	if concurrentLimit == "" {
+		return fmt.Errorf("no %v for restore", types.DataSourceTypeRestoreParameterConcurrentLimit)
+	}
+
+	return s.syncClient.RestoreFromBackupURL(backupURL, concurrentLimit, s.filePath, s.uuid, s.diskUUID, s.expectedChecksum, s.credential)
 }
 
 func (s *Service) downloadFromURL(parameters map[string]string) (err error) {
@@ -251,7 +268,7 @@ func (s *Service) exportFromVolume(parameters map[string]string) error {
 			}
 		}()
 
-		replicaClient, err := repclient.NewReplicaClient(senderAddress)
+		replicaClient, err := repclient.NewReplicaClient(senderAddress, "", "")
 		if err != nil {
 			senderErr = errors.Wrapf(err, "failed to get replica client %v", senderAddress)
 			return

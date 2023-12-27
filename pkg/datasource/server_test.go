@@ -78,7 +78,7 @@ func (s *DataSourceTestSuite) BenchmarkDownload(c *C) {
 	biName := "data-source-download-file"
 
 	go NewServer(s.ctx, s.addr, s.syncAddr, "", string(types.DataSourceTypeDownload), biName, TestBackingImageUUID, s.dir,
-		map[string]string{types.DataSourceTypeDownloadParameterURL: "http://mock-download"},
+		map[string]string{types.DataSourceTypeDownloadParameterURL: "http://mock-download"}, map[string]string{},
 		&sync.MockHandler{})
 	err := checkAndWaitForServer(s.addr, s.syncAddr, 5, true)
 	c.Assert(err, IsNil)
@@ -112,7 +112,7 @@ func (s *DataSourceTestSuite) BenchmarkUpload(c *C) {
 	c.Assert(err, IsNil)
 
 	// Test if the proxy works
-	go NewServer(s.ctx, s.addr, s.syncAddr, checksum, string(types.DataSourceTypeUpload), biName, TestBackingImageUUID, s.dir, map[string]string{"fileType": types.SyncingFileTypeQcow2}, &sync.HTTPHandler{})
+	go NewServer(s.ctx, s.addr, s.syncAddr, checksum, string(types.DataSourceTypeUpload), biName, TestBackingImageUUID, s.dir, map[string]string{"fileType": types.SyncingFileTypeQcow2}, map[string]string{}, &sync.HTTPHandler{})
 	err = checkAndWaitForServer(s.addr, s.syncAddr, 5, true)
 	c.Assert(err, IsNil)
 
@@ -147,7 +147,7 @@ func (s *DataSourceTestSuite) TestTimeoutExportingFromVolume(c *C) {
 		types.DataSourceTypeExportFromVolumeParameterSnapshotName:  "invalid-snap",
 	}
 	go NewServer(s.ctx, s.addr, s.syncAddr, "", string(types.DataSourceTypeExportFromVolume), biName, TestBackingImageUUID, s.dir,
-		parameters, &sync.HTTPHandler{})
+		parameters, map[string]string{}, &sync.HTTPHandler{})
 	err := checkAndWaitForServer(s.addr, s.syncAddr, 5, true)
 	c.Assert(err, IsNil)
 
@@ -173,7 +173,7 @@ func (s *DataSourceTestSuite) TestTransfer(c *C) {
 	downloadedFilePath := types.GetDataSourceFilePath(s.dir, biName, TestBackingImageUUID)
 
 	go NewServer(s.ctx, s.addr, s.syncAddr, "", string(types.DataSourceTypeDownload), biName, TestBackingImageUUID, s.dir,
-		map[string]string{types.DataSourceTypeDownloadParameterURL: "http://mock-download"},
+		map[string]string{types.DataSourceTypeDownloadParameterURL: "http://mock-download"}, map[string]string{},
 		&sync.MockHandler{})
 	err := checkAndWaitForServer(s.addr, s.syncAddr, 5, true)
 	c.Assert(err, IsNil)
