@@ -23,6 +23,14 @@ const (
 	AWSEndPoint  = "AWS_ENDPOINTS"
 	AWSCert      = "AWS_CERT"
 
+	CIFSUsername = "CIFS_USERNAME"
+	CIFSPassword = "CIFS_PASSWORD"
+
+	AZBlobAccountName = "AZBLOB_ACCOUNT_NAME"
+	AZBlobAccountKey  = "AZBLOB_ACCOUNT_KEY"
+	AZBlobEndpoint    = "AZBLOB_ENDPOINT"
+	AZBlobCert        = "AZBLOB_CERT"
+
 	HTTPSProxy = "HTTPS_PROXY"
 	HTTPProxy  = "HTTP_PROXY"
 	NOProxy    = "NO_PROXY"
@@ -93,6 +101,7 @@ type Backend interface {
 	GetHeadFileSize() (int64, error)
 	GetUnmapMarkSnapChainRemoved() (bool, error)
 	SetUnmapMarkSnapChainRemoved(enabled bool) error
+	ResetRebuild() error
 }
 
 type BackendFactory interface {

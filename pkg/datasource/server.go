@@ -11,7 +11,7 @@ import (
 	"github.com/longhorn/backing-image-manager/pkg/util"
 )
 
-func NewServer(parentCtx context.Context, listenAddr, syncListenAddr, checksum, sourceType, biName, biUUID, diskPathInContainer string, parameters map[string]string, handler sync.Handler) error {
+func NewServer(parentCtx context.Context, listenAddr, syncListenAddr, checksum, sourceType, biName, biUUID, diskPathInContainer string, parameters map[string]string, credential map[string]string, handler sync.Handler) error {
 	ctx, cancel := context.WithCancel(parentCtx)
 	defer cancel()
 	srv := &http.Server{
@@ -29,7 +29,7 @@ func NewServer(parentCtx context.Context, listenAddr, syncListenAddr, checksum, 
 		return fmt.Errorf("failed to wait for sync service running in 5 second")
 	}
 
-	service, err := LaunchService(ctx, cancel, syncListenAddr, checksum, sourceType, biName, biUUID, diskPathInContainer, parameters)
+	service, err := LaunchService(ctx, cancel, syncListenAddr, checksum, sourceType, biName, biUUID, diskPathInContainer, parameters, credential)
 	if err != nil {
 		return err
 	}

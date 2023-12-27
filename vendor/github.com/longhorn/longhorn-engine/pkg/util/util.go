@@ -1,7 +1,6 @@
 package util
 
 import (
-	"errors"
 	"fmt"
 	"io"
 	"net"
@@ -9,20 +8,15 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
-	"reflect"
 	"regexp"
-	"runtime"
 	"strconv"
 	"strings"
 	"syscall"
 	"time"
 
-	"github.com/google/uuid"
 	"github.com/gorilla/handlers"
 	"github.com/sirupsen/logrus"
 	"golang.org/x/sys/unix"
-
-	iutil "github.com/longhorn/go-iscsi-helper/util"
 
 	"github.com/longhorn/longhorn-engine/pkg/types"
 )
@@ -30,8 +24,6 @@ import (
 var (
 	MaximumVolumeNameSize = 64
 	validVolumeName       = regexp.MustCompile(`^[a-zA-Z0-9][a-zA-Z0-9_.-]+$`)
-
-	HostProc = "/host/proc"
 
 	unixDomainSocketDirectoryInContainer = "/host/var/lib/longhorn/unix-domain-socket/"
 )
@@ -88,10 +80,6 @@ func GetPortFromAddress(address string) (int, error) {
 	return port, nil
 }
 
-func UUID() string {
-	return uuid.New().String()
-}
-
 func Filter(list []string, check func(string) bool) []string {
 	result := make([]string, 0, len(list))
 	for _, i := range list {
@@ -100,15 +88,6 @@ func Filter(list []string, check func(string) bool) []string {
 		}
 	}
 	return result
-}
-
-func Contains(arr []string, val string) bool {
-	for _, a := range arr {
-		if a == val {
-			return true
-		}
-	}
-	return false
 }
 
 type filteredLoggingHandler struct {
@@ -264,36 +243,6 @@ func CheckBackupType(backupTarget string) (string, error) {
 	return u.Scheme, nil
 }
 
-func GetBackupCredential(backupURL string) (map[string]string, error) {
-	credential := map[string]string{}
-	backupType, err := CheckBackupType(backupURL)
-	if err != nil {
-		return nil, err
-	}
-	if backupType == "s3" {
-		accessKey := os.Getenv(types.AWSAccessKey)
-		secretKey := os.Getenv(types.AWSSecretKey)
-		if accessKey == "" && secretKey != "" {
-			return nil, errors.New("could not backup to s3 without setting credential access key")
-		}
-		if accessKey != "" && secretKey == "" {
-			return nil, errors.New("could not backup to s3 without setting credential secret access key")
-		}
-		if accessKey != "" && secretKey != "" {
-			credential[types.AWSAccessKey] = accessKey
-			credential[types.AWSSecretKey] = secretKey
-		}
-
-		credential[types.AWSEndPoint] = os.Getenv(types.AWSEndPoint)
-		credential[types.AWSCert] = os.Getenv(types.AWSCert)
-		credential[types.HTTPSProxy] = os.Getenv(types.HTTPSProxy)
-		credential[types.HTTPProxy] = os.Getenv(types.HTTPProxy)
-		credential[types.NOProxy] = os.Getenv(types.NOProxy)
-		credential[types.VirtualHostedStyle] = os.Getenv(types.VirtualHostedStyle)
-	}
-	return credential, nil
-}
-
 func ResolveBackingFilepath(fileOrDirpath string) (string, error) {
 	fileOrDir, err := os.Open(fileOrDirpath)
 	if err != nil {
@@ -321,18 +270,6 @@ func ResolveBackingFilepath(fileOrDirpath string) (string, error) {
 	}
 
 	return fileOrDirpath, nil
-}
-
-func GetInitiatorNS() string {
-	return iutil.GetHostNamespacePath(HostProc)
-}
-
-func GetFunctionName(i interface{}) string {
-	return runtime.FuncForPC(reflect.ValueOf(i).Pointer()).Name()
-}
-
-func RandomID(randomIDLenth int) string {
-	return UUID()[:randomIDLenth]
 }
 
 func GetAddresses(volumeName, address string, dataServerProtocol types.DataServerProtocol) (string, string, string, int, error) {

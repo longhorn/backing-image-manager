@@ -10,6 +10,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/golang/protobuf/ptypes/empty"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	"golang.org/x/net/context"
@@ -17,7 +18,10 @@ import (
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/emptypb"
 
+	butil "github.com/longhorn/backupstore/util"
+
 	"github.com/longhorn/backing-image-manager/api"
+	"github.com/longhorn/backing-image-manager/pkg/backup"
 	"github.com/longhorn/backing-image-manager/pkg/client"
 	"github.com/longhorn/backing-image-manager/pkg/rpc"
 	"github.com/longhorn/backing-image-manager/pkg/types"
@@ -45,6 +49,8 @@ type Manager struct {
 	broadcaster       *broadcaster.Broadcaster
 
 	syncClient *client.SyncClient
+
+	BackupList *BackupList
 
 	log logrus.FieldLogger
 }
@@ -79,6 +85,8 @@ func NewManager(ctx context.Context, syncAddress, diskUUID, diskPath, portRange 
 		syncClient: &client.SyncClient{
 			Remote: syncAddress,
 		},
+
+		BackupList: &BackupList{},
 
 		log: logrus.StandardLogger().WithFields(
 			logrus.Fields{
@@ -587,4 +595,56 @@ func (m *Manager) broadcastConnector() (chan interface{}, error) {
 
 func (m *Manager) Subscribe() (<-chan interface{}, error) {
 	return m.broadcaster.Subscribe(context.TODO(), m.broadcastConnector)
+}
+
+func (m *Manager) BackupCreate(ctx context.Context, req *rpc.BackupCreateRequest) (resp *empty.Empty, err error) {
+	backupType, err := butil.CheckBackupType(req.BackupTarget)
+	if err != nil {
+		return nil, err
+	}
+
+	if err := butil.SetupCredential(backupType, req.Credential); err != nil {
+		return nil, err
+	}
+	backingImagePath := types.GetBackingImageFilePath(m.diskPath, req.Name, req.Uuid)
+	backupBackingImage, backupStatus, backupConfig, err := backup.DoBackupInit(&backup.CreateBackupParameters{
+		Name:              req.Name,
+		Path:              backingImagePath,
+		Checksum:          req.Checksum,
+		DestURL:           req.BackupTarget,
+		CompressionMethod: req.CompressionMethod,
+		ConcurrentLimit:   req.ConcurrentLimit,
+		Labels:            req.Labels,
+	})
+	if err != nil {
+		return nil, errors.Wrapf(err, "failed to initialize backup %v", req.Name)
+	}
+
+	if err := m.BackupList.BackupAdd(backupStatus.Name, backupStatus); err != nil {
+		return nil, errors.Wrapf(err, "failed to add the backup object %v", backupStatus.Name)
+	}
+
+	err = backup.DoBackupCreate(backupBackingImage, backupStatus, backupConfig)
+	if err != nil {
+		return nil, errors.Wrapf(err, "failed to create backup %v", req.Name)
+	}
+
+	return &empty.Empty{}, nil
+}
+
+func (m *Manager) BackupStatus(ctx context.Context, req *rpc.BackupStatusRequest) (resp *rpc.BackupStatusResponse, err error) {
+	if req.Name == "" {
+		return nil, fmt.Errorf("empty backing image name for getting backup backing image status")
+	}
+
+	backupStatus, err := m.BackupList.BackupGet(req.Name)
+	if err != nil {
+		return nil, errors.Wrapf(err, "failed to get backup status %v", req.Name)
+	}
+	return &rpc.BackupStatusResponse{
+		Progress:  int32(backupStatus.Progress),
+		BackupUrl: backupStatus.BackupURL,
+		Error:     backupStatus.Error,
+		State:     string(backupStatus.State),
+	}, nil
 }
