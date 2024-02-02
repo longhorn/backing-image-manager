@@ -78,10 +78,8 @@ func dataSource(c *cli.Context) error {
 func parseSliceToMap(sli []string) (map[string]string, error) {
 	res := map[string]string{}
 	for _, s := range sli {
-		kvPair := strings.Split(s, "=")
-		if len(kvPair) != 2 {
-			return nil, fmt.Errorf("invalid slice input %v since it cannot be converted to a map entry", kvPair)
-		}
+		// url could contain "=" for query parameters
+		kvPair := strings.SplitN(s, "=", 2)
 		if kvPair[0] == "" {
 			return nil, fmt.Errorf("invalid slice input %v due to the empty key", kvPair)
 		}
