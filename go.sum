@@ -62,6 +62,8 @@ github.com/longhorn/backupstore v0.0.0-20231227154627-8a80904e9077 h1:bc7BEw4hEL
 github.com/longhorn/backupstore v0.0.0-20231227154627-8a80904e9077/go.mod h1:4cbJWtlrD2cGTQxQLtdlPTYopiJiusXH7CpOBrn/s3k=
 github.com/longhorn/backupstore v0.0.0-20240207023845-915898cee71c h1:Pr08Ip8fo9lZhKGBTjyyeeXos6AIu/twkiDzhUe0Hx8=
 github.com/longhorn/backupstore v0.0.0-20240207023845-915898cee71c/go.mod h1:4cbJWtlrD2cGTQxQLtdlPTYopiJiusXH7CpOBrn/s3k=
+github.com/longhorn/backupstore v0.0.0-20240207150630-b375644f1c57 h1:4yP0EwQ3tmTwOws1hXa5T5QxtDyibwKaFNocgLHyrjU=
+github.com/longhorn/backupstore v0.0.0-20240207150630-b375644f1c57/go.mod h1:4cbJWtlrD2cGTQxQLtdlPTYopiJiusXH7CpOBrn/s3k=
 github.com/longhorn/longhorn-engine v1.6.0-dev-20231217.0.20231226052201-1c1b8312a30d h1:3i+f6P78QYV78nuAV8m/kHNcXRgdVrMoGlUkrbcOEz4=
 github.com/longhorn/longhorn-engine v1.6.0-dev-20231217.0.20231226052201-1c1b8312a30d/go.mod h1:Jkxyj5RT2fk6L/KuPkWMmB0cRhVDjHa799uIXFt3Bfw=
 github.com/longhorn/sparse-tools v0.0.0-20230408015858-c849def39d3c h1:EAE/cBOWZUL9CDiI4xbOr1IudQUa2e6u/pdScytEcvo=
