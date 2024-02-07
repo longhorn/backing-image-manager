@@ -12,7 +12,7 @@ require (
 	github.com/pkg/errors v0.9.1
 	github.com/rancher/go-fibmap v0.0.0-20160418233256-5fc9f8c1ed47
 	github.com/sirupsen/logrus v1.9.3
-	github.com/urfave/cli v1.22.13
+	github.com/urfave/cli v1.22.14
 	golang.org/x/net v0.17.0
 	google.golang.org/grpc v1.58.3
 	google.golang.org/protobuf v1.31.0
