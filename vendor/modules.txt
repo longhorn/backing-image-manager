@@ -142,7 +142,7 @@ github.com/longhorn/longhorn-engine/pkg/types
 github.com/longhorn/longhorn-engine/pkg/util
 github.com/longhorn/longhorn-engine/pkg/util/disk
 github.com/longhorn/longhorn-engine/proto/ptypes
-# github.com/longhorn/sparse-tools v0.0.0-20240104131008-60efffb16224
+# github.com/longhorn/sparse-tools v0.0.0-20240207150750-2376a4da57f5
 ## explicit; go 1.17
 github.com/longhorn/sparse-tools/sparse
 github.com/longhorn/sparse-tools/sparse/rest

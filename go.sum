@@ -68,6 +68,8 @@ github.com/longhorn/sparse-tools v0.0.0-20230408015858-c849def39d3c h1:EAE/cBOWZ
 github.com/longhorn/sparse-tools v0.0.0-20230408015858-c849def39d3c/go.mod h1:qhbarWiCtB2FFqg7v3KBSRshU7oQgrabmIuN3Sh0cMo=
 github.com/longhorn/sparse-tools v0.0.0-20240104131008-60efffb16224 h1:5gTEo5hyElKug+JHoudgzds/G+dmYiAmMXMlJsBfuNo=
 github.com/longhorn/sparse-tools v0.0.0-20240104131008-60efffb16224/go.mod h1:qhbarWiCtB2FFqg7v3KBSRshU7oQgrabmIuN3Sh0cMo=
+github.com/longhorn/sparse-tools v0.0.0-20240207150750-2376a4da57f5 h1:612i3/vvi23XC+7JbGJdIE48HxRla7qvf1QhOUeZTmw=
+github.com/longhorn/sparse-tools v0.0.0-20240207150750-2376a4da57f5/go.mod h1:qhbarWiCtB2FFqg7v3KBSRshU7oQgrabmIuN3Sh0cMo=
 github.com/matttproud/golang_protobuf_extensions v1.0.1/go.mod h1:D8He9yQNgCq6Z5Ld7szi9bcBfOoFv/3dc6xSMkL2PC0=
 github.com/matttproud/golang_protobuf_extensions v1.0.4 h1:mmDVorXM7PCGKw94cs5zkfA9PSy5pEvNWRP0ET0TIVo=
 github.com/matttproud/golang_protobuf_extensions v1.0.4/go.mod h1:BSXmuO+STAnVfrANrmjBb36TMTDstsz7MSK+HVaYKv4=
