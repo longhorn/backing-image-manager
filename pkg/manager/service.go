@@ -449,7 +449,7 @@ func (m *Manager) Fetch(ctx context.Context, req *rpc.FetchRequest) (resp *rpc.B
 
 	var srcFilePath string
 	if req.DataSourceAddress != "" {
-		log.Infof("Backing Image Manager: need to transfer the file from the data sourece server first")
+		log.Infof("Backing Image Manager: need to transfer the file from the data source server first")
 		srcFilePath = types.GetDataSourceFilePath(m.diskPath, req.Spec.Name, req.Spec.Uuid)
 		dsClient := &client.DataSourceClient{Remote: req.DataSourceAddress}
 		dsInfo, err := dsClient.Get()
@@ -464,7 +464,7 @@ func (m *Manager) Fetch(ctx context.Context, req *rpc.FetchRequest) (resp *rpc.B
 			return nil, err
 		}
 	} else {
-		log.Infof("Backing Image Manager: there is no need to transfer the file from the data sourece server, will try to directly reuse the file")
+		log.Infof("Backing Image Manager: there is no need to transfer the file from the data source server, will try to directly reuse the file")
 		srcFilePath = types.GetBackingImageFilePath(m.diskPath, req.Spec.Name, req.Spec.Uuid)
 	}
 

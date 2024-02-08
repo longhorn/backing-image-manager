@@ -225,6 +225,16 @@ func (s *Service) exportFromVolume(parameters map[string]string) error {
 			parameters[types.DataSourceTypeExportFromVolumeParameterVolumeSize], err)
 	}
 
+<<<<<<< HEAD
+=======
+	var timeout int
+	if timeout, err = strconv.Atoi(parameters[types.DataSourceTypeExportFromVolumeParameterFileSyncHTTPClientTimeout]); err != nil {
+		s.log.Warnf("DataSource Service: Failed to parse string %v to a valid timeout integer, will ignore this input parameter: %v",
+			parameters[types.DataSourceTypeExportFromVolumeParameterFileSyncHTTPClientTimeout], err)
+		timeout = 60
+	}
+
+>>>>>>> c140ba9 (Make Codespell happy)
 	// TODO: Use the storage IP of the sync service after launching the separate sync server pod.
 	storageIP, err := util.GetIPForPod()
 	if err != nil {
