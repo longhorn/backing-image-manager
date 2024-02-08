@@ -244,7 +244,7 @@ func (s *Service) exportFromVolume(parameters map[string]string) error {
 
 	var timeout int
 	if timeout, err = strconv.Atoi(parameters[types.DataSourceTypeExportFromVolumeParameterFileSyncHTTPClientTimeout]); err != nil {
-		s.log.Warnf("DataSource Service: Failed to parse string %v to an valie timeout integer, will ignore this input parameter: %v",
+		s.log.Warnf("DataSource Service: Failed to parse string %v to a valid timeout integer, will ignore this input parameter: %v",
 			parameters[types.DataSourceTypeExportFromVolumeParameterFileSyncHTTPClientTimeout], err)
 		timeout = 60
 	}
