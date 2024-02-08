@@ -34,7 +34,7 @@ func (h *HTTPHandler) GetSizeFromURL(url string) (size int64, err error) {
 	ctx, cancel := context.WithTimeout(context.Background(), types.HTTPTimeout)
 	defer cancel()
 
-	rr, err := http.NewRequestWithContext(ctx, "GET", url, nil)
+	rr, err := http.NewRequestWithContext(ctx, http.MethodHead, url, nil)
 	if err != nil {
 		return 0, err
 	}
@@ -50,11 +50,12 @@ func (h *HTTPHandler) GetSizeFromURL(url string) (size int64, err error) {
 		return 0, fmt.Errorf("expected status code 200 from %s, got %s", url, resp.Status)
 	}
 
-	if resp.Header.Get("Content-Length") == "" {
+	contentLength := resp.Header.Get("Content-Length")
+	if contentLength == "" {
 		// -1 indicates unknown size
 		size = -1
 	} else {
-		size, err = strconv.ParseInt(resp.Header.Get("Content-Length"), 10, 64)
+		size, err = strconv.ParseInt(contentLength, 10, 64)
 		if err != nil {
 			return 0, err
 		}
@@ -67,7 +68,7 @@ func (h *HTTPHandler) DownloadFromURL(ctx context.Context, url, filePath string,
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
-	rr, err := http.NewRequestWithContext(ctx, "GET", url, nil)
+	rr, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {
 		return 0, err
 	}
