@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"os"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/pkg/errors"
@@ -39,7 +40,7 @@ func (h *HTTPHandler) GetSizeFromURL(url string) (size int64, err error) {
 		return 0, err
 	}
 
-	client := http.Client{}
+	client := NewDownloadHttpClient()
 	resp, err := client.Do(rr)
 	if err != nil {
 		return 0, err
@@ -73,7 +74,7 @@ func (h *HTTPHandler) DownloadFromURL(ctx context.Context, url, filePath string,
 		return 0, err
 	}
 
-	client := http.Client{}
+	client := NewDownloadHttpClient()
 	resp, err := client.Do(rr)
 	if err != nil {
 		return 0, err
@@ -175,6 +176,27 @@ func IdleTimeoutCopy(ctx context.Context, cancel context.CancelFunc, src io.Read
 	}
 
 	return copied, err
+}
+
+func removeReferer(req *http.Request) {
+	for k := range req.Header {
+		if strings.ToLower(k) == "referer" {
+			delete(req.Header, k)
+		}
+	}
+}
+
+func NewDownloadHttpClient() http.Client {
+	return http.Client{
+		CheckRedirect: func(req *http.Request, via []*http.Request) error {
+			// Remove the "Referer" header to enable downloads of files
+			// that are delivered via CDN and therefore may be redirected
+			// several times. This is the same behaviour of curl or wget
+			// in their default configuration.
+			removeReferer(req)
+			return nil
+		},
+	}
 }
 
 const (
