@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/golang/protobuf/ptypes/empty"
+	"github.com/pkg/errors"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 
@@ -50,6 +51,8 @@ type ReplicaClient struct {
 	host                string
 	replicaServiceURL   string
 	syncAgentServiceURL string
+	volumeName          string
+	instanceName        string
 
 	replicaServiceContext ReplicaServiceContext
 	syncServiceContext    SyncServiceContext
@@ -61,7 +64,7 @@ func (c *ReplicaClient) Close() error {
 	return nil
 }
 
-func NewReplicaClient(address string) (*ReplicaClient, error) {
+func NewReplicaClient(address, volumeName, instanceName string) (*ReplicaClient, error) {
 	replicaServiceURL := util.GetGRPCAddress(address)
 	host, strPort, err := net.SplitHostPort(replicaServiceURL)
 	if err != nil {
@@ -78,6 +81,8 @@ func NewReplicaClient(address string) (*ReplicaClient, error) {
 		host:                host,
 		replicaServiceURL:   replicaServiceURL,
 		syncAgentServiceURL: syncAgentServiceURL,
+		volumeName:          volumeName,
+		instanceName:        instanceName,
 	}, nil
 }
 
@@ -85,7 +90,8 @@ func NewReplicaClient(address string) (*ReplicaClient, error) {
 // for the longhorn-manager which executes these command as binaries invocations
 func (c *ReplicaClient) getReplicaServiceClient() (ptypes.ReplicaServiceClient, error) {
 	err := c.replicaServiceContext.once.Do(func() error {
-		cc, err := grpc.Dial(c.replicaServiceURL, grpc.WithInsecure())
+		cc, err := grpc.Dial(c.replicaServiceURL, grpc.WithInsecure(),
+			ptypes.WithIdentityValidationClientInterceptor(c.volumeName, c.instanceName))
 		if err != nil {
 			return err
 		}
@@ -105,7 +111,8 @@ func (c *ReplicaClient) getReplicaServiceClient() (ptypes.ReplicaServiceClient, 
 // for the longhorn-manager which executes these command as binaries invocations
 func (c *ReplicaClient) getSyncServiceClient() (ptypes.SyncAgentServiceClient, error) {
 	err := c.syncServiceContext.once.Do(func() error {
-		cc, err := grpc.Dial(c.syncAgentServiceURL, grpc.WithInsecure())
+		cc, err := grpc.Dial(c.syncAgentServiceURL, grpc.WithInsecure(),
+			ptypes.WithIdentityValidationClientInterceptor(c.volumeName, c.instanceName))
 		if err != nil {
 			return err
 		}
@@ -142,21 +149,22 @@ func GetDiskInfo(info *ptypes.DiskInfo) *types.DiskInfo {
 
 func GetReplicaInfo(r *ptypes.Replica) *types.ReplicaInfo {
 	replicaInfo := &types.ReplicaInfo{
-		Dirty:                   r.Dirty,
-		Rebuilding:              r.Rebuilding,
-		Head:                    r.Head,
-		Parent:                  r.Parent,
-		Size:                    r.Size,
-		SectorSize:              r.SectorSize,
-		BackingFile:             r.BackingFile,
-		State:                   r.State,
-		Chain:                   r.Chain,
-		Disks:                   map[string]types.DiskInfo{},
-		RemainSnapshots:         int(r.RemainSnapshots),
-		RevisionCounter:         r.RevisionCounter,
-		LastModifyTime:          r.LastModifyTime,
-		HeadFileSize:            r.HeadFileSize,
-		RevisionCounterDisabled: r.RevisionCounterDisabled,
+		Dirty:                     r.Dirty,
+		Rebuilding:                r.Rebuilding,
+		Head:                      r.Head,
+		Parent:                    r.Parent,
+		Size:                      r.Size,
+		SectorSize:                r.SectorSize,
+		BackingFile:               r.BackingFile,
+		State:                     r.State,
+		Chain:                     r.Chain,
+		Disks:                     map[string]types.DiskInfo{},
+		RemainSnapshots:           int(r.RemainSnapshots),
+		RevisionCounter:           r.RevisionCounter,
+		LastModifyTime:            r.LastModifyTime,
+		HeadFileSize:              r.HeadFileSize,
+		RevisionCounterDisabled:   r.RevisionCounterDisabled,
+		UnmapMarkDiskChainRemoved: r.UnmapMarkDiskChainRemoved,
 	}
 
 	for diskName, diskInfo := range r.Disks {
@@ -192,7 +200,7 @@ func (c *ReplicaClient) GetReplica() (*types.ReplicaInfo, error) {
 
 	resp, err := replicaServiceClient.ReplicaGet(ctx, &empty.Empty{})
 	if err != nil {
-		return nil, fmt.Errorf("failed to get replica %v: %v", c.replicaServiceURL, err)
+		return nil, errors.Wrapf(err, "failed to get replica %v", c.replicaServiceURL)
 	}
 
 	return GetReplicaInfo(resp.Replica), nil
@@ -207,7 +215,7 @@ func (c *ReplicaClient) OpenReplica() error {
 	defer cancel()
 
 	if _, err := replicaServiceClient.ReplicaOpen(ctx, &empty.Empty{}); err != nil {
-		return fmt.Errorf("failed to open replica %v: %v", c.replicaServiceURL, err)
+		return errors.Wrapf(err, "failed to open replica %v", c.replicaServiceURL)
 	}
 
 	return nil
@@ -222,7 +230,7 @@ func (c *ReplicaClient) CloseReplica() error {
 	defer cancel()
 
 	if _, err := replicaServiceClient.ReplicaClose(ctx, &empty.Empty{}); err != nil {
-		return fmt.Errorf("failed to close replica %v: %v", c.replicaServiceURL, err)
+		return errors.Wrapf(err, "failed to close replica %v", c.replicaServiceURL)
 	}
 
 	return nil
@@ -238,7 +246,7 @@ func (c *ReplicaClient) ReloadReplica() (*types.ReplicaInfo, error) {
 
 	resp, err := replicaServiceClient.ReplicaReload(ctx, &empty.Empty{})
 	if err != nil {
-		return nil, fmt.Errorf("failed to reload replica %v: %v", c.replicaServiceURL, err)
+		return nil, errors.Wrapf(err, "failed to reload replica %v", c.replicaServiceURL)
 	}
 
 	return GetReplicaInfo(resp.Replica), nil
@@ -274,7 +282,7 @@ func (c *ReplicaClient) Revert(name, created string) error {
 		Name:    name,
 		Created: created,
 	}); err != nil {
-		return fmt.Errorf("failed to revert replica %v: %v", c.replicaServiceURL, err)
+		return errors.Wrapf(err, "failed to revert replica %v", c.replicaServiceURL)
 	}
 
 	return nil
@@ -292,7 +300,7 @@ func (c *ReplicaClient) RemoveDisk(disk string, force bool) error {
 		Name:  disk,
 		Force: force,
 	}); err != nil {
-		return fmt.Errorf("failed to remove disk %v for replica %v: %v", disk, c.replicaServiceURL, err)
+		return errors.Wrapf(err, "failed to remove disk %v for replica %v", disk, c.replicaServiceURL)
 	}
 
 	return nil
@@ -310,7 +318,7 @@ func (c *ReplicaClient) ReplaceDisk(target, source string) error {
 		Target: target,
 		Source: source,
 	}); err != nil {
-		return fmt.Errorf("failed to replace disk %v with %v for replica %v: %v", target, source, c.replicaServiceURL, err)
+		return errors.Wrapf(err, "failed to replace disk %v with %v for replica %v", target, source, c.replicaServiceURL)
 	}
 
 	return nil
@@ -329,7 +337,7 @@ func (c *ReplicaClient) PrepareRemoveDisk(disk string) ([]*types.PrepareRemoveAc
 	})
 
 	if err != nil {
-		return nil, fmt.Errorf("failed to prepare removing disk %v for replica %v: %v", disk, c.replicaServiceURL, err)
+		return nil, errors.Wrapf(err, "failed to prepare removing disk %v for replica %v", disk, c.replicaServiceURL)
 	}
 
 	operations := []*types.PrepareRemoveAction{}
@@ -355,7 +363,7 @@ func (c *ReplicaClient) MarkDiskAsRemoved(disk string) error {
 	if _, err := replicaServiceClient.DiskMarkAsRemoved(ctx, &ptypes.DiskMarkAsRemovedRequest{
 		Name: disk,
 	}); err != nil {
-		return fmt.Errorf("failed to mark disk %v as removed for replica %v: %v", disk, c.replicaServiceURL, err)
+		return errors.Wrapf(err, "failed to mark disk %v as removed for replica %v", disk, c.replicaServiceURL)
 	}
 
 	return nil
@@ -372,7 +380,24 @@ func (c *ReplicaClient) SetRebuilding(rebuilding bool) error {
 	if _, err := replicaServiceClient.RebuildingSet(ctx, &ptypes.RebuildingSetRequest{
 		Rebuilding: rebuilding,
 	}); err != nil {
-		return fmt.Errorf("failed to set rebuilding to %v for replica %v: %v", rebuilding, c.replicaServiceURL, err)
+		return errors.Wrapf(err, "failed to set rebuilding to %v for replica %v", rebuilding, c.replicaServiceURL)
+	}
+
+	return nil
+}
+
+func (c *ReplicaClient) SetUnmapMarkDiskChainRemoved(enabled bool) error {
+	replicaServiceClient, err := c.getReplicaServiceClient()
+	if err != nil {
+		return err
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), GRPCServiceCommonTimeout)
+	defer cancel()
+
+	if _, err := replicaServiceClient.UnmapMarkDiskChainRemovedSet(ctx, &ptypes.UnmapMarkDiskChainRemovedSetRequest{
+		Enabled: enabled,
+	}); err != nil {
+		return errors.Wrapf(err, "failed to set UnmapMarkDiskChainRemoved flag to %v for replica %v", enabled, c.replicaServiceURL)
 	}
 
 	return nil
@@ -389,7 +414,7 @@ func (c *ReplicaClient) RemoveFile(file string) error {
 	if _, err := syncAgentServiceClient.FileRemove(ctx, &ptypes.FileRemoveRequest{
 		FileName: file,
 	}); err != nil {
-		return fmt.Errorf("failed to remove file %v: %v", file, err)
+		return errors.Wrapf(err, "failed to remove file %v", file)
 	}
 
 	return nil
@@ -407,13 +432,13 @@ func (c *ReplicaClient) RenameFile(oldFileName, newFileName string) error {
 		OldFileName: oldFileName,
 		NewFileName: newFileName,
 	}); err != nil {
-		return fmt.Errorf("failed to rename or replace old file %v with new file %v: %v", oldFileName, newFileName, err)
+		return errors.Wrapf(err, "failed to rename or replace old file %v with new file %v", oldFileName, newFileName)
 	}
 
 	return nil
 }
 
-func (c *ReplicaClient) SendFile(from, host string, port int32) error {
+func (c *ReplicaClient) SendFile(from, host string, port int32, fileSyncHTTPClientTimeout int, fastSync bool) error {
 	syncAgentServiceClient, err := c.getSyncServiceClient()
 	if err != nil {
 		return err
@@ -422,17 +447,19 @@ func (c *ReplicaClient) SendFile(from, host string, port int32) error {
 	defer cancel()
 
 	if _, err := syncAgentServiceClient.FileSend(ctx, &ptypes.FileSendRequest{
-		FromFileName: from,
-		Host:         host,
-		Port:         port,
+		FromFileName:              from,
+		Host:                      host,
+		Port:                      port,
+		FastSync:                  fastSync,
+		FileSyncHttpClientTimeout: int32(fileSyncHTTPClientTimeout),
 	}); err != nil {
-		return fmt.Errorf("failed to send file %v to %v:%v: %v", from, host, port, err)
+		return errors.Wrapf(err, "failed to send file %v to %v:%v", from, host, port)
 	}
 
 	return nil
 }
 
-func (c *ReplicaClient) ExportVolume(snapshotName, host string, port int32, exportBackingImageIfExist bool) error {
+func (c *ReplicaClient) ExportVolume(snapshotName, host string, port int32, exportBackingImageIfExist bool, fileSyncHTTPClientTimeout int) error {
 	syncAgentServiceClient, err := c.getSyncServiceClient()
 	if err != nil {
 		return err
@@ -446,8 +473,9 @@ func (c *ReplicaClient) ExportVolume(snapshotName, host string, port int32, expo
 		Host:                      host,
 		Port:                      port,
 		ExportBackingImageIfExist: exportBackingImageIfExist,
+		FileSyncHttpClientTimeout: int32(fileSyncHTTPClientTimeout),
 	}); err != nil {
-		return fmt.Errorf("failed to export snapshot %v to %v:%v: %v", snapshotName, host, port, err)
+		return errors.Wrapf(err, "failed to export snapshot %v to %v:%v", snapshotName, host, port)
 	}
 	return nil
 }
@@ -464,13 +492,13 @@ func (c *ReplicaClient) LaunchReceiver(toFilePath string) (string, int32, error)
 		ToFileName: toFilePath,
 	})
 	if err != nil {
-		return "", 0, fmt.Errorf("failed to launch receiver for %v: %v", toFilePath, err)
+		return "", 0, errors.Wrapf(err, "failed to launch receiver for %v", toFilePath)
 	}
 
 	return c.host, reply.Port, nil
 }
 
-func (c *ReplicaClient) SyncFiles(fromAddress string, list []types.SyncFileInfo) error {
+func (c *ReplicaClient) SyncFiles(fromAddress string, list []types.SyncFileInfo, fileSyncHTTPClientTimeout int, fastSync bool) error {
 	syncAgentServiceClient, err := c.getSyncServiceClient()
 	if err != nil {
 		return err
@@ -479,17 +507,20 @@ func (c *ReplicaClient) SyncFiles(fromAddress string, list []types.SyncFileInfo)
 	defer cancel()
 
 	if _, err := syncAgentServiceClient.FilesSync(ctx, &ptypes.FilesSyncRequest{
-		FromAddress:      fromAddress,
-		ToHost:           c.host,
-		SyncFileInfoList: syncFileInfoListToSyncAgentGRPCFormat(list),
+		FromAddress:               fromAddress,
+		ToHost:                    c.host,
+		SyncFileInfoList:          syncFileInfoListToSyncAgentGRPCFormat(list),
+		FastSync:                  fastSync,
+		FileSyncHttpClientTimeout: int32(fileSyncHTTPClientTimeout),
 	}); err != nil {
-		return fmt.Errorf("failed to sync files %+v from %v: %v", list, fromAddress, err)
+		return errors.Wrapf(err, "failed to sync files %+v from %v", list, fromAddress)
 	}
 
 	return nil
 }
 
-func (c *ReplicaClient) CreateBackup(backupName, snapshot, dest, volume, backingImageName, backingImageChecksum string, labels []string, credential map[string]string) (*ptypes.BackupCreateResponse, error) {
+func (c *ReplicaClient) CreateBackup(backupName, snapshot, dest, volume, backingImageName, backingImageChecksum,
+	compressionMethod string, concurrentLimit int, storageClassName string, labels []string, credential map[string]string) (*ptypes.BackupCreateResponse, error) {
 	syncAgentServiceClient, err := c.getSyncServiceClient()
 	if err != nil {
 		return nil, err
@@ -503,12 +534,15 @@ func (c *ReplicaClient) CreateBackup(backupName, snapshot, dest, volume, backing
 		VolumeName:           volume,
 		BackingImageName:     backingImageName,
 		BackingImageChecksum: backingImageChecksum,
+		CompressionMethod:    compressionMethod,
+		ConcurrentLimit:      int32(concurrentLimit),
+		StorageClassName:     storageClassName,
 		Labels:               labels,
 		Credential:           credential,
 		BackupName:           backupName,
 	})
 	if err != nil {
-		return nil, fmt.Errorf("failed to create backup to %v for volume %v: %v", dest, volume, err)
+		return nil, errors.Wrapf(err, "failed to create backup to %v for volume %v", dest, volume)
 	}
 
 	return resp, nil
@@ -544,13 +578,13 @@ func (c *ReplicaClient) RmBackup(backup string) error {
 	if _, err := syncAgentServiceClient.BackupRemove(ctx, &ptypes.BackupRemoveRequest{
 		Backup: backup,
 	}); err != nil {
-		return fmt.Errorf("failed to remove backup %v: %v", backup, err)
+		return errors.Wrapf(err, "failed to remove backup %v", backup)
 	}
 
 	return nil
 }
 
-func (c *ReplicaClient) RestoreBackup(backup, snapshotDiskName string, credential map[string]string) error {
+func (c *ReplicaClient) RestoreBackup(backup, snapshotDiskName string, credential map[string]string, concurrentLimit int) error {
 	syncAgentServiceClient, err := c.getSyncServiceClient()
 	if err != nil {
 		return err
@@ -562,8 +596,9 @@ func (c *ReplicaClient) RestoreBackup(backup, snapshotDiskName string, credentia
 		Backup:           backup,
 		SnapshotDiskName: snapshotDiskName,
 		Credential:       credential,
+		ConcurrentLimit:  int32(concurrentLimit),
 	}); err != nil {
-		return fmt.Errorf("failed to restore backup data %v to snapshot file %v: %v", backup, snapshotDiskName, err)
+		return errors.Wrapf(err, "failed to restore backup data %v to snapshot file %v", backup, snapshotDiskName)
 	}
 
 	return nil
@@ -578,7 +613,7 @@ func (c *ReplicaClient) Reset() error {
 	defer cancel()
 
 	if _, err := syncAgentServiceClient.Reset(ctx, &empty.Empty{}); err != nil {
-		return fmt.Errorf("failed to cleanup restore info in Sync Agent Server: %v", err)
+		return errors.Wrap(err, "failed to clean up restore info in Sync Agent Server")
 	}
 
 	return nil
@@ -594,7 +629,7 @@ func (c *ReplicaClient) RestoreStatus() (*ptypes.RestoreStatusResponse, error) {
 
 	resp, err := syncAgentServiceClient.RestoreStatus(ctx, &empty.Empty{})
 	if err != nil {
-		return nil, fmt.Errorf("failed to get restore status: %v", err)
+		return nil, errors.Wrap(err, "failed to get restore status")
 	}
 
 	return resp, nil
@@ -609,7 +644,7 @@ func (c *ReplicaClient) SnapshotPurge() error {
 	defer cancel()
 
 	if _, err := syncAgentServiceClient.SnapshotPurge(ctx, &empty.Empty{}); err != nil {
-		return fmt.Errorf("failed to start snapshot purge: %v", err)
+		return errors.Wrap(err, "failed to start snapshot purge")
 	}
 
 	return nil
@@ -625,7 +660,7 @@ func (c *ReplicaClient) SnapshotPurgeStatus() (*ptypes.SnapshotPurgeStatusRespon
 
 	status, err := syncAgentServiceClient.SnapshotPurgeStatus(ctx, &empty.Empty{})
 	if err != nil {
-		return nil, fmt.Errorf("failed to get snapshot purge status: %v", err)
+		return nil, errors.Wrap(err, "failed to get snapshot purge status")
 	}
 
 	return status, nil
@@ -641,13 +676,13 @@ func (c *ReplicaClient) ReplicaRebuildStatus() (*ptypes.ReplicaRebuildStatusResp
 
 	status, err := syncAgentServiceClient.ReplicaRebuildStatus(ctx, &empty.Empty{})
 	if err != nil {
-		return nil, fmt.Errorf("failed to get replica rebuild status: %v", err)
+		return nil, errors.Wrap(err, "failed to get replica rebuild status")
 	}
 
 	return status, nil
 }
 
-func (c *ReplicaClient) CloneSnapshot(fromAddress, snapshotFileName string, exportBackingImageIfExist bool) error {
+func (c *ReplicaClient) CloneSnapshot(fromAddress, fromVolumeName, snapshotFileName string, exportBackingImageIfExist bool, fileSyncHTTPClientTimeout int) error {
 	syncAgentServiceClient, err := c.getSyncServiceClient()
 	if err != nil {
 		return err
@@ -660,8 +695,10 @@ func (c *ReplicaClient) CloneSnapshot(fromAddress, snapshotFileName string, expo
 		ToHost:                    c.host,
 		SnapshotFileName:          snapshotFileName,
 		ExportBackingImageIfExist: exportBackingImageIfExist,
+		FileSyncHttpClientTimeout: int32(fileSyncHTTPClientTimeout),
+		FromVolumeName:            fromVolumeName,
 	}); err != nil {
-		return fmt.Errorf("failed to clone snapshot %v from replica %v to host %v: %v", snapshotFileName, fromAddress, c.host, err)
+		return errors.Wrapf(err, "failed to clone snapshot %v from replica %v to host %v", snapshotFileName, fromAddress, c.host)
 	}
 
 	return nil
@@ -677,7 +714,75 @@ func (c *ReplicaClient) SnapshotCloneStatus() (*ptypes.SnapshotCloneStatusRespon
 
 	status, err := syncAgentServiceClient.SnapshotCloneStatus(ctx, &empty.Empty{})
 	if err != nil {
-		return nil, fmt.Errorf("failed to get snapshot clone status: %v", err)
+		return nil, errors.Wrap(err, "failed to get snapshot clone status")
 	}
 	return status, nil
+}
+
+func (c *ReplicaClient) SnapshotHash(snapshotName string, rehash bool) error {
+	syncAgentServiceClient, err := c.getSyncServiceClient()
+	if err != nil {
+		return err
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), GRPCServiceCommonTimeout)
+	defer cancel()
+
+	if _, err := syncAgentServiceClient.SnapshotHash(ctx, &ptypes.SnapshotHashRequest{
+		SnapshotName: snapshotName,
+		Rehash:       rehash,
+	}); err != nil {
+		return errors.Wrap(err, "failed to start hashing snapshot")
+	}
+
+	return nil
+}
+
+func (c *ReplicaClient) SnapshotHashStatus(snapshotName string) (*ptypes.SnapshotHashStatusResponse, error) {
+	syncAgentServiceClient, err := c.getSyncServiceClient()
+	if err != nil {
+		return nil, err
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), GRPCServiceCommonTimeout)
+	defer cancel()
+
+	status, err := syncAgentServiceClient.SnapshotHashStatus(ctx, &ptypes.SnapshotHashStatusRequest{
+		SnapshotName: snapshotName,
+	})
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to get snapshot hash status")
+	}
+	return status, nil
+}
+
+func (c *ReplicaClient) SnapshotHashCancel(snapshotName string) error {
+	syncAgentServiceClient, err := c.getSyncServiceClient()
+	if err != nil {
+		return err
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), GRPCServiceCommonTimeout)
+	defer cancel()
+
+	if _, err := syncAgentServiceClient.SnapshotHashCancel(ctx, &ptypes.SnapshotHashCancelRequest{
+		SnapshotName: snapshotName,
+	}); err != nil {
+		return errors.Wrapf(err, "failed to cancel snapshot %v hash task", snapshotName)
+	}
+
+	return nil
+}
+
+func (c *ReplicaClient) SnapshotHashLockState() (bool, error) {
+	syncAgentServiceClient, err := c.getSyncServiceClient()
+	if err != nil {
+		return false, err
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), GRPCServiceCommonTimeout)
+	defer cancel()
+
+	resp, err := syncAgentServiceClient.SnapshotHashLockState(ctx, &empty.Empty{})
+	if err != nil {
+		return false, errors.Wrapf(err, "failed to get snapshot hash lock state")
+	}
+
+	return resp.IsLocked, nil
 }

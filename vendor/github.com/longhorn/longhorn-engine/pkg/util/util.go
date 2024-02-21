@@ -1,7 +1,6 @@
 package util
 
 import (
-	"errors"
 	"fmt"
 	"io"
 	"net"
@@ -19,9 +18,10 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/gorilla/handlers"
-	iutil "github.com/longhorn/go-iscsi-helper/util"
 	"github.com/sirupsen/logrus"
 	"golang.org/x/sys/unix"
+
+	iutil "github.com/longhorn/go-iscsi-helper/util"
 
 	"github.com/longhorn/longhorn-engine/pkg/types"
 )
@@ -30,9 +30,9 @@ var (
 	MaximumVolumeNameSize = 64
 	validVolumeName       = regexp.MustCompile(`^[a-zA-Z0-9][a-zA-Z0-9_.-]+$`)
 
-	cmdTimeout = time.Minute // one minute by default
-
 	HostProc = "/host/proc"
+
+	unixDomainSocketDirectoryInContainer = "/host/var/lib/longhorn/unix-domain-socket/"
 )
 
 const (
@@ -171,7 +171,7 @@ func RemoveDevice(dev string) error {
 
 func removeAsync(path string, done chan<- error) {
 	if err := os.Remove(path); err != nil && !os.IsNotExist(err) {
-		logrus.Errorf("Unable to remove: %v", path)
+		logrus.WithError(err).Errorf("Unable to remove: %v", path)
 		done <- err
 	}
 	done <- nil
@@ -206,7 +206,7 @@ func Now() string {
 func GetFileActualSize(file string) int64 {
 	var st syscall.Stat_t
 	if err := syscall.Stat(file, &st); err != nil {
-		logrus.Errorf("Fail to get size of file %v: %v", file, err)
+		logrus.WithError(err).Errorf("Failed to get size of file %v", file)
 		return -1
 	}
 	return st.Blocks * BlockSizeLinux
@@ -216,7 +216,7 @@ func GetHeadFileModifyTimeAndSize(file string) (int64, int64, error) {
 	var st syscall.Stat_t
 
 	if err := syscall.Stat(file, &st); err != nil {
-		logrus.Errorf("Fail to head file %v stat, err %v", file, err)
+		logrus.WithError(err).Errorf("Failed to head file %v stat", file)
 		return 0, 0, err
 	}
 
@@ -263,36 +263,6 @@ func CheckBackupType(backupTarget string) (string, error) {
 	return u.Scheme, nil
 }
 
-func GetBackupCredential(backupURL string) (map[string]string, error) {
-	credential := map[string]string{}
-	backupType, err := CheckBackupType(backupURL)
-	if err != nil {
-		return nil, err
-	}
-	if backupType == "s3" {
-		accessKey := os.Getenv(types.AWSAccessKey)
-		secretKey := os.Getenv(types.AWSSecretKey)
-		if accessKey == "" && secretKey != "" {
-			return nil, errors.New("could not backup to s3 without setting credential access key")
-		}
-		if accessKey != "" && secretKey == "" {
-			return nil, errors.New("could not backup to s3 without setting credential secret access key")
-		}
-		if accessKey != "" && secretKey != "" {
-			credential[types.AWSAccessKey] = accessKey
-			credential[types.AWSSecretKey] = secretKey
-		}
-
-		credential[types.AWSEndPoint] = os.Getenv(types.AWSEndPoint)
-		credential[types.AWSCert] = os.Getenv(types.AWSCert)
-		credential[types.HTTPSProxy] = os.Getenv(types.HTTPSProxy)
-		credential[types.HTTPProxy] = os.Getenv(types.HTTPProxy)
-		credential[types.NOProxy] = os.Getenv(types.NOProxy)
-		credential[types.VirtualHostedStyle] = os.Getenv(types.VirtualHostedStyle)
-	}
-	return credential, nil
-}
-
 func ResolveBackingFilepath(fileOrDirpath string) (string, error) {
 	fileOrDir, err := os.Open(fileOrDirpath)
 	if err != nil {
@@ -328,4 +298,21 @@ func GetInitiatorNS() string {
 
 func GetFunctionName(i interface{}) string {
 	return runtime.FuncForPC(reflect.ValueOf(i).Pointer()).Name()
+}
+
+func RandomID(randomIDLenth int) string {
+	return UUID()[:randomIDLenth]
+}
+
+func GetAddresses(volumeName, address string, dataServerProtocol types.DataServerProtocol) (string, string, string, int, error) {
+	switch dataServerProtocol {
+	case types.DataServerProtocolTCP:
+		return ParseAddresses(address)
+	case types.DataServerProtocolUNIX:
+		controlAddress, _, syncAddress, syncPort, err := ParseAddresses(address)
+		sockPath := filepath.Join(unixDomainSocketDirectoryInContainer, volumeName+".sock")
+		return controlAddress, sockPath, syncAddress, syncPort, err
+	default:
+		return "", "", "", -1, fmt.Errorf("unsupported protocol: %v", dataServerProtocol)
+	}
 }
