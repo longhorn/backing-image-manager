@@ -76,6 +76,7 @@ type SyncingFile struct {
 	uuid             string
 	diskUUID         string
 	size             int64
+	virtualSize      int64
 	state            types.State
 	progress         int
 	processedSize    int64
@@ -228,6 +229,7 @@ func (sf *SyncingFile) checkAndReuseFile() (err error) {
 	sf.processedSize = info.Size()
 	sf.modificationTime = info.ModTime().UTC().String()
 	sf.updateSyncReadyNoLock()
+	sf.updateVirtualSizeNoLock(sf.filePath)
 	sf.writeConfigNoLock()
 	sf.lock.Unlock()
 
@@ -332,6 +334,7 @@ func (sf *SyncingFile) getNoLock() api.FileInfo {
 		FilePath:         sf.filePath,
 		UUID:             sf.uuid,
 		Size:             sf.size,
+		VirtualSize:      sf.virtualSize,
 		State:            string(sf.state),
 		Progress:         sf.progress,
 		ProcessedSize:    sf.processedSize,
@@ -648,6 +651,7 @@ func (sf *SyncingFile) finishProcessing(err error) (finalErr error) {
 		logrus.Debugf("SyncingFile: directly get the checksum from the valid config during processing wrap-up: %v", config.CurrentChecksum)
 		sf.currentChecksum = config.CurrentChecksum
 		sf.updateSyncReadyNoLock()
+		sf.updateVirtualSizeNoLock(sf.tmpFilePath)
 		sf.writeConfigNoLock()
 
 		// Renaming won't change the file modification time.
@@ -696,6 +700,7 @@ func (sf *SyncingFile) postProcessSyncFile() {
 		return
 	}
 	sf.updateSyncReadyNoLock()
+	sf.updateVirtualSizeNoLock(sf.tmpFilePath)
 	sf.writeConfigNoLock()
 
 	// Renaming won't change the file modification time.
@@ -715,6 +720,19 @@ func (sf *SyncingFile) updateSyncReadyNoLock() {
 		"size":            sf.size,
 		"currentChecksum": sf.currentChecksum,
 	})
+}
+
+func (sf *SyncingFile) updateVirtualSizeNoLock(filePath string) {
+	// This only works if filePath is valid - sometimes we need to call it
+	// with sf.tmpFilePath, sometimes with sf.filePath :-/
+	virtualSize, err := util.GetImageVirtualSize(filePath)
+	if err != nil {
+		sf.log.Warnf("SyncingFile: failed to get backing image virtual size: %v", err)
+	}
+	// This will be zero when there is an error, which allows components
+	// further up the stack to know that the virtual size somehow isn't
+	// available yet.
+	sf.virtualSize = virtualSize
 }
 
 func (sf *SyncingFile) handleFailureNoLock(err error) {
@@ -745,6 +763,7 @@ func (sf *SyncingFile) writeConfigNoLock() {
 		FilePath:         sf.filePath,
 		UUID:             sf.uuid,
 		Size:             sf.size,
+		VirtualSize:      sf.virtualSize,
 		ExpectedChecksum: sf.expectedChecksum,
 		CurrentChecksum:  sf.currentChecksum,
 		ModificationTime: sf.modificationTime,
