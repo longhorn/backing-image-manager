@@ -289,10 +289,11 @@ func (m *Manager) listAndUpdate() (biFileInfoMap map[string]*api.FileInfo, err e
 func backingImageResponse(fInfo *api.FileInfo) *rpc.BackingImageResponse {
 	return &rpc.BackingImageResponse{
 		Spec: &rpc.BackingImageSpec{
-			Name:     types.GetBackingImageNameFromFilePath(fInfo.FilePath, fInfo.UUID),
-			Uuid:     fInfo.UUID,
-			Size:     fInfo.Size,
-			Checksum: fInfo.ExpectedChecksum,
+			Name:        types.GetBackingImageNameFromFilePath(fInfo.FilePath, fInfo.UUID),
+			Uuid:        fInfo.UUID,
+			Size:        fInfo.Size,
+			VirtualSize: fInfo.VirtualSize,
+			Checksum:    fInfo.ExpectedChecksum,
 		},
 		Status: &rpc.BackingImageStatus{
 			State:            fInfo.State,
