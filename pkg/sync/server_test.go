@@ -650,6 +650,96 @@ func (s *SyncTestSuite) TestReadyFileValidation(c *C) {
 	c.Assert(err, IsNil)
 }
 
+func (s *SyncTestSuite) TestVirtualSizeQcow2(c *C) {
+	logrus.Debugf("Testing sync server: TestVirtualSizeQcow2")
+
+	fileName := "sync-virtual-size-qcow2"
+	curPath := filepath.Join(s.dir, fileName)
+	sizeInGB := int64(20)
+
+	logrus.Debugf("creating %dG qcow2 file %v", sizeInGB, curPath)
+	err := createQcow2File(curPath, sizeInGB)
+	c.Assert(err, IsNil)
+
+	checksum, err := util.GetFileChecksum(curPath)
+	c.Assert(err, IsNil)
+	c.Assert(checksum, Not(Equals), "")
+
+	stat, err := os.Stat(curPath)
+	c.Assert(err, IsNil)
+	fileSize := stat.Size()
+
+	go func() {
+		_ = NewServer(s.ctx, s.addr, &MockHandler{})
+	}()
+	isRunning := util.DetectHTTPServerAvailability(s.httpAddr, 5, true)
+	c.Assert(isRunning, Equals, true)
+
+	cli := &client.SyncClient{
+		Remote: s.addr,
+	}
+
+	err = cli.Fetch(curPath, curPath, TestSyncingFileUUID, TestDiskUUID, checksum, fileSize)
+	c.Assert(err, IsNil)
+	fInfo, err := getAndWaitFileState(cli, curPath, string(types.StateReady), 1)
+	c.Assert(err, IsNil)
+
+	// With a qcow2 file, the actual file size should be less
+	// than the virtual size, and both file size and virtual
+	// size should be correctly reported in the FileInfo struct
+	c.Assert(fInfo.Size < fInfo.VirtualSize, Equals, true)
+	c.Assert(fInfo.Size, Equals, fileSize)
+	c.Assert(fInfo.VirtualSize, Equals, sizeInGB*1024*1024*1024)
+	c.Assert(fInfo.Size, Not(Equals), fInfo.VirtualSize)
+
+	err = cli.Delete(curPath)
+	c.Assert(err, IsNil)
+}
+
+func (s *SyncTestSuite) TestVirtualSizeRaw(c *C) {
+	logrus.Debugf("Testing sync server: TestVirtualSizeRaw")
+
+	fileName := "sync-virtual-size-raw"
+	curPath := filepath.Join(s.dir, fileName)
+	sizeInMB := int64(1)
+
+	logrus.Debugf("creating %dM raw file %v", sizeInMB, curPath)
+	err := generateRandomDataFile(curPath, strconv.FormatInt(sizeInMB, 10))
+	c.Assert(err, IsNil)
+
+	checksum, err := util.GetFileChecksum(curPath)
+	c.Assert(err, IsNil)
+	c.Assert(checksum, Not(Equals), "")
+
+	stat, err := os.Stat(curPath)
+	c.Assert(err, IsNil)
+	fileSize := stat.Size()
+
+	go func() {
+		_ = NewServer(s.ctx, s.addr, &MockHandler{})
+	}()
+	isRunning := util.DetectHTTPServerAvailability(s.httpAddr, 5, true)
+	c.Assert(isRunning, Equals, true)
+
+	cli := &client.SyncClient{
+		Remote: s.addr,
+	}
+
+	err = cli.Fetch(curPath, curPath, TestSyncingFileUUID, TestDiskUUID, checksum, fileSize)
+	c.Assert(err, IsNil)
+	fInfo, err := getAndWaitFileState(cli, curPath, string(types.StateReady), 1)
+	c.Assert(err, IsNil)
+
+	// With a raw file, the actual file size and the
+	// virtual size should be equal, and both should
+	// be correctly reported in the FileInfo struct
+	c.Assert(fInfo.Size, Equals, fileSize)
+	c.Assert(fInfo.VirtualSize, Equals, fileSize)
+
+	err = cli.Delete(curPath)
+	c.Assert(err, IsNil)
+}
+
 func getAndWaitFileState(cli *client.SyncClient, curPath, desireState string, waitIntervalInSecond int) (fInfo *api.FileInfo, err error) {
 	endTime := time.Now().Add(time.Duration(waitIntervalInSecond) * time.Second)
 
@@ -679,6 +769,7 @@ func getAndWaitFileState(cli *client.SyncClient, curPath, desireState string, wa
 				FilePath:         fInfo.FilePath,
 				UUID:             fInfo.UUID,
 				Size:             fInfo.Size,
+				VirtualSize:      fInfo.VirtualSize,
 				ExpectedChecksum: fInfo.ExpectedChecksum,
 				CurrentChecksum:  fInfo.CurrentChecksum,
 				ModificationTime: fInfo.ModificationTime,
@@ -730,4 +821,27 @@ func generateRandomDataFile(filePath, sizeInMB string) error {
 	}
 
 	return exec.Command("dd", "if=/dev/urandom", "of="+filePath, "bs=1M", "count="+sizeInMB).Run()
+}
+
+func createQcow2File(filePath string, sizeInGB int64) error {
+	// A simple call to `qemu-img create -f qcow2 $filePath 20G` gives
+	// us a file that's only 196928 bytes on disk.  Unfortunately, this is
+	// *not* an even multiple of 512 bytes (196928 / 512 == 384.625), which
+	// means when we use it as sync file we hit an error: "the file size
+	// 196928 should be a multiple of 512 bytes since Longhorn uses directIO
+	// by default". The least worst workaround for this I could think of
+	// is using `dd` to stick an extra 512 byte block of zeros on the end
+	// if the file size isn't evenly divisible by 512.
+	err := exec.Command(util.QemuImgBinary, "create", "-f", "qcow2", filePath, strconv.FormatInt(sizeInGB, 10)+"G").Run()
+	if err != nil {
+		return err
+	}
+	stat, err := os.Stat(filePath)
+	if err != nil {
+		return err
+	}
+	if stat.Size()%512 == 0 {
+		return nil
+	}
+	return exec.Command("dd", "if=/dev/zero", "of="+filePath, "bs=512", "count=1", "seek="+strconv.FormatInt(stat.Size()/512+1, 10)).Run()
 }

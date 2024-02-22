@@ -150,6 +150,7 @@ type SyncingFileConfig struct {
 	FilePath         string `json:"name"`
 	UUID             string `json:"uuid"`
 	Size             int64  `json:"size"`
+	VirtualSize      int64  `json:"virtualSize"`
 	ExpectedChecksum string `json:"expectedChecksum"`
 	CurrentChecksum  string `json:"currentChecksum"`
 	ModificationTime string `json:"modificationTime"`
@@ -266,6 +267,26 @@ func DetectFileFormat(filePath string) (string, error) {
 	}
 
 	return "", fmt.Errorf("cannot find the file format in the output %s", output)
+}
+
+func GetImageVirtualSize(filePath string) (int64, error) {
+	type qemuImgInfo struct {
+		VirtualSize int64 `json:"virtual-size"`
+	}
+
+	output, err := Execute([]string{}, QemuImgBinary, "info", "--output=json", filePath)
+	if err != nil {
+		return 0, err
+	}
+
+	var q qemuImgInfo
+	err = json.Unmarshal([]byte(output), &q)
+	if err != nil {
+		return 0, err
+	}
+
+	// If it's a raw file, `qemu-img info` will return virtual size == size
+	return q.VirtualSize, nil
 }
 
 func ConvertFromRawToQcow2(filePath string) error {
