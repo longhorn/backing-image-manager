@@ -5,15 +5,15 @@ go 1.21
 require (
 	github.com/RoaringBitmap/roaring v1.2.3
 	github.com/golang/protobuf v1.5.3
-	github.com/gorilla/mux v1.8.0
+	github.com/gorilla/mux v1.8.1
 	github.com/longhorn/longhorn-engine v1.3.0
-	github.com/longhorn/sparse-tools v0.0.0-20230408015858-c849def39d3c
+	github.com/longhorn/sparse-tools 01fc48087406
 	github.com/pkg/errors v0.9.1
 	github.com/sirupsen/logrus v1.8.1
-	github.com/urfave/cli v1.22.13
+	github.com/urfave/cli v1.22.14
 	golang.org/x/net v0.17.0
 	google.golang.org/grpc v1.21.0
-	gopkg.in/check.v1 v1.0.0-20160105164936-4f90aeace3a2
+	gopkg.in/check.v1 10cb98267c6c
 )
 
 require (
