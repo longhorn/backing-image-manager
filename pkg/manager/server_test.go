@@ -116,11 +116,15 @@ func (s *TestSuite) SetUpSuite(c *C) {
 	s.ctx, s.cancel = context.WithCancel(context.Background())
 	s.addr1 = fmt.Sprintf("localhost:%d", TestManagerServerPort1)
 	s.syncAddr1 = fmt.Sprintf("localhost:%d", TestSyncServerPort1)
-	go NewServer(s.ctx, s.addr1, s.syncAddr1, TestDiskUUID1, s.testDiskPath1, "30001-31000", &filesync.HTTPHandler{})
+	go func() {
+		_ = NewServer(s.ctx, s.addr1, s.syncAddr1, TestDiskUUID1, s.testDiskPath1, "30001-31000", &filesync.HTTPHandler{})
+	}()
 
 	s.addr2 = fmt.Sprintf("localhost:%d", TestManagerServerPort2)
 	s.syncAddr2 = fmt.Sprintf("localhost:%d", TestSyncServerPort2)
-	go NewServer(s.ctx, s.addr2, s.syncAddr2, TestDiskUUID1, s.testDiskPath2, "31001-32000", &filesync.HTTPHandler{})
+	go func() {
+		_ = NewServer(s.ctx, s.addr2, s.syncAddr2, TestDiskUUID1, s.testDiskPath2, "31001-32000", &filesync.HTTPHandler{})
+	}()
 
 	err = checkAndWaitForServer(s.addr1, 5, true)
 	c.Assert(err, IsNil)
@@ -620,11 +624,13 @@ func checkAndWaitForServer(address string, waitIntervalInSecond int, shouldAvail
 }
 
 func launchAndWaitTestDataSourceServer(ctx context.Context, addr, syncAddr, biName, biUUID, checksum, diskPath string) bool {
-	go datasource.NewServer(ctx, addr, syncAddr,
-		checksum, string(types.DataSourceTypeDownload), biName, biUUID, diskPath,
-		map[string]string{types.DataSourceTypeDownloadParameterURL: "http://mock-download"},
-		&filesync.MockHandler{},
-	)
+	go func() {
+		_ = datasource.NewServer(ctx, addr, syncAddr,
+			checksum, string(types.DataSourceTypeDownload), biName, biUUID, diskPath,
+			map[string]string{types.DataSourceTypeDownloadParameterURL: "http://mock-download"},
+			&filesync.MockHandler{},
+		)
+	}()
 	return util.DetectHTTPServerAvailability("http://"+addr, 5, true) &&
 		util.DetectHTTPServerAvailability("http://"+syncAddr, 5, true)
 }
