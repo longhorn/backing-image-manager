@@ -251,7 +251,7 @@ func (s *Service) exportFromVolume(parameters map[string]string) error {
 			}
 		}()
 
-		replicaClient, err := repclient.NewReplicaClient(senderAddress)
+		replicaClient, err := repclient.NewReplicaClient(senderAddress, "", "")
 		if err != nil {
 			senderErr = errors.Wrapf(err, "failed to get replica client %v", senderAddress)
 			return
