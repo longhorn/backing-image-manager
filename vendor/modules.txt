@@ -131,19 +131,23 @@ github.com/longhorn/backupstore/s3
 github.com/longhorn/backupstore/types
 github.com/longhorn/backupstore/util
 github.com/longhorn/backupstore/vfs
-# github.com/longhorn/longhorn-engine v1.6.0-dev-20231217.0.20231226052201-1c1b8312a30d
-## explicit; go 1.21
+# github.com/longhorn/longhorn-engine v1.6.0-dev-20231217.0.20231226052201-1c1b8312a30d => github.com/FrankYang0529/longhorn-engine v1.2.1-0.20240229044952-9aeb9ab6d680
+## explicit; go 1.21.7
+github.com/longhorn/longhorn-engine/pkg/interceptor
 github.com/longhorn/longhorn-engine/pkg/replica/client
 github.com/longhorn/longhorn-engine/pkg/types
 github.com/longhorn/longhorn-engine/pkg/util
 github.com/longhorn/longhorn-engine/pkg/util/disk
-github.com/longhorn/longhorn-engine/proto/ptypes
 # github.com/longhorn/sparse-tools v0.0.0-20240222053258-01fc48087406
 ## explicit; go 1.17
 github.com/longhorn/sparse-tools/sparse
 github.com/longhorn/sparse-tools/sparse/rest
 github.com/longhorn/sparse-tools/types
 github.com/longhorn/sparse-tools/util
+# github.com/longhorn/types v0.0.0-incompatible => github.com/FrankYang0529/types v0.0.0-20240229024041-25f1b5bbec5b
+## explicit; go 1.21.7
+github.com/longhorn/types/pkg/bimrpc
+github.com/longhorn/types/pkg/enginerpc
 # github.com/matttproud/golang_protobuf_extensions v1.0.4
 ## explicit; go 1.9
 github.com/matttproud/golang_protobuf_extensions/pbutil
@@ -198,8 +202,6 @@ github.com/slok/goresilience
 github.com/slok/goresilience/errors
 github.com/slok/goresilience/metrics
 github.com/slok/goresilience/timeout
-# github.com/stretchr/testify v1.8.4
-## explicit; go 1.20
 # github.com/urfave/cli v1.22.14
 ## explicit; go 1.11
 github.com/urfave/cli
@@ -345,3 +347,5 @@ k8s.io/utils/clock
 k8s.io/utils/exec
 k8s.io/utils/io
 k8s.io/utils/keymutex
+# github.com/longhorn/types => github.com/FrankYang0529/types v0.0.0-20240229024041-25f1b5bbec5b
+# github.com/longhorn/longhorn-engine => github.com/FrankYang0529/longhorn-engine v1.2.1-0.20240229044952-9aeb9ab6d680
