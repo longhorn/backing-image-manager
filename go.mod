@@ -8,7 +8,7 @@ require (
 	github.com/gorilla/mux v1.8.1
 	github.com/longhorn/backupstore v0.0.0-20240219094812-3a87ee02df77
 	github.com/longhorn/longhorn-engine v1.6.0-dev-20231217.0.20231226052201-1c1b8312a30d
-	github.com/longhorn/sparse-tools v0.0.0-20240222053258-01fc48087406
+	github.com/longhorn/sparse-tools v0.0.0-20240228120902-ce8c4c2e71ca
 	github.com/pkg/errors v0.9.1
 	github.com/rancher/go-fibmap v0.0.0-20160418233256-5fc9f8c1ed47
 	github.com/sirupsen/logrus v1.9.3
