@@ -820,14 +820,14 @@ func (sf *SyncingFile) updateSyncReadyNoLock() {
 func (sf *SyncingFile) updateVirtualSizeNoLock(filePath string) {
 	// This only works if filePath is valid - sometimes we need to call it
 	// with sf.tmpFilePath, sometimes with sf.filePath :-/
-	virtualSize, err := util.GetImageVirtualSize(filePath)
+	imgInfo, err := util.GetQemuImgInfo(filePath)
 	if err != nil {
 		sf.log.Warnf("SyncingFile: failed to get backing image virtual size: %v", err)
 	}
 	// This will be zero when there is an error, which allows components
 	// further up the stack to know that the virtual size somehow isn't
 	// available yet.
-	sf.virtualSize = virtualSize
+	sf.virtualSize = imgInfo.VirtualSize
 }
 
 func (sf *SyncingFile) handleFailureNoLock(err error) {
