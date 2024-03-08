@@ -501,9 +501,9 @@ func (s *SyncTestSuite) TestDownloadToDst(c *C) {
 	c.Assert(err, IsNil)
 	c.Assert(downloadChecksum, Equals, checksum)
 	// Downloaded file can be identified as a qcow2 file as well.
-	downloadFileFormat, err := util.DetectFileFormat(unzipDownloadFilePath)
+	downloadFileInfo, err := util.GetQemuImgInfo(unzipDownloadFilePath)
 	c.Assert(err, IsNil)
-	c.Assert(downloadFileFormat, Equals, "qcow2")
+	c.Assert(downloadFileInfo.Format, Equals, "qcow2")
 }
 
 func (s *SyncTestSuite) TestDuplicateCalls(c *C) {
