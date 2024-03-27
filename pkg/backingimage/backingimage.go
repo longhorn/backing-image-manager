@@ -183,13 +183,13 @@ func OpenBackingImage(path string) (*BackingImage, error) {
 		return nil, err
 	}
 
-	format, err := util.DetectFileFormat(file)
+	imgInfo, err := util.GetQemuImgInfo(file)
 	if err != nil {
 		return nil, err
 	}
 
 	var f enginetypes.DiffDisk
-	switch format {
+	switch imgInfo.Format {
 	case "qcow2":
 		// This is only used when doing backup.
 		// We open qcow2 like raw file and simply backup all the blocks of the qcow2
@@ -202,7 +202,7 @@ func OpenBackingImage(path string) (*BackingImage, error) {
 			return nil, err
 		}
 	default:
-		return nil, fmt.Errorf("format %v of the backing file %v is not supported", format, file)
+		return nil, fmt.Errorf("format %v of the backing file %v is not supported", imgInfo.Format, file)
 	}
 
 	size, err := f.Size()
@@ -224,7 +224,7 @@ func OpenBackingImage(path string) (*BackingImage, error) {
 		SectorSize: diskutil.BackingImageSectorSize,
 		Path:       file,
 		Disk:       f,
-		Format:     format,
+		Format:     imgInfo.Format,
 
 		Location: location,
 	}, nil
