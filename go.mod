@@ -3,7 +3,7 @@ module github.com/longhorn/backing-image-manager
 go 1.21
 
 require (
-	github.com/RoaringBitmap/roaring v1.9.1
+	github.com/RoaringBitmap/roaring v1.9.3
 	github.com/golang/protobuf v1.5.4
 	github.com/gorilla/mux v1.8.1
 	github.com/longhorn/backupstore v0.0.0-20240219094812-3a87ee02df77
