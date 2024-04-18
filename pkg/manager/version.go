@@ -1,11 +1,11 @@
 package manager
 
 import (
+	rpc "github.com/longhorn/types/pkg/generated/bimrpc"
 	"golang.org/x/net/context"
 	"google.golang.org/protobuf/types/known/emptypb"
 
 	"github.com/longhorn/backing-image-manager/pkg/meta"
-	"github.com/longhorn/backing-image-manager/pkg/rpc"
 )
 
 func (pm *Manager) VersionGet(ctx context.Context, empty *emptypb.Empty) (*rpc.VersionResponse, error) {
