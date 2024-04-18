@@ -11,6 +11,8 @@ import (
 	"time"
 
 	"github.com/golang/protobuf/ptypes/empty"
+	butil "github.com/longhorn/backupstore/util"
+	rpc "github.com/longhorn/types/pkg/generated/bimrpc"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	"golang.org/x/net/context"
@@ -18,18 +20,16 @@ import (
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/emptypb"
 
-	butil "github.com/longhorn/backupstore/util"
-
 	"github.com/longhorn/backing-image-manager/api"
 	"github.com/longhorn/backing-image-manager/pkg/backup"
 	"github.com/longhorn/backing-image-manager/pkg/client"
-	"github.com/longhorn/backing-image-manager/pkg/rpc"
 	"github.com/longhorn/backing-image-manager/pkg/types"
 	"github.com/longhorn/backing-image-manager/pkg/util"
 	"github.com/longhorn/backing-image-manager/pkg/util/broadcaster"
 )
 
 type Manager struct {
+	rpc.UnimplementedBackingImageManagerServiceServer
 	ctx context.Context
 
 	syncAddress  string
