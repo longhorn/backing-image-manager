@@ -4,6 +4,8 @@ import (
 	"io"
 	"strings"
 	"time"
+
+	"github.com/longhorn/types/pkg/generated/enginerpc"
 )
 
 const (
@@ -90,7 +92,6 @@ type Backend interface {
 	Expand(size int64) error
 	Size() (int64, error)
 	SectorSize() (int64, error)
-	RemainSnapshots() (int, error)
 	GetRevisionCounter() (int64, error)
 	SetRevisionCounter(counter int64) error
 	GetState() (string, error)
@@ -102,6 +103,9 @@ type Backend interface {
 	GetUnmapMarkSnapChainRemoved() (bool, error)
 	SetUnmapMarkSnapChainRemoved(enabled bool) error
 	ResetRebuild() error
+	SetSnapshotMaxCount(count int) error
+	SetSnapshotMaxSize(size int64) error
+	GetSnapshotCountAndSizeUsage() (int, int64, error)
 }
 
 type BackendFactory interface {
@@ -173,4 +177,28 @@ type RWMetrics struct {
 
 func IsAlreadyPurgingError(err error) bool {
 	return strings.Contains(err.Error(), "already purging")
+}
+
+func ReplicaModeToGRPCReplicaMode(mode Mode) enginerpc.ReplicaMode {
+	switch mode {
+	case WO:
+		return enginerpc.ReplicaMode_WO
+	case RW:
+		return enginerpc.ReplicaMode_RW
+	case ERR:
+		return enginerpc.ReplicaMode_ERR
+	}
+	return enginerpc.ReplicaMode_ERR
+}
+
+func GRPCReplicaModeToReplicaMode(replicaMode enginerpc.ReplicaMode) Mode {
+	switch replicaMode {
+	case enginerpc.ReplicaMode_WO:
+		return WO
+	case enginerpc.ReplicaMode_RW:
+		return RW
+	case enginerpc.ReplicaMode_ERR:
+		return ERR
+	}
+	return ERR
 }
