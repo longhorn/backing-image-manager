@@ -77,6 +77,8 @@ github.com/longhorn/backupstore v0.0.0-20231227154627-8a80904e9077 h1:bc7BEw4hEL
 github.com/longhorn/backupstore v0.0.0-20231227154627-8a80904e9077/go.mod h1:4cbJWtlrD2cGTQxQLtdlPTYopiJiusXH7CpOBrn/s3k=
 github.com/longhorn/backupstore v0.0.0-20240219094812-3a87ee02df77 h1:iJRq59kA22f9HIjFtY/lz5rKCorZJrrYXju70XoWdmE=
 github.com/longhorn/backupstore v0.0.0-20240219094812-3a87ee02df77/go.mod h1:4cbJWtlrD2cGTQxQLtdlPTYopiJiusXH7CpOBrn/s3k=
+github.com/longhorn/backupstore v0.0.0-20240424161249-e41df5df41b8 h1:u+TDHJBjdaTcOAL/xw8J9tBqSwHdSxbRhvT+S1Np2uo=
+github.com/longhorn/backupstore v0.0.0-20240424161249-e41df5df41b8/go.mod h1:4cbJWtlrD2cGTQxQLtdlPTYopiJiusXH7CpOBrn/s3k=
 github.com/longhorn/longhorn-engine v1.6.0-dev-20231217.0.20231226052201-1c1b8312a30d h1:3i+f6P78QYV78nuAV8m/kHNcXRgdVrMoGlUkrbcOEz4=
 github.com/longhorn/longhorn-engine v1.6.0-dev-20231217.0.20231226052201-1c1b8312a30d/go.mod h1:Jkxyj5RT2fk6L/KuPkWMmB0cRhVDjHa799uIXFt3Bfw=
 github.com/longhorn/longhorn-engine v1.6.0 h1:6CH2vvwCgFBIGW4TegcI79CL1Ego1nvLZIC3ioRjjdM=
@@ -89,6 +91,8 @@ github.com/longhorn/sparse-tools v0.0.0-20240222053258-01fc48087406 h1:lUxcSmj+u
 github.com/longhorn/sparse-tools v0.0.0-20240222053258-01fc48087406/go.mod h1:qhbarWiCtB2FFqg7v3KBSRshU7oQgrabmIuN3Sh0cMo=
 github.com/longhorn/sparse-tools v0.0.0-20240228120902-ce8c4c2e71ca h1:dECamLpXIlL7GRmiruGseb5xO6hGAWyu2xYm9D46mb8=
 github.com/longhorn/sparse-tools v0.0.0-20240228120902-ce8c4c2e71ca/go.mod h1:pvlUkVwRGojXhcTkkzksOe4i7GVk59P2PbJjHIB2Yj0=
+github.com/longhorn/sparse-tools v0.0.0-20240424162924-2651ad40ad19 h1:/bSLCJxmmtq+alVHtvPl5eDXgMHqBOzOwcCCJxtRts0=
+github.com/longhorn/sparse-tools v0.0.0-20240424162924-2651ad40ad19/go.mod h1:pvlUkVwRGojXhcTkkzksOe4i7GVk59P2PbJjHIB2Yj0=
 github.com/matttproud/golang_protobuf_extensions v1.0.1/go.mod h1:D8He9yQNgCq6Z5Ld7szi9bcBfOoFv/3dc6xSMkL2PC0=
 github.com/matttproud/golang_protobuf_extensions v1.0.4 h1:mmDVorXM7PCGKw94cs5zkfA9PSy5pEvNWRP0ET0TIVo=
 github.com/matttproud/golang_protobuf_extensions v1.0.4/go.mod h1:BSXmuO+STAnVfrANrmjBb36TMTDstsz7MSK+HVaYKv4=
