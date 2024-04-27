@@ -7,7 +7,7 @@ github.com/RoaringBitmap/roaring/internal
 github.com/bits-and-blooms/bitset
 # github.com/c9s/goprocinfo v0.0.0-20210130143923-c95fcf8c64a8
 ## explicit
-# github.com/cpuguy83/go-md2man/v2 v2.0.2
+# github.com/cpuguy83/go-md2man/v2 v2.0.4
 ## explicit; go 1.11
 github.com/cpuguy83/go-md2man/v2/md2man
 # github.com/felixge/httpsnoop v1.0.3
@@ -60,7 +60,7 @@ github.com/russross/blackfriday/v2
 # github.com/sirupsen/logrus v1.9.3
 ## explicit; go 1.13
 github.com/sirupsen/logrus
-# github.com/urfave/cli v1.22.14
+# github.com/urfave/cli v1.22.15
 ## explicit; go 1.11
 github.com/urfave/cli
 # golang.org/x/net v0.20.0
