@@ -10,7 +10,7 @@ require (
 	github.com/longhorn/sparse-tools v0.0.0-20240424162924-2651ad40ad19
 	github.com/pkg/errors v0.9.1
 	github.com/sirupsen/logrus v1.9.3
-	github.com/urfave/cli v1.22.14
+	github.com/urfave/cli v1.22.15
 	golang.org/x/net v0.20.0
 	google.golang.org/grpc v1.62.1
 	google.golang.org/protobuf v1.33.0
@@ -20,7 +20,7 @@ require (
 require (
 	github.com/bits-and-blooms/bitset v1.2.0 // indirect
 	github.com/c9s/goprocinfo v0.0.0-20210130143923-c95fcf8c64a8 // indirect
-	github.com/cpuguy83/go-md2man/v2 v2.0.2 // indirect
+	github.com/cpuguy83/go-md2man/v2 v2.0.4 // indirect
 	github.com/felixge/httpsnoop v1.0.3 // indirect
 	github.com/google/uuid v1.6.0 // indirect
 	github.com/gorilla/handlers v1.5.2 // indirect
