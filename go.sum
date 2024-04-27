@@ -79,6 +79,8 @@ github.com/longhorn/backupstore v0.0.0-20240219094812-3a87ee02df77 h1:iJRq59kA22
 github.com/longhorn/backupstore v0.0.0-20240219094812-3a87ee02df77/go.mod h1:4cbJWtlrD2cGTQxQLtdlPTYopiJiusXH7CpOBrn/s3k=
 github.com/longhorn/backupstore v0.0.0-20240424161249-e41df5df41b8 h1:u+TDHJBjdaTcOAL/xw8J9tBqSwHdSxbRhvT+S1Np2uo=
 github.com/longhorn/backupstore v0.0.0-20240424161249-e41df5df41b8/go.mod h1:4cbJWtlrD2cGTQxQLtdlPTYopiJiusXH7CpOBrn/s3k=
+github.com/longhorn/backupstore v0.0.0-20240426093637-ac3867f121c0 h1:sb9HK8uWApqrBbpjnxlNSmIB5f4oi3UqfeRHVniPcqo=
+github.com/longhorn/backupstore v0.0.0-20240426093637-ac3867f121c0/go.mod h1:NlOHCyQiGjn9TS1HUfQlBESttDPzi9x1Vs38geRV9SU=
 github.com/longhorn/longhorn-engine v1.6.0-dev-20231217.0.20231226052201-1c1b8312a30d h1:3i+f6P78QYV78nuAV8m/kHNcXRgdVrMoGlUkrbcOEz4=
 github.com/longhorn/longhorn-engine v1.6.0-dev-20231217.0.20231226052201-1c1b8312a30d/go.mod h1:Jkxyj5RT2fk6L/KuPkWMmB0cRhVDjHa799uIXFt3Bfw=
 github.com/longhorn/longhorn-engine v1.6.0 h1:6CH2vvwCgFBIGW4TegcI79CL1Ego1nvLZIC3ioRjjdM=
@@ -166,6 +168,8 @@ golang.org/x/net v0.17.0 h1:pVaXccu2ozPjCXewfr1S7xza/zcXTity9cCdXQYSjIM=
 golang.org/x/net v0.17.0/go.mod h1:NxSsAGuq816PNPmqtQdLE42eU2Fs7NoRIZrHJAlaCOE=
 golang.org/x/net v0.20.0 h1:aCL9BSgETF1k+blQaYUBx9hJ9LOGP3gAVemcZlf1Kpo=
 golang.org/x/net v0.20.0/go.mod h1:z8BVo6PvndSri0LbOE3hAn0apkU+1YvI6E70E9jsnvY=
+golang.org/x/net v0.23.0 h1:7EYJ93RZ9vYSZAIb2x3lnuvqO5zneoD6IvWjuhfxjTs=
+golang.org/x/net v0.23.0/go.mod h1:JKghWKKOSdJwpW2GEx0Ja7fmaKnMsbu+MWVZTokSYmg=
 golang.org/x/sync v0.0.0-20181108010431-42b317875d0f/go.mod h1:RxMgew5VJxzue5/jJTE5uejpjVlOe/izrB70Jof72aM=
 golang.org/x/sync v0.0.0-20181221193216-37e7f081c4d4/go.mod h1:RxMgew5VJxzue5/jJTE5uejpjVlOe/izrB70Jof72aM=
 golang.org/x/sys v0.0.0-20190215142949-d0b11bdaac8a/go.mod h1:STP8DvDyc/dI5b8T5hshtkjS+E42TnysNCUPdjciGhY=
