@@ -158,36 +158,33 @@ func (s *Service) waitForBeginning() {
 	ticker := time.NewTicker(RetryInterval)
 	defer ticker.Stop()
 	for {
-		select {
-		case <-ticker.C:
-			if count >= RetryCount {
-				s.lock.Lock()
-				s.timeoutBegin = true
-				s.dsInfo.State = string(types.StateFailed)
-				s.dsInfo.Message = TimeoutBeginErrorMessage
-				s.lock.Unlock()
-				if err := s.syncClient.Delete(s.filePath); err != nil {
-					s.log.Errorf("DataSource Service: failed to do cleanup after timeout waiting for the datasource processing begin: %v", err)
-				}
-				return
+		<-ticker.C
+		if count >= RetryCount {
+			s.lock.Lock()
+			s.timeoutBegin = true
+			s.dsInfo.State = string(types.StateFailed)
+			s.dsInfo.Message = TimeoutBeginErrorMessage
+			s.lock.Unlock()
+			if err := s.syncClient.Delete(s.filePath); err != nil {
+				s.log.WithError(err).Error("DataSource Service: failed to do cleanup after timeout waiting for the datasource processing begin")
 			}
-
-			count++
-
-			dsInfo, err := s.syncDataSourceFileInfo()
-			if err != nil {
-				s.log.Debugf("DataSource Service: failed to get the datasource file info, the processing may be not begin yet: %v", err)
-				continue
-			}
-
-			notBeginYet := dsInfo.State == "" || dsInfo.State == string(types.StatePending) || dsInfo.State == string(types.StateStarting)
-			if !notBeginYet {
-				return
-			}
-			s.log.Debugf("DataSource Service: datasource file is state %v, the processing is not begin yet", dsInfo.State)
+			return
 		}
-	}
 
+		count++
+
+		dsInfo, err := s.syncDataSourceFileInfo()
+		if err != nil {
+			s.log.Debugf("DataSource Service: failed to get the datasource file info, the processing may be not begin yet: %v", err)
+			continue
+		}
+
+		notBeginYet := dsInfo.State == "" || dsInfo.State == string(types.StatePending) || dsInfo.State == string(types.StateStarting)
+		if !notBeginYet {
+			return
+		}
+		s.log.Debugf("DataSource Service: datasource file is state %v, the processing is not begin yet", dsInfo.State)
+	}
 }
 
 func (s *Service) restoreFromBackupURL() (err error) {
@@ -315,7 +312,9 @@ func (s *Service) Get(writer http.ResponseWriter, request *http.Request) {
 		return
 	}
 	writer.Header().Set("Content-Type", "application/json")
-	writer.Write(outgoingJSON)
+	if _, err := writer.Write(outgoingJSON); err != nil {
+		logrus.WithError(err).Warn("Failed to write response")
+	}
 }
 
 func (s *Service) Transfer(writer http.ResponseWriter, request *http.Request) {
