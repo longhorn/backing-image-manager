@@ -243,22 +243,20 @@ func (sf *SyncingFile) waitForProcessingBeginWithTimeout() {
 	ticker := time.NewTicker(RetryInterval)
 	defer ticker.Stop()
 	for {
-		select {
-		case <-ticker.C:
-			count++
-			sf.lock.Lock()
-			notBeginYet := sf.state == "" || sf.state == types.StatePending || sf.state == types.StateStarting
-			if !notBeginYet {
-				sf.lock.Unlock()
-				return
-			}
-			if count >= RetryCount {
-				sf.handleFailureNoLock(fmt.Errorf("failed to wait for processing begin in %v seconds, current state %v", RetryCount, sf.state))
-				sf.lock.Unlock()
-				return
-			}
+		<-ticker.C
+		count++
+		sf.lock.Lock()
+		notBeginYet := sf.state == "" || sf.state == types.StatePending || sf.state == types.StateStarting
+		if !notBeginYet {
 			sf.lock.Unlock()
+			return
 		}
+		if count >= RetryCount {
+			sf.handleFailureNoLock(fmt.Errorf("failed to wait for processing begin in %v seconds, current state %v", RetryCount, sf.state))
+			sf.lock.Unlock()
+			return
+		}
+		sf.lock.Unlock()
 	}
 }
 
@@ -267,18 +265,16 @@ func (sf *SyncingFile) WaitForStateNonPending() error {
 	ticker := time.NewTicker(RetryInterval)
 	defer ticker.Stop()
 	for {
-		select {
-		case <-ticker.C:
-			count++
-			sf.lock.RLock()
-			state := sf.state
-			sf.lock.RUnlock()
-			if state != types.StatePending {
-				return nil
-			}
-			if count >= LargeRetryCount {
-				return fmt.Errorf("sync file is still in empty state after %v second", LargeRetryCount)
-			}
+		<-ticker.C
+		count++
+		sf.lock.RLock()
+		state := sf.state
+		sf.lock.RUnlock()
+		if state != types.StatePending {
+			return nil
+		}
+		if count >= LargeRetryCount {
+			return fmt.Errorf("sync file is still in empty state after %v second", LargeRetryCount)
 		}
 	}
 }
@@ -363,7 +359,6 @@ func (sf *SyncingFile) Delete() {
 	if err := os.RemoveAll(configFilePath); err != nil {
 		sf.log.Warnf("SyncingFile: failed to delete sync file config file %v: %v", configFilePath, err)
 	}
-	return
 }
 
 func (sf *SyncingFile) GetFileReader() (io.ReadCloser, error) {

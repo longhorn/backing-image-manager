@@ -139,7 +139,9 @@ func (m *Manager) monitoring() {
 			done = true
 			break
 		case <-ticker.C:
-			m.listAndUpdate()
+			if _, err := m.listAndUpdate(); err != nil {
+				m.log.WithError(err).Warn("failed to list and update backing image files")
+			}
 		}
 		if done {
 			break
@@ -364,7 +366,7 @@ func (m *Manager) Sync(ctx context.Context, req *rpc.SyncRequest) (resp *rpc.Bac
 		// sender.Send is a non-blocking call
 		sender := client.NewBackingImageManagerClient(req.FromAddress)
 		if err = sender.Send(req.Spec.Name, req.Spec.Uuid, toAddress); err != nil {
-			err = errors.Wrapf(err, "sender failed to request backing image sending to %v", toAddress)
+			err = errors.Wrapf(err, "sender failed to request backing image sending to %v", toAddress) // nolint:ineffassign,staticcheck
 			return
 		}
 
