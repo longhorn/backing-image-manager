@@ -131,7 +131,9 @@ func (s *Service) List(writer http.ResponseWriter, request *http.Request) {
 		return
 	}
 	writer.Header().Set("Content-Type", "application/json")
-	writer.Write(outgoingJSON)
+	if _, err := writer.Write(outgoingJSON); err != nil {
+		logrus.WithError(err).Warn("Failed to write response")
+	}
 }
 
 func (s *Service) Get(writer http.ResponseWriter, request *http.Request) {
@@ -157,7 +159,9 @@ func (s *Service) Get(writer http.ResponseWriter, request *http.Request) {
 		return
 	}
 	writer.Header().Set("Content-Type", "application/json")
-	writer.Write(outgoingJSON)
+	if _, err := writer.Write(outgoingJSON); err != nil {
+		logrus.WithError(err).Warn("Failed to write response")
+	}
 }
 
 func (s *Service) Delete(writer http.ResponseWriter, request *http.Request) {
@@ -203,7 +207,6 @@ func (s *Service) cleanup(filePath string, deleteFile bool) {
 	if sf != nil && deleteFile {
 		sf.Delete()
 	}
-	return
 }
 
 func (s *Service) DownloadToDst(writer http.ResponseWriter, request *http.Request) {
@@ -249,7 +252,6 @@ func (s *Service) DownloadToDst(writer http.ResponseWriter, request *http.Reques
 		err = ioErr
 		return
 	}
-	return
 }
 
 func (s *Service) checkAndInitSyncFile(filePath, uuid, diskUUID, expectedChecksum string, size int64) (*SyncingFile, error) {
