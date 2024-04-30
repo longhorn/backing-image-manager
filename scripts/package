@@ -7,31 +7,18 @@ cd $(dirname $0)/..
 
 PROJECT=`basename "$PWD"`
 
-case $(uname -m) in
-  aarch64 | arm64)
-    ARCH=arm64
-    ;;
-  x86_64)
-    ARCH=amd64
-    ;;
-  s390x)
-    ARCH=s390x
-    ;;
-  *)
-    echo "$(uname -a): unsupported architecture"
-    exit 1
-esac
-
 if [ ! -x ./bin/longhorn ]; then
     ./scripts/build
 fi
+
+cp -r bin package/
 
 APIVERSION=`./bin/backing-image-manager version --client-only|jq ".clientVersion.backingImageManagerAPIVersion"`
 TAG="v${APIVERSION}_`date -u +%Y%m%d`"
 REPO=${REPO:-longhornio}
 IMAGE=${REPO}/${PROJECT}:${TAG}
 
-docker build --build-arg ARCH=${ARCH} --no-cache -t ${IMAGE} -f package/Dockerfile .
+buildx build --load --no-cache -t ${IMAGE} -f package/Dockerfile .
 
 echo Built ${IMAGE}
 
