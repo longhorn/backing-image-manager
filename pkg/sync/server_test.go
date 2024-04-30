@@ -643,7 +643,7 @@ func (s *SyncTestSuite) TestReadyFileValidation(c *C) {
 	fInfo, err = getAndWaitFileState(cli, curPath, string(types.StateUnknown), 1)
 	c.Assert(err, IsNil)
 	c.Check(fInfo.ModificationTime == oldModificationTime, Equals, false)
-	fInfo, err = getAndWaitFileState(cli, curPath, string(types.StateFailed), 10)
+	_, err = getAndWaitFileState(cli, curPath, string(types.StateFailed), 10)
 	c.Assert(err, IsNil)
 
 	err = cli.Delete(curPath)

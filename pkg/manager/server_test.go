@@ -313,6 +313,7 @@ func (s *TestSuite) TestSingleBackingImageFetch(c *C) {
 		c.Assert(dsInfo.FilePath, Equals, dsFilePath)
 
 		bi, err := getAndWaitFileState(cli1, biName, biUUID, string(types.StateReady), 30)
+		c.Assert(err, IsNil)
 		c.Assert(bi.Status.CurrentChecksum, Equals, checksum)
 
 		_, err = os.Stat(dsFilePath)
