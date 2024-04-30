@@ -1,16 +1,24 @@
-FROM registry.suse.com/bci/bci-base:15.5
+# syntax=docker/dockerfile:1.7.1
 
-ARG ARCH=amd64
+FROM registry.suse.com/bci/bci-base:15.6
+
+ARG TARGETPLATFORM
+RUN if [ "$TARGETPLATFORM" != "linux/amd64" ] && [ "$TARGETPLATFORM" != "linux/arm64" ]; then \
+    echo "Error: Unsupported TARGETPLATFORM: $TARGETPLATFORM" && \
+    exit 1; \
+    fi
+
+ENV ARCH ${TARGETPLATFORM#linux/}
 
 RUN zypper -n addrepo --refresh https://download.opensuse.org/repositories/system:/snappy/SLE_15/system:snappy.repo && \
     zypper -n addrepo --refresh https://download.opensuse.org/repositories/network:/utilities/SLE_15_SP5/network:utilities.repo && \
     zypper --gpg-auto-import-keys ref
 
 RUN zypper -n install kmod curl wget nfs-client nfs4-acl-tools fuse \
-	librdmacm1 librdmacm-utils libibverbs perl-Config-General libaio-devel sg3_utils \
-     iputils telnet iperf qemu-tools iproute2 e2fsprogs e2fsprogs-devel xfsprogs xfsprogs-devel
+    librdmacm1 librdmacm-utils libibverbs perl-Config-General libaio-devel sg3_utils \
+    iputils telnet iperf qemu-tools iproute2 e2fsprogs e2fsprogs-devel xfsprogs xfsprogs-devel
 
-COPY bin/backing-image-manager /usr/local/bin/
+COPY package/bin/backing-image-manager-${ARCH} /usr/local/bin/backing-image-manager
 
 VOLUME /usr/local/bin
 
