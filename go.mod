@@ -14,7 +14,7 @@ require (
 	github.com/rancher/go-fibmap v0.0.0-20160418233256-5fc9f8c1ed47
 	github.com/sirupsen/logrus v1.9.3
 	github.com/urfave/cli v1.22.15
-	golang.org/x/net v0.24.0
+	golang.org/x/net v0.25.0
 	google.golang.org/grpc v1.63.2
 	google.golang.org/protobuf v1.34.0
 	gopkg.in/check.v1 v1.0.0-20201130134442-10cb98267c6c
@@ -50,8 +50,8 @@ require (
 	github.com/russross/blackfriday/v2 v2.1.0 // indirect
 	github.com/slok/goresilience v0.2.0 // indirect
 	go.uber.org/multierr v1.11.0 // indirect
-	golang.org/x/sys v0.19.0 // indirect
-	golang.org/x/text v0.14.0 // indirect
+	golang.org/x/sys v0.20.0 // indirect
+	golang.org/x/text v0.15.0 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20240227224415-6ceb2ff114de // indirect
 	k8s.io/apimachinery v0.27.1 // indirect
 	k8s.io/klog/v2 v2.110.1 // indirect
