@@ -140,14 +140,16 @@ func (s *Service) init() (err error) {
 	}()
 
 	switch s.sourceType {
-	case types.DataSourceTypeRestore:
-		return s.restoreFromBackupURL()
 	case types.DataSourceTypeDownload:
 		return s.downloadFromURL(s.parameters)
 	case types.DataSourceTypeUpload:
 		return s.prepareForUpload()
 	case types.DataSourceTypeExportFromVolume:
 		return s.exportFromVolume(s.parameters)
+	case types.DataSourceTypeRestore:
+		return s.restoreFromBackupURL()
+	case types.DataSourceTypeClone:
+		return s.cloneFromBackingImage()
 	default:
 		return fmt.Errorf("unknown data source type: %v", s.sourceType)
 	}
@@ -185,6 +187,34 @@ func (s *Service) waitForBeginning() {
 		}
 		s.log.Debugf("DataSource Service: datasource file is state %v, the processing is not begin yet", dsInfo.State)
 	}
+}
+
+func (s *Service) cloneFromBackingImage() (err error) {
+	sourceBackingImage := s.parameters[types.DataSourceTypeCloneParameterBackingImage]
+	if sourceBackingImage == "" {
+		return fmt.Errorf("%v is not specified", types.DataSourceTypeCloneParameterBackingImage)
+	}
+
+	sourceBackingImageUUID := s.parameters[types.DataSourceTypeCloneParameterBackingImageUUID]
+	if sourceBackingImageUUID == "" {
+		return fmt.Errorf("%v is not specified", types.DataSourceTypeCloneParameterBackingImageUUID)
+	}
+
+	encryption := s.parameters[types.DataSourceTypeCloneParameterEncryption]
+	if types.EncryptionType(encryption) != types.EncryptionTypeEncrypt &&
+		types.EncryptionType(encryption) != types.EncryptionTypeDecrypt &&
+		types.EncryptionType(encryption) != types.EncryptionTypeIgnore {
+		return fmt.Errorf("%v operation %v is not specified", types.DataSourceTypeCloneParameterEncryption, encryption)
+	}
+
+	if types.EncryptionType(encryption) == types.EncryptionTypeEncrypt ||
+		types.EncryptionType(encryption) == types.EncryptionTypeDecrypt {
+		if len(s.credential) == 0 {
+			return fmt.Errorf("secret is not provided for %v or %v", types.EncryptionTypeEncrypt, types.EncryptionTypeDecrypt)
+		}
+	}
+
+	return s.syncClient.CloneFromBackingImage(sourceBackingImage, sourceBackingImageUUID, encryption, s.filePath, s.uuid, s.diskUUID, s.expectedChecksum, s.credential)
 }
 
 func (s *Service) restoreFromBackupURL() (err error) {

@@ -25,6 +25,7 @@ func NewRouter(service *Service) *mux.Router {
 	router.HandleFunc("/v1/files", service.DownloadFromURL).Methods("POST").Queries("action", "downloadFromURL")
 	router.HandleFunc("/v1/files", service.UploadFromRequest).Methods("POST").Queries("action", "upload")
 	router.HandleFunc("/v1/files", service.ReceiveFromPeer).Methods("POST").Queries("action", "receiveFromPeer")
+	router.HandleFunc("/v1/files", service.CloneFromBackingImage).Methods("POST").Queries("action", "cloneFromBackingImage")
 
 	router.HandleFunc("/debug/pprof/", pprof.Index).Methods("GET")
 	router.HandleFunc("/debug/pprof/cmdline", pprof.Cmdline).Methods("GET")
