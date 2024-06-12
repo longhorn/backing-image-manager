@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 	"strconv"
+	"strings"
 	"sync"
 	"time"
 
@@ -15,10 +16,13 @@ import (
 	"github.com/sirupsen/logrus"
 
 	butil "github.com/longhorn/backupstore/util"
+	lhns "github.com/longhorn/go-common-libs/ns"
+	lhtypes "github.com/longhorn/go-common-libs/types"
 	sparserest "github.com/longhorn/sparse-tools/sparse/rest"
 
 	"github.com/longhorn/backing-image-manager/api"
 	"github.com/longhorn/backing-image-manager/pkg/backup"
+	"github.com/longhorn/backing-image-manager/pkg/crypto"
 	"github.com/longhorn/backing-image-manager/pkg/types"
 	"github.com/longhorn/backing-image-manager/pkg/util"
 )
@@ -398,7 +402,7 @@ func (sf *SyncingFile) GetFileReader() (io.ReadCloser, error) {
 	return os.Open(sf.filePath)
 }
 
-func (sf *SyncingFile) stateCheckBeforeProcessing() (bool, error) {
+func (sf *SyncingFile) isProcessingRequired() (bool, error) {
 	sf.lock.RLock()
 	defer sf.lock.RUnlock()
 
@@ -432,7 +436,7 @@ func (sf *SyncingFile) Fetch(srcFilePath string) (err error) {
 		}
 	}()
 
-	needProcessing, err := sf.stateCheckBeforeProcessing()
+	needProcessing, err := sf.isProcessingRequired()
 	if err != nil {
 		return err
 	}
@@ -480,7 +484,7 @@ func (sf *SyncingFile) Fetch(srcFilePath string) (err error) {
 func (sf *SyncingFile) DownloadFromURL(url string) (written int64, err error) {
 	sf.log.Infof("SyncingFile: start to download sync file from URL %v", url)
 
-	needProcessing, err := sf.stateCheckBeforeProcessing()
+	needProcessing, err := sf.isProcessingRequired()
 	if err != nil {
 		return 0, err
 	}
@@ -509,7 +513,7 @@ func (sf *SyncingFile) DownloadFromURL(url string) (written int64, err error) {
 func (sf *SyncingFile) RestoreFromBackupURL(backupURL string, credential map[string]string, concurrentLimit int) (err error) {
 	sf.log.Infof("SyncingFile: start to restore sync file from backup URL %v", backupURL)
 
-	needProcessing, err := sf.stateCheckBeforeProcessing()
+	needProcessing, err := sf.isProcessingRequired()
 	if err != nil {
 		return err
 	}
@@ -577,6 +581,177 @@ func (sf *SyncingFile) waitForRestoreComplete() (err error) {
 	return nil
 }
 
+// CloneToFileWithEncryption clone the backing file on the same node to another backing file with the given encryption operation.
+// when doing encryption, it creates a loop device from the target backing file, setup the encrypted device from the loop device and then dump the data from the source file to the target encrypted device.
+// When doing decryption, it creates a loop device from the source backing file, setup the encrypted device from the loop device and then dump the data from the source encrypted device to the target file.
+// When doing ignore clone, it directly dumps the data from the source backing file to the target backing file.
+func (sf *SyncingFile) CloneToFileWithEncryption(sourceBackingImage, sourceBackingImageUUID string, encryption types.EncryptionType, credential map[string]string) (copied int64, err error) {
+	sf.log.Infof("SyncingFile: start to clone the file")
+
+	defer func() {
+		if err != nil {
+			sf.log.Errorf("SyncingFile: failed CloneToFileWithEncryption: %v", err)
+		}
+	}()
+
+	needProcessing, err := sf.isProcessingRequired()
+	if err != nil {
+		return 0, err
+	}
+	if !needProcessing {
+		return 0, nil
+	}
+	defer func() {
+		if finalErr := sf.finishProcessing(err); finalErr != nil {
+			err = finalErr
+		}
+	}()
+
+	sourceFile, tmpRawFile, writeZero, err := sf.prepareCloneSourceFile(sourceBackingImage, sourceBackingImageUUID, encryption)
+	defer func() {
+		if tmpRawFile != "" {
+			os.RemoveAll(tmpRawFile)
+		}
+	}()
+	if err != nil {
+		return 0, errors.Wrapf(err, "failed to prepare source file")
+	}
+
+	err = sf.prepareCloneTargetFile(sourceFile, encryption)
+	if err != nil {
+		return 0, errors.Wrapf(err, "failed to prepare target file")
+	}
+
+	sourceFileReader, sourceLoopDevicePath, err := sf.openCloneSourceFile(sourceFile, encryption, credential)
+	defer func() {
+		if sourceFileReader != nil {
+			sourceFileReader.Close()
+		}
+		if sourceLoopDevicePath == "" {
+			sf.closeCryptoDevice(sourceLoopDevicePath)
+		}
+	}()
+	if err != nil {
+		return 0, errors.Wrapf(err, "failed to open clone source file")
+	}
+
+	targetFileWriter, targetLoopDevicePath, err := sf.openCloneTargetFile(encryption, credential)
+	defer func() {
+		if targetFileWriter != nil {
+			targetFileWriter.Close()
+		}
+		if targetLoopDevicePath == "" {
+			sf.closeCryptoDevice(targetLoopDevicePath)
+		}
+	}()
+	if err != nil {
+		return 0, errors.Wrapf(err, "failed to open clone source file")
+	}
+
+	nw, err := IdleTimeoutCopy(sf.ctx, sf.cancel, sourceFileReader, targetFileWriter, sf, writeZero)
+	if err != nil {
+		err = errors.Wrapf(err, "failed to copy the data with timeout")
+	}
+	return nw, err
+}
+
+func (sf *SyncingFile) openCloneSourceFile(sourceFile string, encryption types.EncryptionType, credential map[string]string) (*os.File, string, error) {
+	loopDevicePath := ""
+	if encryption == types.EncryptionTypeDecrypt {
+		loopDevicePath, err := sf.setupCryptoDevice(sourceFile, false, credential)
+		if err != nil {
+			return nil, loopDevicePath, errors.Wrapf(err, "failed to setup the crypto device with the file %v during cloning", sourceFile)
+		}
+		sourceFile = types.BackingImageMapper(sf.uuid)
+	}
+
+	if _, err := os.Stat(sourceFile); err != nil {
+		return nil, loopDevicePath, errors.Wrapf(err, "%v not found during cloning", sourceFile)
+	}
+
+	sourceFileReader, err := os.Open(sourceFile)
+	if err != nil {
+		return nil, loopDevicePath, errors.Wrapf(err, "Error opening file %v", sourceFile)
+	}
+
+	return sourceFileReader, loopDevicePath, nil
+}
+
+func (sf *SyncingFile) openCloneTargetFile(encryption types.EncryptionType, credential map[string]string) (*os.File, string, error) {
+	loopDevicePath := ""
+	targetFile := sf.tmpFilePath
+
+	if encryption == types.EncryptionTypeEncrypt {
+		loopDevicePath, err := sf.setupCryptoDevice(targetFile, true, credential)
+		if err != nil {
+			return nil, loopDevicePath, errors.Wrapf(err, "failed to setup the crypto device with the file %v during cloning", targetFile)
+		}
+		targetFile = types.BackingImageMapper(sf.uuid)
+	}
+
+	if _, err := os.Stat(targetFile); err != nil {
+		return nil, loopDevicePath, errors.Wrapf(err, "%v not found during cloning", targetFile)
+	}
+
+	targetFileWriter, err := os.OpenFile(targetFile, os.O_RDWR, 0666)
+	if err != nil {
+		return nil, loopDevicePath, errors.Wrapf(err, "Error opening file %v", targetFile)
+	}
+	return targetFileWriter, loopDevicePath, nil
+}
+
+func (sf *SyncingFile) prepareCloneSourceFile(sourceBackingImage, sourceBackingImageUUID string, encryption types.EncryptionType) (string, string, bool, error) {
+	writeZero := false
+	sourceFile := types.GetBackingImageFilePath(types.DiskPathInContainer, sourceBackingImage, sourceBackingImageUUID)
+	tmpRawFile := ""
+
+	if _, err := os.Stat(sourceFile); err != nil {
+		return "", tmpRawFile, writeZero, errors.Wrapf(err, "source file %v not found ", sourceFile)
+	}
+
+	if encryption == types.EncryptionTypeEncrypt {
+		// we should write zero when doing encryption so the zero can be encrypted as well
+		writeZero = true
+
+		// If the source file is qcow2 when encrypting we need to convert and use its raw image
+		imgInfo, err := util.GetQemuImgInfo(sourceFile)
+		if err != nil {
+			return "", tmpRawFile, writeZero, errors.Wrapf(err, "failed to get source backing file %v qemu info", sourceFile)
+		}
+		if imgInfo.Format == "qcow2" {
+			tmpRawFile := fmt.Sprintf("%v-raw.tmp", sourceFile)
+
+			if err := util.ConvertFromQcow2ToRaw(sourceFile, tmpRawFile); err != nil {
+				return "", tmpRawFile, writeZero, errors.Wrapf(err, "failed to create raw image from qcow2 image %v", sourceFile)
+			}
+			// use the raw image as source when doing encryption
+			sourceFile = tmpRawFile
+		}
+	}
+
+	return sourceFile, tmpRawFile, writeZero, nil
+}
+
+func (sf *SyncingFile) prepareCloneTargetFile(sourceFile string, encryption types.EncryptionType) error {
+	info, err := os.Stat(sourceFile)
+	if err != nil {
+		return err
+	}
+	sourceFileSize := info.Size()
+	if err := sf.setFileSizeForEncryption(sourceFileSize, encryption); err != nil {
+		return errors.Wrap(err, "failed to set size for the target file")
+	}
+	f, err := os.OpenFile(sf.tmpFilePath, os.O_RDWR|os.O_CREATE, 0666)
+	if err != nil {
+		return err
+	}
+	if err = f.Truncate(sf.size); err != nil {
+		return err
+	}
+	f.Close()
+	return nil
+}
+
 func (sf *SyncingFile) IdleTimeoutCopyToFile(src io.ReadCloser) (copied int64, err error) {
 	sf.log.Infof("SyncingFile: start to copy data to sync file")
 
@@ -586,7 +761,7 @@ func (sf *SyncingFile) IdleTimeoutCopyToFile(src io.ReadCloser) (copied int64, e
 		}
 	}()
 
-	needProcessing, err := sf.stateCheckBeforeProcessing()
+	needProcessing, err := sf.isProcessingRequired()
 	if err != nil {
 		return 0, err
 	}
@@ -609,7 +784,7 @@ func (sf *SyncingFile) IdleTimeoutCopyToFile(src io.ReadCloser) (copied int64, e
 		}
 	}()
 
-	nw, err := IdleTimeoutCopy(sf.ctx, sf.cancel, src, f, sf)
+	nw, err := IdleTimeoutCopy(sf.ctx, sf.cancel, src, f, sf, false)
 	if err != nil {
 		err = errors.Wrapf(err, "failed to copy the data with timeout")
 	}
@@ -619,7 +794,7 @@ func (sf *SyncingFile) IdleTimeoutCopyToFile(src io.ReadCloser) (copied int64, e
 func (sf *SyncingFile) Receive(port int, fileType string) (err error) {
 	sf.log.Infof("SyncingFile: start to launch a receiver at port %v", port)
 
-	needProcessing, err := sf.stateCheckBeforeProcessing()
+	needProcessing, err := sf.isProcessingRequired()
 	if err != nil {
 		return err
 	}
@@ -859,5 +1034,88 @@ func (sf *SyncingFile) writeConfigNoLock() {
 		ModificationTime: sf.modificationTime,
 	}); err != nil {
 		sf.log.Warnf("SyncingFile: failed to write config file when the file becomes ready: %v", err)
+	}
+}
+
+func (sf *SyncingFile) setFileSizeForEncryption(sourceSize int64, encryption types.EncryptionType) error {
+	sf.lock.Lock()
+	if encryption == types.EncryptionTypeIgnore {
+		sf.size = sourceSize
+	} else if encryption == types.EncryptionTypeEncrypt {
+		// LUKS 16MB data size is introduced here: https://gitlab.com/cryptsetup/cryptsetup/-/blob/master/docs/v2.1.0-ReleaseNotes#L27
+		sf.size = sourceSize + types.EncryptionMetaSize
+		// The meta data size won't be counted when copying the data
+		// need to init the processedSize with the meta data size
+		sf.processedSize = types.EncryptionMetaSize
+	} else if encryption == types.EncryptionTypeDecrypt {
+		sf.size = sourceSize - types.EncryptionMetaSize
+	}
+	sf.lock.Unlock()
+
+	if sf.size < 0 {
+		return fmt.Errorf("file size is smaller than 0 while encryption or decryption")
+	}
+	return nil
+}
+
+func (sf *SyncingFile) setupCryptoDevice(file string, needFormat bool, credential map[string]string) (string, error) {
+	namespaces := []lhtypes.Namespace{lhtypes.NamespaceMnt, lhtypes.NamespaceNet}
+	nsexec, err := lhns.NewNamespaceExecutor(lhtypes.ProcessNone, lhtypes.ProcDirectory, namespaces)
+	if err != nil {
+		return "", err
+	}
+
+	output, err := nsexec.Execute(nil, "losetup", []string{"-f"}, types.CommandExecutionTimeout)
+	if err != nil {
+		return "", err
+	}
+	loopDevicePath := strings.TrimSpace(output)
+	if loopDevicePath == "" {
+		return "", fmt.Errorf("failed to get valid loop device path")
+	}
+
+	if _, err := nsexec.Execute(nil, "losetup", []string{loopDevicePath, file}, types.CommandExecutionTimeout); err != nil {
+		return loopDevicePath, err
+	}
+
+	keyProvider := credential[lhtypes.CryptoKeyProvider]
+	passphrase := credential[lhtypes.CryptoKeyValue]
+	if keyProvider != "" && keyProvider != "secret" {
+		return loopDevicePath, fmt.Errorf("unsupported key provider %v for encryption", keyProvider)
+	}
+	if len(passphrase) == 0 {
+		return loopDevicePath, fmt.Errorf("missing passphrase for encryption")
+	}
+
+	// If we are working on encryption, the target device has not been formatted with the cryptsetup and it needs to be formatted first.
+	// If we are working on decryption, the source is a encrypted file and we don't need to format the source device again or the metadata will be replaced.
+	if needFormat {
+		cryptoParams := crypto.NewEncryptParams(keyProvider, credential[lhtypes.CryptoKeyCipher], credential[lhtypes.CryptoKeyHash], credential[lhtypes.CryptoKeySize], credential[lhtypes.CryptoPBKDF])
+		if err := crypto.EncryptBackingImage(loopDevicePath, passphrase, cryptoParams); err != nil {
+			return loopDevicePath, err
+		}
+	}
+
+	if err := crypto.OpenBackingImage(loopDevicePath, passphrase, sf.uuid); err != nil {
+		return loopDevicePath, err
+	}
+
+	return loopDevicePath, nil
+}
+
+func (sf *SyncingFile) closeCryptoDevice(loopDevicePath string) {
+	if err := crypto.CloseBackingImage(sf.uuid); err != nil {
+		sf.log.WithError(err).Warnf("failed to close the crypto device of backing file")
+	}
+
+	namespaces := []lhtypes.Namespace{lhtypes.NamespaceMnt, lhtypes.NamespaceNet}
+	nsexec, err := lhns.NewNamespaceExecutor(lhtypes.ProcessNone, lhtypes.ProcDirectory, namespaces)
+	if err != nil {
+		sf.log.WithError(err).Warnf("failed to setup nsexec to detach the loop device after cloning")
+	}
+
+	output, err := nsexec.Execute(nil, "losetup", []string{"-d", loopDevicePath}, types.CommandExecutionTimeout)
+	if err != nil {
+		sf.log.WithError(err).Warnf("failed to detach the loop device after cloning, output: %v", output)
 	}
 }

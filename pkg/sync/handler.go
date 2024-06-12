@@ -91,7 +91,7 @@ func (h *HTTPHandler) DownloadFromURL(ctx context.Context, url, filePath string,
 	}
 	defer outFile.Close()
 
-	copied, err := IdleTimeoutCopy(ctx, cancel, resp.Body, outFile, updater)
+	copied, err := IdleTimeoutCopy(ctx, cancel, resp.Body, outFile, updater, false)
 	if err != nil {
 		return 0, err
 	}
@@ -104,7 +104,7 @@ func (h *HTTPHandler) DownloadFromURL(ctx context.Context, url, filePath string,
 }
 
 // IdleTimeoutCopy relies on ctx of the reader/src or a separate timer to interrupt the processing.
-func IdleTimeoutCopy(ctx context.Context, cancel context.CancelFunc, src io.ReadCloser, dst io.WriteSeeker, updater ProgressUpdater) (copied int64, err error) {
+func IdleTimeoutCopy(ctx context.Context, cancel context.CancelFunc, src io.ReadCloser, dst io.WriteSeeker, updater ProgressUpdater, writeZero bool) (copied int64, err error) {
 	writeSeekCh := make(chan int64, 100)
 	defer close(writeSeekCh)
 
@@ -151,7 +151,7 @@ func IdleTimeoutCopy(ctx context.Context, cancel context.CancelFunc, src io.Read
 			nr, rErr = src.Read(buf)
 			if nr > 0 {
 				// Skip writing zero data
-				if bytes.Equal(buf[0:nr], zeroByteArray[0:nr]) {
+				if !writeZero && bytes.Equal(buf[0:nr], zeroByteArray[0:nr]) {
 					_, handleErr = dst.Seek(int64(nr), io.SeekCurrent)
 					nws = int64(nr)
 				} else {

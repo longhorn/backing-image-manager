@@ -388,6 +388,73 @@ func (s *Service) doDownloadFromURL(request *http.Request) (err error) {
 	return nil
 }
 
+func (s *Service) CloneFromBackingImage(writer http.ResponseWriter, request *http.Request) {
+	err := s.doCloneFromBackingImage(request)
+	if err != nil {
+		http.Error(writer, err.Error(), http.StatusInternalServerError)
+		return
+	}
+}
+
+func (s *Service) doCloneFromBackingImage(request *http.Request) (err error) {
+	defer func() {
+		if err != nil {
+			s.log.WithError(err).Errorf("Sync Service: failed to do clone from backing image")
+		}
+	}()
+
+	queryParams := request.URL.Query()
+	sourceBackingImage := queryParams.Get(types.DataSourceTypeCloneParameterBackingImage)
+	if sourceBackingImage == "" {
+		return fmt.Errorf("%v is not specified", types.DataSourceTypeCloneParameterBackingImage)
+	}
+
+	sourceBackingImageUUID := queryParams.Get(types.DataSourceTypeCloneParameterBackingImageUUID)
+	if sourceBackingImageUUID == "" {
+		return fmt.Errorf("%v is not specified", types.DataSourceTypeCloneParameterBackingImageUUID)
+	}
+
+	encryption := types.EncryptionType(queryParams.Get(types.DataSourceTypeCloneParameterEncryption))
+	if encryption != types.EncryptionTypeEncrypt && encryption != types.EncryptionTypeDecrypt && encryption != types.EncryptionTypeIgnore {
+		return fmt.Errorf("%v operation %v is not specified", types.DataSourceTypeCloneParameterEncryption, encryption)
+	}
+	filePath := queryParams.Get("file-path")
+	if filePath == "" {
+		return fmt.Errorf("no filePath restoring file")
+	}
+	uuid := queryParams.Get("uuid")
+	if uuid == "" {
+		return fmt.Errorf("no uuid for restoring file")
+	}
+	diskUUID := queryParams.Get("disk-uuid")
+	expectedChecksum := queryParams.Get("expected-checksum")
+
+	credential := map[string]string{}
+	if err := json.NewDecoder(request.Body).Decode(&credential); err != nil {
+		if err != io.EOF {
+			return errors.Wrap(err, "failed to get credential failed from request")
+		}
+	}
+
+	sf, err := s.checkAndInitSyncFile(filePath, uuid, diskUUID, expectedChecksum, 0)
+	if err != nil {
+		return err
+	}
+	go func() {
+		if err := sf.WaitForStateNonPending(); err != nil {
+			s.log.Errorf("Sync Service: failed to wait for sync file %v becoming non-pending state before starting the actual cloning: %v", filePath, err)
+			return
+		}
+
+		if _, err := sf.CloneToFileWithEncryption(sourceBackingImage, sourceBackingImageUUID, encryption, credential); err != nil {
+			s.log.Errorf("Sync Service: failed to clone sync file %v: %v", filePath, err)
+			return
+		}
+	}()
+
+	return nil
+}
+
 func (s *Service) RestoreFromBackupURL(writer http.ResponseWriter, request *http.Request) {
 	err := s.doRestoreFromBackupURL(request)
 	if err != nil {
