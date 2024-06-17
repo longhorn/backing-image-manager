@@ -5,7 +5,6 @@ ARG http_proxy
 ARG https_proxy
 
 ENV HOST_ARCH=${DAPPER_HOST_ARCH} ARCH=${DAPPER_HOST_ARCH}
-ENV PATH /go/bin:$PATH
 ENV DAPPER_DOCKER_SOCKET true
 ENV DAPPER_ENV TAG REPO DRONE_REPO DRONE_PULL_REQUEST DRONE_COMMIT_REF
 ENV DAPPER_OUTPUT bin coverage.out
@@ -16,9 +15,7 @@ ENTRYPOINT ["./scripts/entry"]
 CMD ["ci"]
 
 RUN zypper -n addrepo --refresh https://download.opensuse.org/repositories/system:/snappy/SLE_15/system:snappy.repo && \
-    zypper --gpg-auto-import-keys ref && \
-    zypper -n ref && \
-    zypper update -y
+    zypper --gpg-auto-import-keys ref
 
 # Install packages
 RUN zypper -n install cmake wget curl git less file \
@@ -26,15 +23,10 @@ RUN zypper -n install cmake wget curl git less file \
     bash-completion librdmacm1 librdmacm-utils libibverbs xsltproc docbook-xsl-stylesheets \
     perl-Config-General libaio-devel glibc-devel-static glibc-devel iptables libltdl7 libdevmapper1_03 iproute2 jq docker gcc
 
-# FIXME: Needed for ${!var} substitution
-RUN rm -f /bin/sh && ln -s /bin/bash /bin/sh
+## Install golangci-lint
+RUN curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b /go/bin v1.55.2
 
-# Install tools
-
-## golangci-lint
-RUN curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(go env GOPATH)/bin v1.55.2
-
-## Docker Buildx: The docker version in dapper is too old to have buildx. Install it manually.
-RUN wget https://github.com/docker/buildx/releases/download/v0.13.1/buildx-v0.13.1.linux-${ARCH} && \
+## Install Docker Buildx: The docker version in dapper is too old to have buildx. Install it manually.
+RUN curl -sSfLO https://github.com/docker/buildx/releases/download/v0.13.1/buildx-v0.13.1.linux-${ARCH} && \
     chmod +x buildx-v0.13.1.linux-${ARCH} && \
     mv buildx-v0.13.1.linux-${ARCH} /usr/local/bin/buildx

@@ -12,7 +12,9 @@ ENV ARCH ${TARGETPLATFORM#linux/}
 
 RUN zypper -n addrepo --refresh https://download.opensuse.org/repositories/system:/snappy/SLE_15/system:snappy.repo && \
     zypper -n addrepo --refresh https://download.opensuse.org/repositories/network:/utilities/SLE_15_SP5/network:utilities.repo && \
-    zypper --gpg-auto-import-keys ref
+    zypper --gpg-auto-import-keys ref && \
+    zypper -n ref && \
+    zypper update -y
 
 RUN zypper -n install kmod curl wget nfs-client nfs4-acl-tools fuse \
     librdmacm1 librdmacm-utils libibverbs perl-Config-General libaio-devel sg3_utils \
