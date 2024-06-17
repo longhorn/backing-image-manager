@@ -5,8 +5,6 @@ github.com/RoaringBitmap/roaring/internal
 # github.com/bits-and-blooms/bitset v1.2.0
 ## explicit; go 1.14
 github.com/bits-and-blooms/bitset
-# github.com/c9s/goprocinfo v0.0.0-20210130143923-c95fcf8c64a8
-## explicit
 # github.com/cpuguy83/go-md2man/v2 v2.0.4
 ## explicit; go 1.11
 github.com/cpuguy83/go-md2man/v2/md2man
@@ -17,8 +15,6 @@ github.com/felixge/httpsnoop
 ## explicit; go 1.17
 github.com/golang/protobuf/proto
 github.com/golang/protobuf/ptypes/empty
-# github.com/google/uuid v1.6.0
-## explicit
 # github.com/gorilla/handlers v1.5.2
 ## explicit; go 1.20
 github.com/gorilla/handlers
@@ -31,16 +27,14 @@ github.com/kr/pretty
 # github.com/kr/text v0.2.0
 ## explicit
 github.com/kr/text
-# github.com/longhorn/go-iscsi-helper v0.0.0-20240308033847-bc3aab599425
-## explicit; go 1.21
 # github.com/longhorn/longhorn-engine v1.5.5
 ## explicit; go 1.21
 github.com/longhorn/longhorn-engine/pkg/replica/client
 github.com/longhorn/longhorn-engine/pkg/types
 github.com/longhorn/longhorn-engine/pkg/util
 github.com/longhorn/longhorn-engine/proto/ptypes
-# github.com/longhorn/sparse-tools v0.0.0-20240427164751-a7b9f1b2c8a8
-## explicit; go 1.17
+# github.com/longhorn/sparse-tools v0.0.0-20240513025352-ed49dd3f93eb
+## explicit; go 1.22
 github.com/longhorn/sparse-tools/sparse
 github.com/longhorn/sparse-tools/sparse/rest
 github.com/longhorn/sparse-tools/types
@@ -82,8 +76,6 @@ golang.org/x/text/secure/bidirule
 golang.org/x/text/transform
 golang.org/x/text/unicode/bidi
 golang.org/x/text/unicode/norm
-# google.golang.org/genproto v0.0.0-20240123012728-ef4313101c80
-## explicit; go 1.19
 # google.golang.org/genproto/googleapis/rpc v0.0.0-20240123012728-ef4313101c80
 ## explicit; go 1.19
 google.golang.org/genproto/googleapis/rpc/status
