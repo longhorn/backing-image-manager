@@ -116,7 +116,7 @@ github.com/kr/pretty
 # github.com/kr/text v0.2.0
 ## explicit
 github.com/kr/text
-# github.com/longhorn/backupstore v0.0.0-20240616091913-84428641a11d
+# github.com/longhorn/backupstore v0.0.0-20240624084713-e98e31ebcebb
 ## explicit; go 1.21
 github.com/longhorn/backupstore
 github.com/longhorn/backupstore/azblob
@@ -131,6 +131,9 @@ github.com/longhorn/backupstore/s3
 github.com/longhorn/backupstore/types
 github.com/longhorn/backupstore/util
 github.com/longhorn/backupstore/vfs
+# github.com/longhorn/go-common-libs v0.0.0-20240514074907-351459694cbf
+## explicit; go 1.22.0
+github.com/longhorn/go-common-libs/backup
 # github.com/longhorn/longhorn-engine v1.6.2
 ## explicit; go 1.22.0
 github.com/longhorn/longhorn-engine/pkg/replica/client
