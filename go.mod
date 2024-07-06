@@ -2,17 +2,17 @@ module github.com/longhorn/backing-image-manager
 
 go 1.22.0
 
-toolchain go1.22.4
+toolchain go1.22.5
 
 require (
 	github.com/RoaringBitmap/roaring v1.9.4
 	github.com/golang/protobuf v1.5.4
 	github.com/gorilla/mux v1.8.1
-	github.com/longhorn/backupstore v0.0.0-20240624084713-e98e31ebcebb
-	github.com/longhorn/go-common-libs v0.0.0-20240627075631-d78642cff5e1
+	github.com/longhorn/backupstore v0.0.0-20240701092136-92b7cc071e50
+	github.com/longhorn/go-common-libs v0.0.0-20240702014532-ad3e7f0caf5c
 	github.com/longhorn/longhorn-engine v1.6.0-dev-20231217.0.20240418025706-519598108463
-	github.com/longhorn/sparse-tools v0.0.0-20240513025352-ed49dd3f93eb
-	github.com/longhorn/types v0.0.0-20240624083620-f11ba48bf396
+	github.com/longhorn/sparse-tools v0.0.0-20240703010727-92451e38077a
+	github.com/longhorn/types v0.0.0-20240704070509-4b97f699508e
 	github.com/pkg/errors v0.9.1
 	github.com/rancher/go-fibmap v0.0.0-20160418233256-5fc9f8c1ed47
 	github.com/sirupsen/logrus v1.9.3
@@ -47,7 +47,7 @@ require (
 	github.com/mitchellh/go-ps v1.0.0 // indirect
 	github.com/moby/sys/mountinfo v0.6.2 // indirect
 	github.com/mschoch/smat v0.2.0 // indirect
-	github.com/pierrec/lz4/v4 v4.1.17 // indirect
+	github.com/pierrec/lz4/v4 v4.1.21 // indirect
 	github.com/power-devops/perfstat v0.0.0-20210106213030-5aafc221ea8c // indirect
 	github.com/prometheus/client_golang v1.15.0 // indirect
 	github.com/prometheus/client_model v0.3.0 // indirect
