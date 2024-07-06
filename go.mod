@@ -1,15 +1,15 @@
 module github.com/longhorn/backing-image-manager
 
-go 1.22
+go 1.22.0
 
-toolchain go1.22.4
+toolchain go1.22.5
 
 require (
 	github.com/RoaringBitmap/roaring v1.2.3
 	github.com/golang/protobuf v1.5.4
 	github.com/gorilla/mux v1.8.1
 	github.com/longhorn/longhorn-engine v1.5.5
-	github.com/longhorn/sparse-tools v0.0.0-20240513025352-ed49dd3f93eb
+	github.com/longhorn/sparse-tools v0.0.0-20240703010727-92451e38077a
 	github.com/pkg/errors v0.9.1
 	github.com/sirupsen/logrus v1.9.3
 	github.com/urfave/cli v1.22.15
@@ -23,6 +23,7 @@ require (
 	github.com/bits-and-blooms/bitset v1.2.0 // indirect
 	github.com/cpuguy83/go-md2man/v2 v2.0.4 // indirect
 	github.com/felixge/httpsnoop v1.0.3 // indirect
+	github.com/google/uuid v1.6.0 // indirect
 	github.com/gorilla/handlers v1.5.2 // indirect
 	github.com/kr/pretty v0.3.1 // indirect
 	github.com/kr/text v0.2.0 // indirect
