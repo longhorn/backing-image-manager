@@ -14,6 +14,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/gorilla/handlers"
 	"github.com/sirupsen/logrus"
 	"golang.org/x/sys/unix"
@@ -30,6 +31,8 @@ var (
 
 const (
 	BlockSizeLinux = 512
+
+	randomIDLenth = 8
 )
 
 func ParseAddresses(name string) (string, string, string, int, error) {
@@ -47,25 +50,17 @@ func ParseAddresses(name string) (string, string, string, int, error) {
 }
 
 func GetGRPCAddress(address string) string {
-	if strings.HasPrefix(address, "tcp://") {
-		address = strings.TrimPrefix(address, "tcp://")
-	}
+	address = strings.TrimPrefix(address, "tcp://")
 
-	if strings.HasPrefix(address, "http://") {
-		address = strings.TrimPrefix(address, "http://")
-	}
+	address = strings.TrimPrefix(address, "http://")
 
-	if strings.HasSuffix(address, "/v1") {
-		address = strings.TrimSuffix(address, "/v1")
-	}
+	address = strings.TrimSuffix(address, "/v1")
 
 	return address
 }
 
 func GetPortFromAddress(address string) (int, error) {
-	if strings.HasSuffix(address, "/v1") {
-		address = strings.TrimSuffix(address, "/v1")
-	}
+	address = strings.TrimSuffix(address, "/v1")
 
 	_, strPort, err := net.SplitHostPort(address)
 	if err != nil {
@@ -283,4 +278,12 @@ func GetAddresses(volumeName, address string, dataServerProtocol types.DataServe
 	default:
 		return "", "", "", -1, fmt.Errorf("unsupported protocol: %v", dataServerProtocol)
 	}
+}
+
+func UUID() string {
+	return uuid.New().String()
+}
+
+func RandomID() string {
+	return UUID()[:randomIDLenth]
 }

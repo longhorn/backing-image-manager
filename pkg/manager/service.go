@@ -623,6 +623,7 @@ func (m *Manager) BackupCreate(ctx context.Context, req *rpc.BackupCreateRequest
 		CompressionMethod: req.CompressionMethod,
 		ConcurrentLimit:   req.ConcurrentLimit,
 		Labels:            req.Labels,
+		Parameters:        req.Parameters,
 	})
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to initialize backup %v", req.Name)
