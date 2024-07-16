@@ -4,6 +4,12 @@ go 1.22.0
 
 toolchain go1.22.5
 
+replace github.com/longhorn/types v0.0.0-20240706151541-33cb010c3544 => github.com/chanyilin/types v0.0.0-20240716081512-9303475fbf48
+
+replace github.com/longhorn/go-common-libs v0.0.0-20240707062002-b9354601827e => github.com/chanyilin/go-common-libs v0.0.0-20240716074450-cdf55483e4fc
+
+replace github.com/longhorn/backupstore v0.0.0-20240709004445-1cadf9073de3 => github.com/chanyilin/backupstore v0.0.0-20240716083705-c30b8fd2d973
+
 require (
 	github.com/RoaringBitmap/roaring v1.9.4
 	github.com/golang/protobuf v1.5.4
