@@ -27,6 +27,7 @@ type CreateBackupParameters struct {
 	CompressionMethod string
 	ConcurrentLimit   int32
 	Labels            []string
+	Parameters        map[string]string
 }
 
 func DoBackupInit(params *CreateBackupParameters) (*backupbackingimage.BackupBackingImage, *backingimage.BackupStatus, *backupbackingimage.BackupConfig, error) {
@@ -71,6 +72,7 @@ func DoBackupInit(params *CreateBackupParameters) (*backupbackingimage.BackupBac
 		Name:            params.Name,
 		ConcurrentLimit: params.ConcurrentLimit,
 		DestURL:         params.DestURL,
+		Parameters:      params.Parameters,
 	}
 	return backupBackingImage, backupStatus, backupConfig, nil
 }
