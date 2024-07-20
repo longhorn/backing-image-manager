@@ -9,7 +9,7 @@ require (
 	github.com/golang/protobuf v1.5.4
 	github.com/gorilla/mux v1.8.1
 	github.com/longhorn/backupstore v0.0.0-20240709004445-1cadf9073de3
-	github.com/longhorn/go-common-libs v0.0.0-20240718091042-aff867b55212
+	github.com/longhorn/go-common-libs v0.0.0-20240720044518-32fc527fe868
 	github.com/longhorn/longhorn-engine v1.6.0-dev-20231217.0.20240418025706-519598108463
 	github.com/longhorn/sparse-tools v0.0.0-20240703010727-92451e38077a
 	github.com/longhorn/types v0.0.0-20240706151541-33cb010c3544
@@ -61,8 +61,8 @@ require (
 	golang.org/x/sys v0.22.0 // indirect
 	golang.org/x/text v0.16.0 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20240528184218-531527333157 // indirect
-	k8s.io/apimachinery v0.30.2 // indirect
+	k8s.io/apimachinery v0.30.3 // indirect
 	k8s.io/klog/v2 v2.120.1 // indirect
-	k8s.io/mount-utils v0.30.2 // indirect
+	k8s.io/mount-utils v0.30.3 // indirect
 	k8s.io/utils v0.0.0-20230726121419-3b25d923346b // indirect
 )
