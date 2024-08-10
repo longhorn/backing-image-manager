@@ -2,7 +2,7 @@ module github.com/longhorn/backing-image-manager
 
 go 1.22.0
 
-toolchain go1.22.5
+toolchain go1.22.6
 
 require (
 	github.com/RoaringBitmap/roaring v1.2.3
