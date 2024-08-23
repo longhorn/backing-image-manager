@@ -138,7 +138,8 @@ type Replica struct {
 }
 
 type ReplicaSalvageInfo struct {
-	LastModifyTime int64
+	Address        string
+	LastModifyTime time.Time
 	HeadFileSize   int64
 }
 
@@ -201,4 +202,9 @@ func GRPCReplicaModeToReplicaMode(replicaMode enginerpc.ReplicaMode) Mode {
 		return ERR
 	}
 	return ERR
+}
+
+type FileLocalSync struct {
+	SourcePath string
+	TargetPath string
 }
