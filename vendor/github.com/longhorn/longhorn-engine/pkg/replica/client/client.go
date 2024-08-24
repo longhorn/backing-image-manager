@@ -92,7 +92,7 @@ func NewReplicaClient(address, volumeName, instanceName string) (*ReplicaClient,
 // for the longhorn-manager which executes these command as binaries invocations
 func (c *ReplicaClient) getReplicaServiceClient() (enginerpc.ReplicaServiceClient, error) {
 	err := c.replicaServiceContext.once.Do(func() error {
-		cc, err := grpc.Dial(c.replicaServiceURL, grpc.WithTransportCredentials(insecure.NewCredentials()),
+		cc, err := grpc.NewClient(c.replicaServiceURL, grpc.WithTransportCredentials(insecure.NewCredentials()),
 			interceptor.WithIdentityValidationClientInterceptor(c.volumeName, c.instanceName))
 		if err != nil {
 			return err
@@ -113,7 +113,7 @@ func (c *ReplicaClient) getReplicaServiceClient() (enginerpc.ReplicaServiceClien
 // for the longhorn-manager which executes these command as binaries invocations
 func (c *ReplicaClient) getSyncServiceClient() (enginerpc.SyncAgentServiceClient, error) {
 	err := c.syncServiceContext.once.Do(func() error {
-		cc, err := grpc.Dial(c.syncAgentServiceURL, grpc.WithTransportCredentials(insecure.NewCredentials()),
+		cc, err := grpc.NewClient(c.syncAgentServiceURL, grpc.WithTransportCredentials(insecure.NewCredentials()),
 			interceptor.WithIdentityValidationClientInterceptor(c.volumeName, c.instanceName))
 		if err != nil {
 			return err
@@ -442,12 +442,16 @@ func (c *ReplicaClient) RenameFile(oldFileName, newFileName string) error {
 	return nil
 }
 
-func (c *ReplicaClient) SendFile(from, host string, port int32, fileSyncHTTPClientTimeout int, fastSync bool) error {
+func (c *ReplicaClient) SendFile(from, host string, port int32, fileSyncHTTPClientTimeout int, fastSync bool, grpcTimeoutSeconds int64) error {
 	syncAgentServiceClient, err := c.getSyncServiceClient()
 	if err != nil {
 		return err
 	}
-	ctx, cancel := context.WithTimeout(context.Background(), GRPCServiceLongTimeout)
+	grpcTimeout := GRPCServiceLongTimeout
+	if grpcTimeoutSeconds > 0 {
+		grpcTimeout = time.Second * time.Duration(grpcTimeoutSeconds)
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), grpcTimeout)
 	defer cancel()
 
 	if _, err := syncAgentServiceClient.FileSend(ctx, &enginerpc.FileSendRequest{
@@ -502,21 +506,35 @@ func (c *ReplicaClient) LaunchReceiver(toFilePath string) (string, int32, error)
 	return c.host, reply.Port, nil
 }
 
-func (c *ReplicaClient) SyncFiles(fromAddress string, list []types.SyncFileInfo, fileSyncHTTPClientTimeout int, fastSync bool) error {
+func (c *ReplicaClient) SyncFiles(fromAddress string, list []types.SyncFileInfo, fileSyncHTTPClientTimeout int, fastSync bool, grpcTimeoutSeconds int64, localSync *types.FileLocalSync) error {
 	syncAgentServiceClient, err := c.getSyncServiceClient()
 	if err != nil {
 		return err
 	}
-	ctx, cancel := context.WithTimeout(context.Background(), GRPCServiceLongTimeout)
+	grpcTimeout := GRPCServiceLongTimeout
+	if grpcTimeoutSeconds > 0 {
+		grpcTimeout = time.Second * time.Duration(grpcTimeoutSeconds)
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), grpcTimeout)
 	defer cancel()
 
-	if _, err := syncAgentServiceClient.FilesSync(ctx, &enginerpc.FilesSyncRequest{
+	fileSyncRequest := &enginerpc.FilesSyncRequest{
 		FromAddress:               fromAddress,
 		ToHost:                    c.host,
 		SyncFileInfoList:          syncFileInfoListToSyncAgentGRPCFormat(list),
 		FastSync:                  fastSync,
 		FileSyncHttpClientTimeout: int32(fileSyncHTTPClientTimeout),
-	}); err != nil {
+		GrpcTimeoutSeconds:        grpcTimeoutSeconds,
+	}
+
+	if localSync != nil {
+		fileSyncRequest.LocalSync = &enginerpc.FileLocalSync{
+			SourcePath: localSync.SourcePath,
+			TargetPath: localSync.TargetPath,
+		}
+	}
+
+	if _, err := syncAgentServiceClient.FilesSync(ctx, fileSyncRequest); err != nil {
 		return errors.Wrapf(err, "failed to sync files %+v from %v", list, fromAddress)
 	}
 
@@ -524,7 +542,7 @@ func (c *ReplicaClient) SyncFiles(fromAddress string, list []types.SyncFileInfo,
 }
 
 func (c *ReplicaClient) CreateBackup(backupName, snapshot, dest, volume, backingImageName, backingImageChecksum,
-	compressionMethod string, concurrentLimit int, storageClassName string, labels []string, credential map[string]string) (*enginerpc.BackupCreateResponse, error) {
+	compressionMethod string, concurrentLimit int, storageClassName string, labels []string, credential map[string]string, parameters map[string]string) (*enginerpc.BackupCreateResponse, error) {
 	syncAgentServiceClient, err := c.getSyncServiceClient()
 	if err != nil {
 		return nil, err
@@ -544,6 +562,7 @@ func (c *ReplicaClient) CreateBackup(backupName, snapshot, dest, volume, backing
 		Labels:               labels,
 		Credential:           credential,
 		BackupName:           backupName,
+		Parameters:           parameters,
 	})
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to create backup to %v for volume %v", dest, volume)
@@ -686,12 +705,16 @@ func (c *ReplicaClient) ReplicaRebuildStatus() (*enginerpc.ReplicaRebuildStatusR
 	return status, nil
 }
 
-func (c *ReplicaClient) CloneSnapshot(fromAddress, fromVolumeName, snapshotFileName string, exportBackingImageIfExist bool, fileSyncHTTPClientTimeout int) error {
+func (c *ReplicaClient) CloneSnapshot(fromAddress, fromVolumeName, snapshotFileName string, exportBackingImageIfExist bool, fileSyncHTTPClientTimeout int, grpcTimeoutSeconds int64) error {
 	syncAgentServiceClient, err := c.getSyncServiceClient()
 	if err != nil {
 		return err
 	}
-	ctx, cancel := context.WithTimeout(context.Background(), GRPCServiceLongTimeout)
+	grpcTimeout := GRPCServiceLongTimeout
+	if grpcTimeoutSeconds > 0 {
+		grpcTimeout = time.Second * time.Duration(grpcTimeoutSeconds)
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), grpcTimeout)
 	defer cancel()
 
 	if _, err := syncAgentServiceClient.SnapshotClone(ctx, &enginerpc.SnapshotCloneRequest{
