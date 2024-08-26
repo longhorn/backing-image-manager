@@ -770,6 +770,7 @@ func getAndWaitFileState(cli *client.SyncClient, curPath, desireState string, wa
 				UUID:             fInfo.UUID,
 				Size:             fInfo.Size,
 				VirtualSize:      fInfo.VirtualSize,
+				RealSize:         fInfo.RealSize,
 				ExpectedChecksum: fInfo.ExpectedChecksum,
 				CurrentChecksum:  fInfo.CurrentChecksum,
 				ModificationTime: fInfo.ModificationTime,

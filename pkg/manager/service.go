@@ -300,6 +300,7 @@ func backingImageResponse(fInfo *api.FileInfo) *rpc.BackingImageResponse {
 			Uuid:        fInfo.UUID,
 			Size:        fInfo.Size,
 			VirtualSize: fInfo.VirtualSize,
+			RealSize:    fInfo.RealSize,
 			Checksum:    fInfo.ExpectedChecksum,
 		},
 		Status: &rpc.BackingImageStatus{

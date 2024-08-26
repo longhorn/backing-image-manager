@@ -85,6 +85,7 @@ type SyncingFile struct {
 	diskUUID         string
 	size             int64
 	virtualSize      int64
+	realSize         int64
 	state            types.State
 	progress         int
 	processedSize    int64
@@ -258,6 +259,7 @@ func (sf *SyncingFile) checkAndReuseFile() (err error) {
 	sf.modificationTime = info.ModTime().UTC().String()
 	sf.updateSyncReadyNoLock()
 	sf.updateVirtualSizeNoLock(sf.filePath)
+	sf.updateRealSizeNoLock(sf.filePath)
 	sf.writeConfigNoLock()
 	sf.lock.Unlock()
 
@@ -359,6 +361,7 @@ func (sf *SyncingFile) getNoLock() api.FileInfo {
 		UUID:             sf.uuid,
 		Size:             sf.size,
 		VirtualSize:      sf.virtualSize,
+		RealSize:         sf.realSize,
 		State:            string(sf.state),
 		Progress:         sf.progress,
 		ProcessedSize:    sf.processedSize,
@@ -917,6 +920,7 @@ func (sf *SyncingFile) finishProcessing(err error) (finalErr error) {
 		sf.currentChecksum = config.CurrentChecksum
 		sf.updateSyncReadyNoLock()
 		sf.updateVirtualSizeNoLock(sf.tmpFilePath)
+		sf.updateRealSizeNoLock(sf.tmpFilePath)
 		sf.writeConfigNoLock()
 
 		// Renaming won't change the file modification time.
@@ -966,6 +970,7 @@ func (sf *SyncingFile) postProcessSyncFile() {
 	}
 	sf.updateSyncReadyNoLock()
 	sf.updateVirtualSizeNoLock(sf.tmpFilePath)
+	sf.updateRealSizeNoLock(sf.tmpFilePath)
 	sf.writeConfigNoLock()
 
 	// Renaming won't change the file modification time.
@@ -992,12 +997,24 @@ func (sf *SyncingFile) updateVirtualSizeNoLock(filePath string) {
 	// with sf.tmpFilePath, sometimes with sf.filePath :-/
 	imgInfo, err := util.GetQemuImgInfo(filePath)
 	if err != nil {
-		sf.log.Warnf("SyncingFile: failed to get backing image virtual size: %v", err)
+		sf.log.WithError(err).Warnf("SyncingFile: failed to get backing image virtual size")
 	}
 	// This will be zero when there is an error, which allows components
 	// further up the stack to know that the virtual size somehow isn't
 	// available yet.
 	sf.virtualSize = imgInfo.VirtualSize
+}
+
+func (sf *SyncingFile) updateRealSizeNoLock(filePath string) {
+	realSize, err := util.GetFileRealSize(filePath)
+	if err != nil {
+		sf.log.WithError(err).Warnf("SyncingFile: failed to get backing image virtual size")
+	}
+
+	// This will be zero when there is an error, which allows components
+	// further up the stack to know that the real size somehow isn't
+	// available yet.
+	sf.realSize = realSize
 }
 
 func (sf *SyncingFile) handleFailureNoLock(err error) {
@@ -1029,6 +1046,7 @@ func (sf *SyncingFile) writeConfigNoLock() {
 		UUID:             sf.uuid,
 		Size:             sf.size,
 		VirtualSize:      sf.virtualSize,
+		RealSize:         sf.realSize,
 		ExpectedChecksum: sf.expectedChecksum,
 		CurrentChecksum:  sf.currentChecksum,
 		ModificationTime: sf.modificationTime,
