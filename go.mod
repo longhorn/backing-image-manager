@@ -10,7 +10,7 @@ require (
 	github.com/gorilla/mux v1.8.1
 	github.com/longhorn/backupstore v0.0.0-20240905092550-326b9844e10b
 	github.com/longhorn/go-common-libs v0.0.0-20240906072425-66d5f9e6ae4e
-	github.com/longhorn/longhorn-engine v1.7.1-rc2
+	github.com/longhorn/longhorn-engine v1.7.1
 	github.com/longhorn/sparse-tools v0.0.0-20240729132735-18b207e459ff
 	github.com/longhorn/types v0.0.0-20240902072916-1bf23d310acb
 	github.com/pkg/errors v0.9.1
