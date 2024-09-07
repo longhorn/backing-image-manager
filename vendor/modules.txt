@@ -150,7 +150,7 @@ github.com/kr/pretty
 # github.com/kr/text v0.2.0
 ## explicit
 github.com/kr/text
-# github.com/longhorn/backupstore v0.0.0-20240907134751-60247168d4e8
+# github.com/longhorn/backupstore v0.0.0-20240907141415-d500900fc713
 ## explicit; go 1.22.0
 github.com/longhorn/backupstore
 github.com/longhorn/backupstore/azblob
@@ -165,7 +165,7 @@ github.com/longhorn/backupstore/s3
 github.com/longhorn/backupstore/types
 github.com/longhorn/backupstore/util
 github.com/longhorn/backupstore/vfs
-# github.com/longhorn/go-common-libs v0.0.0-20240906072425-66d5f9e6ae4e
+# github.com/longhorn/go-common-libs v0.0.0-20240907130740-7060fefb5bda
 ## explicit; go 1.22.0
 github.com/longhorn/go-common-libs/backup
 # github.com/longhorn/longhorn-engine v1.6.3-dev-20240825
@@ -175,7 +175,7 @@ github.com/longhorn/longhorn-engine/pkg/types
 github.com/longhorn/longhorn-engine/pkg/util
 github.com/longhorn/longhorn-engine/pkg/util/disk
 github.com/longhorn/longhorn-engine/proto/ptypes
-# github.com/longhorn/sparse-tools v0.0.0-20240729132735-18b207e459ff
+# github.com/longhorn/sparse-tools v0.0.0-20240907135423-37af3c64d59d
 ## explicit; go 1.22.0
 github.com/longhorn/sparse-tools/sparse
 github.com/longhorn/sparse-tools/sparse/rest
@@ -190,7 +190,7 @@ github.com/moby/sys/mountinfo
 # github.com/mschoch/smat v0.2.0
 ## explicit; go 1.13
 github.com/mschoch/smat
-# github.com/opencontainers/runc v1.1.13
+# github.com/opencontainers/runc v1.1.14
 ## explicit; go 1.18
 github.com/opencontainers/runc/libcontainer/configs
 github.com/opencontainers/runc/libcontainer/devices

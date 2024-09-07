@@ -8,9 +8,9 @@ require (
 	github.com/RoaringBitmap/roaring v1.9.4
 	github.com/golang/protobuf v1.5.4
 	github.com/gorilla/mux v1.8.1
-	github.com/longhorn/backupstore v0.0.0-20240907134751-60247168d4e8
+	github.com/longhorn/backupstore v0.0.0-20240907141415-d500900fc713
 	github.com/longhorn/longhorn-engine v1.6.3-dev-20240825
-	github.com/longhorn/sparse-tools v0.0.0-20240729132735-18b207e459ff
+	github.com/longhorn/sparse-tools v0.0.0-20240907135423-37af3c64d59d
 	github.com/pkg/errors v0.9.1
 	github.com/rancher/go-fibmap v0.0.0-20160418233256-5fc9f8c1ed47
 	github.com/sirupsen/logrus v1.9.3
@@ -41,11 +41,11 @@ require (
 	github.com/jmespath/go-jmespath v0.4.0 // indirect
 	github.com/kr/pretty v0.3.1 // indirect
 	github.com/kr/text v0.2.0 // indirect
-	github.com/longhorn/go-common-libs v0.0.0-20240906072425-66d5f9e6ae4e // indirect
+	github.com/longhorn/go-common-libs v0.0.0-20240907130740-7060fefb5bda // indirect
 	github.com/matttproud/golang_protobuf_extensions v1.0.4 // indirect
 	github.com/moby/sys/mountinfo v0.7.1 // indirect
 	github.com/mschoch/smat v0.2.0 // indirect
-	github.com/opencontainers/runc v1.1.13 // indirect
+	github.com/opencontainers/runc v1.1.14 // indirect
 	github.com/opencontainers/runtime-spec v1.0.3-0.20220909204839-494a5a6aca78 // indirect
 	github.com/pierrec/lz4/v4 v4.1.21 // indirect
 	github.com/prometheus/client_golang v1.15.0 // indirect
