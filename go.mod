@@ -8,7 +8,7 @@ require (
 	github.com/RoaringBitmap/roaring v1.9.4
 	github.com/golang/protobuf v1.5.4
 	github.com/gorilla/mux v1.8.1
-	github.com/longhorn/backupstore v0.0.0-20240907141415-d500900fc713
+	github.com/longhorn/backupstore v0.0.0-20240907142840-c1268343d512
 	github.com/longhorn/go-common-libs v0.0.0-20240907130740-7060fefb5bda
 	github.com/longhorn/longhorn-engine v1.7.1
 	github.com/longhorn/sparse-tools v0.0.0-20240907135423-37af3c64d59d
