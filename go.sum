@@ -73,8 +73,8 @@ github.com/longhorn/backupstore v0.0.0-20240907142840-c1268343d512 h1:zrGVZZTClL
 github.com/longhorn/backupstore v0.0.0-20240907142840-c1268343d512/go.mod h1:3gjQWnKXqJSxAE6rpM5mrCcbRJyLKXHqgzxyyaLgLSo=
 github.com/longhorn/go-common-libs v0.0.0-20240907130740-7060fefb5bda h1:+jlHExQsoeb5B8Avl5tc/mX0rDvPDUhTDVbDitvl5vE=
 github.com/longhorn/go-common-libs v0.0.0-20240907130740-7060fefb5bda/go.mod h1:T8DVg3NdJ7XDNJey+UI1IRUtZKnHtB75MHWmclF6mUI=
-github.com/longhorn/longhorn-engine v1.6.3-dev-20240825 h1:9z7BXsIVxCEs8lh/upXKtP/QQA/InjPiBl5WnNoNtbI=
-github.com/longhorn/longhorn-engine v1.6.3-dev-20240825/go.mod h1:UnZXqmM9JOMP2xAY790rtMVBMvSpMXihgVxyHNQuSgo=
+github.com/longhorn/longhorn-engine v1.6.3-dev-20240908 h1:66pf6UwuPQPvDLv1jMBcxEYPtOhXkRn8/Gu1EpGWhRk=
+github.com/longhorn/longhorn-engine v1.6.3-dev-20240908/go.mod h1:pwxdvPzbyeg4zl0Hof+/2iILOO+36iWqLI06p3xEiGI=
 github.com/longhorn/sparse-tools v0.0.0-20240907135423-37af3c64d59d h1:iNrrGcE9TLcaayQgOkdEZDvlzKCWMNhXXJD2d2K4Wyo=
 github.com/longhorn/sparse-tools v0.0.0-20240907135423-37af3c64d59d/go.mod h1:iUJCZtOKG/9xv2rfrUAYZntFTzP5dZtvy4Kwe6dMcUc=
 github.com/matttproud/golang_protobuf_extensions v1.0.1/go.mod h1:D8He9yQNgCq6Z5Ld7szi9bcBfOoFv/3dc6xSMkL2PC0=
