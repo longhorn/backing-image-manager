@@ -9,7 +9,7 @@ require (
 	github.com/golang/protobuf v1.5.4
 	github.com/gorilla/mux v1.8.1
 	github.com/longhorn/backupstore v0.0.0-20240907142840-c1268343d512
-	github.com/longhorn/longhorn-engine v1.6.3-dev-20240908
+	github.com/longhorn/longhorn-engine v1.6.3-rc1
 	github.com/longhorn/sparse-tools v0.0.0-20240907135423-37af3c64d59d
 	github.com/pkg/errors v0.9.1
 	github.com/rancher/go-fibmap v0.0.0-20160418233256-5fc9f8c1ed47
