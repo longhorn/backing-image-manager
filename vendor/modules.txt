@@ -168,7 +168,7 @@ github.com/longhorn/backupstore/vfs
 # github.com/longhorn/go-common-libs v0.0.0-20240914083622-928beb30c12e
 ## explicit; go 1.22.0
 github.com/longhorn/go-common-libs/backup
-# github.com/longhorn/longhorn-engine v1.6.3-rc1
+# github.com/longhorn/longhorn-engine v1.6.3
 ## explicit; go 1.22.0
 github.com/longhorn/longhorn-engine/pkg/replica/client
 github.com/longhorn/longhorn-engine/pkg/types
