@@ -8,7 +8,7 @@ require (
 	github.com/RoaringBitmap/roaring v1.9.4
 	github.com/golang/protobuf v1.5.4
 	github.com/gorilla/mux v1.8.1
-	github.com/longhorn/backupstore v0.0.0-20240921050203-6a6dfbf4ca4b
+	github.com/longhorn/backupstore v0.0.0-20240922062439-e33cb1230db9
 	github.com/longhorn/longhorn-engine v1.6.3
 	github.com/longhorn/sparse-tools v0.0.0-20240907135423-37af3c64d59d
 	github.com/pkg/errors v0.9.1
@@ -16,7 +16,7 @@ require (
 	github.com/sirupsen/logrus v1.9.3
 	github.com/urfave/cli v1.22.15
 	golang.org/x/net v0.29.0
-	google.golang.org/grpc v1.66.2
+	google.golang.org/grpc v1.67.0
 	google.golang.org/protobuf v1.34.2
 	gopkg.in/check.v1 v1.0.0-20201130134442-10cb98267c6c
 )
@@ -41,7 +41,7 @@ require (
 	github.com/jmespath/go-jmespath v0.4.0 // indirect
 	github.com/kr/pretty v0.3.1 // indirect
 	github.com/kr/text v0.2.0 // indirect
-	github.com/longhorn/go-common-libs v0.0.0-20240914083622-928beb30c12e // indirect
+	github.com/longhorn/go-common-libs v0.0.0-20240921050101-797b589b669d // indirect
 	github.com/matttproud/golang_protobuf_extensions v1.0.4 // indirect
 	github.com/moby/sys/mountinfo v0.7.1 // indirect
 	github.com/mschoch/smat v0.2.0 // indirect
@@ -57,7 +57,7 @@ require (
 	github.com/slok/goresilience v0.2.0 // indirect
 	golang.org/x/sys v0.25.0 // indirect
 	golang.org/x/text v0.18.0 // indirect
-	google.golang.org/genproto/googleapis/rpc v0.0.0-20240604185151-ef581f913117 // indirect
+	google.golang.org/genproto/googleapis/rpc v0.0.0-20240814211410-ddb44dafa142 // indirect
 	k8s.io/apimachinery v0.31.1 // indirect
 	k8s.io/klog/v2 v2.130.1 // indirect
 	k8s.io/mount-utils v0.31.1 // indirect
