@@ -8,8 +8,8 @@ require (
 	github.com/RoaringBitmap/roaring v1.9.4
 	github.com/golang/protobuf v1.5.4
 	github.com/gorilla/mux v1.8.1
-	github.com/longhorn/backupstore v0.0.0-20240922062439-e33cb1230db9
-	github.com/longhorn/go-common-libs v0.0.0-20240926084818-3a320d860af4
+	github.com/longhorn/backupstore v0.0.0-20241005144808-cb50ca7bd272
+	github.com/longhorn/go-common-libs v0.0.0-20241005131830-a0195307257b
 	github.com/longhorn/longhorn-engine v1.7.1
 	github.com/longhorn/sparse-tools v0.0.0-20240907135423-37af3c64d59d
 	github.com/longhorn/types v0.0.0-20240925015253-4dae7c529d85
@@ -63,7 +63,7 @@ require (
 	github.com/shirou/gopsutil/v3 v3.24.5 // indirect
 	github.com/slok/goresilience v0.2.0 // indirect
 	github.com/yusufpapurcu/wmi v1.2.4 // indirect
-	golang.org/x/sys v0.25.0 // indirect
+	golang.org/x/sys v0.26.0 // indirect
 	golang.org/x/text v0.18.0 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20240814211410-ddb44dafa142 // indirect
 	k8s.io/apimachinery v0.31.1 // indirect
