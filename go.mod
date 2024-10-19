@@ -9,7 +9,7 @@ require (
 	github.com/golang/protobuf v1.5.4
 	github.com/gorilla/mux v1.8.1
 	github.com/longhorn/longhorn-engine v1.5.5
-	github.com/longhorn/sparse-tools v0.0.0-20240907135423-37af3c64d59d
+	github.com/longhorn/sparse-tools v0.0.0-20241018033304-1f5ba953b4cd
 	github.com/pkg/errors v0.9.1
 	github.com/sirupsen/logrus v1.9.3
 	github.com/urfave/cli v1.22.16
