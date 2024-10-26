@@ -7,10 +7,10 @@ toolchain go1.23.2
 require (
 	github.com/golang/protobuf v1.5.4
 	github.com/gorilla/mux v1.8.1
-	github.com/longhorn/backupstore v0.0.0-20241019064138-ef7b22d3fcb0
-	github.com/longhorn/go-common-libs v0.0.0-20241018042323-54da24c0807f
+	github.com/longhorn/backupstore v0.0.0-20241024044224-62c849e1f519
+	github.com/longhorn/go-common-libs v0.0.0-20241024003634-9e7505c868e3
 	github.com/longhorn/longhorn-engine v1.8.0-dev-20241020
-	github.com/longhorn/sparse-tools v0.0.0-20241018033304-1f5ba953b4cd
+	github.com/longhorn/sparse-tools v0.0.0-20241023025917-7951cd783270
 	github.com/longhorn/types v0.0.0-20241007141758-3640f2357238
 	github.com/pkg/errors v0.9.1
 	github.com/rancher/go-fibmap v0.0.0-20160418233256-5fc9f8c1ed47
@@ -63,6 +63,7 @@ require (
 	github.com/shirou/gopsutil/v3 v3.24.5 // indirect
 	github.com/slok/goresilience v0.2.0 // indirect
 	github.com/yusufpapurcu/wmi v1.2.4 // indirect
+	golang.org/x/exp v0.0.0-20230515195305-f3d0a9c9a5cc // indirect
 	golang.org/x/sys v0.26.0 // indirect
 	golang.org/x/text v0.19.0 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20240814211410-ddb44dafa142 // indirect
