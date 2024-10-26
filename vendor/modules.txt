@@ -36,7 +36,7 @@ github.com/longhorn/longhorn-engine/pkg/replica/client
 github.com/longhorn/longhorn-engine/pkg/types
 github.com/longhorn/longhorn-engine/pkg/util
 github.com/longhorn/longhorn-engine/proto/ptypes
-# github.com/longhorn/sparse-tools v0.0.0-20241018033304-1f5ba953b4cd
+# github.com/longhorn/sparse-tools v0.0.0-20241023025917-7951cd783270
 ## explicit; go 1.22.0
 github.com/longhorn/sparse-tools/sparse
 github.com/longhorn/sparse-tools/sparse/rest
