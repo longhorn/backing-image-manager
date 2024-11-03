@@ -9,7 +9,7 @@ require (
 	github.com/gorilla/mux v1.8.1
 	github.com/longhorn/backupstore v0.0.0-20241024044224-62c849e1f519
 	github.com/longhorn/go-common-libs v0.0.0-20241102040927-43901cc2fa33
-	github.com/longhorn/longhorn-engine v1.8.0-dev-20241020
+	github.com/longhorn/longhorn-engine v1.8.0-dev-20241103
 	github.com/longhorn/sparse-tools v0.0.0-20241023025917-7951cd783270
 	github.com/longhorn/types v0.0.0-20241101010532-9e901229a935
 	github.com/pkg/errors v0.9.1
@@ -45,7 +45,7 @@ require (
 	github.com/jmespath/go-jmespath v0.4.0 // indirect
 	github.com/kr/pretty v0.3.1 // indirect
 	github.com/kr/text v0.2.0 // indirect
-	github.com/longhorn/go-iscsi-helper v0.0.0-20241018035016-4f89087f131a // indirect
+	github.com/longhorn/go-iscsi-helper v0.0.0-20241023025940-5ac6a9a21034 // indirect
 	github.com/matttproud/golang_protobuf_extensions v1.0.4 // indirect
 	github.com/mitchellh/go-ps v1.0.0 // indirect
 	github.com/moby/sys/mountinfo v0.7.1 // indirect
