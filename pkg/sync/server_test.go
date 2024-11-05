@@ -103,7 +103,7 @@ func (s *SyncTestSuite) BenchmarkMultipleDownload(c *C) {
 				Remote: s.addr,
 			}
 
-			err := cli.DownloadFromURL("http://test-download-from-url.io", curPath, curUUID, TestDiskUUID, "")
+			err := cli.DownloadFromURL("http://test-download-from-url.io", curPath, curUUID, TestDiskUUID, "", types.DataEnginev1)
 			c.Assert(err, IsNil)
 
 			_, err = getAndWaitFileState(cli, curPath, string(types.StateReady), 30)
@@ -218,7 +218,7 @@ func (s *SyncTestSuite) BenchmarkOneReceiveAndMultiSendWithSendingLimit(c *C) {
 		curUUID := TestSyncingFileUUID + "-dst-" + strconv.Itoa(i)
 		curReceiverPort := TestSyncServiceReceivePort + i
 		curReceiverAddress := fmt.Sprintf("localhost:%d", curReceiverPort)
-		err := cli.Receive(dstFilePath, curUUID, TestDiskUUID, checksum, types.SyncingFileTypeQcow2, curReceiverPort, int64(sizeInMB*MB))
+		err := cli.Receive(dstFilePath, curUUID, TestDiskUUID, checksum, types.SyncingFileTypeQcow2, curReceiverPort, int64(sizeInMB*MB), types.DataEnginev1)
 		c.Assert(err, IsNil)
 
 		err = cli.Send(originalFilePath, curReceiverAddress)
@@ -314,7 +314,7 @@ func (s *SyncTestSuite) BenchmarkMultiReceiveAndMultiSend(c *C) {
 				Remote: s.addr,
 			}
 
-			err := cli.Receive(dstFilePath, curUUID, TestDiskUUID, checksum, types.SyncingFileTypeQcow2, curReceiverPort, int64(sizeInMB*MB))
+			err := cli.Receive(dstFilePath, curUUID, TestDiskUUID, checksum, types.SyncingFileTypeQcow2, curReceiverPort, int64(sizeInMB*MB), types.DataEnginev1)
 			c.Assert(err, IsNil)
 			err = cli.Send(srcFilePath, curReceiverAddress)
 			c.Assert(err, IsNil)
@@ -350,7 +350,7 @@ func (s *SyncTestSuite) TestTimeoutReceiveFromPeers(c *C) {
 	}
 
 	go func() {
-		err := cli.Receive(curPath, TestSyncingFileUUID, TestDiskUUID, "", types.SyncingFileTypeQcow2, TestSyncServiceReceivePort, MockFileSize)
+		err := cli.Receive(curPath, TestSyncingFileUUID, TestDiskUUID, "", types.SyncingFileTypeQcow2, TestSyncServiceReceivePort, MockFileSize, types.DataEnginev1)
 		c.Assert(err, IsNil)
 	}()
 
@@ -522,7 +522,7 @@ func (s *SyncTestSuite) TestDuplicateCalls(c *C) {
 		Remote: s.addr,
 	}
 
-	err := cli.DownloadFromURL("http://test-download-from-url.io", curPath, TestSyncingFileUUID, TestDiskUUID, "")
+	err := cli.DownloadFromURL("http://test-download-from-url.io", curPath, TestSyncingFileUUID, TestDiskUUID, "", types.DataEnginev1)
 	c.Assert(err, IsNil)
 
 	_, err = getAndWaitFileState(cli, curPath, string(types.StateReady), 30)
@@ -530,13 +530,13 @@ func (s *SyncTestSuite) TestDuplicateCalls(c *C) {
 
 	// Duplicate file launching calls should error out:
 	// "resp.StatusCode(500) != http.StatusOK(200), response body content: file /root/test-dir/sync-tests/sync-download-file-for-dup-calls already exists\n"
-	err = cli.DownloadFromURL("http://test-download-from-url.io", curPath, TestSyncingFileUUID, TestDiskUUID, "")
+	err = cli.DownloadFromURL("http://test-download-from-url.io", curPath, TestSyncingFileUUID, TestDiskUUID, "", types.DataEnginev1)
 	c.Assert(err, ErrorMatches, `.*already exists[\s\S]*`)
 	err = cli.Upload(curPath, curPath, TestSyncingFileUUID, TestDiskUUID, "")
 	c.Assert(err, ErrorMatches, `.*already exists[\s\S]*`)
-	err = cli.Receive(curPath, TestDiskUUID, TestSyncingFileUUID, "", "", types.DefaultVolumeExportReceiverPort, MockFileSize)
+	err = cli.Receive(curPath, TestDiskUUID, TestSyncingFileUUID, "", "", types.DefaultVolumeExportReceiverPort, MockFileSize, types.DataEnginev1)
 	c.Assert(err, ErrorMatches, `.*already exists[\s\S]*`)
-	err = cli.DownloadFromURL("http://test-download-from-url.io", curPath+"-non-existing", TestSyncingFileUUID, TestDiskUUID, "")
+	err = cli.DownloadFromURL("http://test-download-from-url.io", curPath+"-non-existing", TestSyncingFileUUID, TestDiskUUID, "", types.DataEnginev1)
 	c.Assert(err, ErrorMatches, `.*already exists[\s\S]*`)
 
 	// Duplicate delete or forget calls won't error out
@@ -608,7 +608,7 @@ func (s *SyncTestSuite) TestReadyFileValidation(c *C) {
 		Remote: s.addr,
 	}
 
-	err := cli.DownloadFromURL("http://test-download-from-url.io", curPath, TestSyncingFileUUID, TestDiskUUID, "")
+	err := cli.DownloadFromURL("http://test-download-from-url.io", curPath, TestSyncingFileUUID, TestDiskUUID, "", types.DataEnginev1)
 	c.Assert(err, IsNil)
 
 	fInfo, err := getAndWaitFileState(cli, curPath, string(types.StateReady), 30)

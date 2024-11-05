@@ -200,6 +200,11 @@ func (s *Service) cloneFromBackingImage() (err error) {
 		return fmt.Errorf("%v is not specified", types.DataSourceTypeCloneParameterBackingImageUUID)
 	}
 
+	dataEngine := s.parameters[types.DataSourceTypeParameterDataEngine]
+	if dataEngine == "" {
+		dataEngine = types.DataEnginev1
+	}
+
 	encryption := s.parameters[types.DataSourceTypeCloneParameterEncryption]
 	if types.EncryptionType(encryption) != types.EncryptionTypeEncrypt &&
 		types.EncryptionType(encryption) != types.EncryptionTypeDecrypt &&
@@ -214,7 +219,7 @@ func (s *Service) cloneFromBackingImage() (err error) {
 		}
 	}
 
-	return s.syncClient.CloneFromBackingImage(sourceBackingImage, sourceBackingImageUUID, encryption, s.filePath, s.uuid, s.diskUUID, s.expectedChecksum, s.credential)
+	return s.syncClient.CloneFromBackingImage(sourceBackingImage, sourceBackingImageUUID, encryption, s.filePath, s.uuid, s.diskUUID, s.expectedChecksum, s.credential, dataEngine)
 }
 
 func (s *Service) restoreFromBackupURL() (err error) {
@@ -227,7 +232,12 @@ func (s *Service) restoreFromBackupURL() (err error) {
 		return fmt.Errorf("no %v for restore", types.DataSourceTypeRestoreParameterConcurrentLimit)
 	}
 
-	return s.syncClient.RestoreFromBackupURL(backupURL, concurrentLimit, s.filePath, s.uuid, s.diskUUID, s.expectedChecksum, s.credential)
+	dataEngine := s.parameters[types.DataSourceTypeParameterDataEngine]
+	if dataEngine == "" {
+		dataEngine = types.DataEnginev1
+	}
+
+	return s.syncClient.RestoreFromBackupURL(backupURL, concurrentLimit, s.filePath, s.uuid, s.diskUUID, s.expectedChecksum, s.credential, dataEngine)
 }
 
 func (s *Service) downloadFromURL(parameters map[string]string) (err error) {
@@ -235,8 +245,12 @@ func (s *Service) downloadFromURL(parameters map[string]string) (err error) {
 	if url == "" {
 		return fmt.Errorf("no URL for file downloading")
 	}
+	dataEngine := parameters[types.DataSourceTypeParameterDataEngine]
+	if dataEngine == "" {
+		dataEngine = types.DataEnginev1
+	}
 
-	return s.syncClient.DownloadFromURL(url, s.filePath, s.uuid, s.diskUUID, s.expectedChecksum)
+	return s.syncClient.DownloadFromURL(url, s.filePath, s.uuid, s.diskUUID, s.expectedChecksum, dataEngine)
 }
 
 func (s *Service) prepareForUpload() (err error) {
@@ -262,6 +276,11 @@ func (s *Service) exportFromVolume(parameters map[string]string) error {
 	}
 	fileType := parameters[types.DataSourceTypeFileType]
 
+	dataEngine := parameters[types.DataSourceTypeParameterDataEngine]
+	if dataEngine == "" {
+		dataEngine = types.DataEnginev1
+	}
+
 	var size int64
 	var err error
 	if size, err = strconv.ParseInt(parameters[types.DataSourceTypeExportFromVolumeParameterVolumeSize], 10, 64); err != nil {
@@ -283,7 +302,7 @@ func (s *Service) exportFromVolume(parameters map[string]string) error {
 	}
 	s.log.Infof("DataSource Service: export volume via %v", storageIP)
 
-	if err := s.syncClient.Receive(s.filePath, s.uuid, s.diskUUID, s.expectedChecksum, fileType, types.DefaultVolumeExportReceiverPort, size); err != nil {
+	if err := s.syncClient.Receive(s.filePath, s.uuid, s.diskUUID, s.expectedChecksum, fileType, types.DefaultVolumeExportReceiverPort, size, dataEngine); err != nil {
 		return err
 	}
 
@@ -323,6 +342,13 @@ func (s *Service) Upload(writer http.ResponseWriter, request *http.Request) {
 	q.Add("file-path", s.filePath)
 	q.Add("uuid", s.uuid)
 	q.Add("expected-checksum", s.expectedChecksum)
+
+	dataEngine := s.parameters[types.DataSourceTypeParameterDataEngine]
+	if dataEngine == "" {
+		dataEngine = types.DataEnginev1
+	}
+	q.Add("data-engine", dataEngine)
+
 	request.URL.RawQuery = q.Encode()
 	s.log.Debugf("DataSource Service: forwarding upload request to sync server %v", request.URL.String())
 
