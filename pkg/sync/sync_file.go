@@ -448,7 +448,7 @@ func (sf *SyncingFile) Fetch(srcFilePath string) (err error) {
 	}
 
 	defer func() {
-		if finalErr := sf.finishProcessing(err); finalErr != nil {
+		if finalErr := sf.finishProcessing(err, types.DataEnginev1); finalErr != nil {
 			err = finalErr
 		}
 	}()
@@ -484,7 +484,7 @@ func (sf *SyncingFile) Fetch(srcFilePath string) (err error) {
 	return nil
 }
 
-func (sf *SyncingFile) DownloadFromURL(url string) (written int64, err error) {
+func (sf *SyncingFile) DownloadFromURL(url, dataEngine string) (written int64, err error) {
 	sf.log.Infof("SyncingFile: start to download sync file from URL %v", url)
 
 	needProcessing, err := sf.isProcessingRequired()
@@ -496,7 +496,7 @@ func (sf *SyncingFile) DownloadFromURL(url string) (written int64, err error) {
 	}
 
 	defer func() {
-		if finalErr := sf.finishProcessing(err); finalErr != nil {
+		if finalErr := sf.finishProcessing(err, dataEngine); finalErr != nil {
 			err = finalErr
 		}
 	}()
@@ -513,7 +513,7 @@ func (sf *SyncingFile) DownloadFromURL(url string) (written int64, err error) {
 	return sf.handler.DownloadFromURL(sf.ctx, url, sf.tmpFilePath, sf)
 }
 
-func (sf *SyncingFile) RestoreFromBackupURL(backupURL string, credential map[string]string, concurrentLimit int) (err error) {
+func (sf *SyncingFile) RestoreFromBackupURL(backupURL string, credential map[string]string, concurrentLimit int, dataEngine string) (err error) {
 	sf.log.Infof("SyncingFile: start to restore sync file from backup URL %v", backupURL)
 
 	needProcessing, err := sf.isProcessingRequired()
@@ -525,7 +525,7 @@ func (sf *SyncingFile) RestoreFromBackupURL(backupURL string, credential map[str
 	}
 
 	defer func() {
-		if finalErr := sf.finishProcessing(err); finalErr != nil {
+		if finalErr := sf.finishProcessing(err, dataEngine); finalErr != nil {
 			err = finalErr
 		}
 	}()
@@ -588,7 +588,7 @@ func (sf *SyncingFile) waitForRestoreComplete() (err error) {
 // when doing encryption, it creates a loop device from the target backing file, setup the encrypted device from the loop device and then dump the data from the source file to the target encrypted device.
 // When doing decryption, it creates a loop device from the source backing file, setup the encrypted device from the loop device and then dump the data from the source encrypted device to the target file.
 // When doing ignore clone, it directly dumps the data from the source backing file to the target backing file.
-func (sf *SyncingFile) CloneToFileWithEncryption(sourceBackingImage, sourceBackingImageUUID string, encryption types.EncryptionType, credential map[string]string) (copied int64, err error) {
+func (sf *SyncingFile) CloneToFileWithEncryption(sourceBackingImage, sourceBackingImageUUID string, encryption types.EncryptionType, credential map[string]string, dataEngine string) (copied int64, err error) {
 	sf.log.Infof("SyncingFile: start to clone the file")
 
 	defer func() {
@@ -605,7 +605,7 @@ func (sf *SyncingFile) CloneToFileWithEncryption(sourceBackingImage, sourceBacki
 		return 0, nil
 	}
 	defer func() {
-		if finalErr := sf.finishProcessing(err); finalErr != nil {
+		if finalErr := sf.finishProcessing(err, dataEngine); finalErr != nil {
 			err = finalErr
 		}
 	}()
@@ -755,7 +755,7 @@ func (sf *SyncingFile) prepareCloneTargetFile(sourceFile string, encryption type
 	return nil
 }
 
-func (sf *SyncingFile) IdleTimeoutCopyToFile(src io.ReadCloser) (copied int64, err error) {
+func (sf *SyncingFile) IdleTimeoutCopyToFile(src io.ReadCloser, dataEngine string) (copied int64, err error) {
 	sf.log.Infof("SyncingFile: start to copy data to sync file")
 
 	defer func() {
@@ -782,7 +782,7 @@ func (sf *SyncingFile) IdleTimeoutCopyToFile(src io.ReadCloser) (copied int64, e
 	}
 
 	defer func() {
-		if finalErr := sf.finishProcessing(err); finalErr != nil {
+		if finalErr := sf.finishProcessing(err, dataEngine); finalErr != nil {
 			err = finalErr
 		}
 	}()
@@ -794,7 +794,7 @@ func (sf *SyncingFile) IdleTimeoutCopyToFile(src io.ReadCloser) (copied int64, e
 	return nw, err
 }
 
-func (sf *SyncingFile) Receive(port int, fileType string) (err error) {
+func (sf *SyncingFile) Receive(port int, fileType, dataEngine string) (err error) {
 	sf.log.Infof("SyncingFile: start to launch a receiver at port %v", port)
 
 	needProcessing, err := sf.isProcessingRequired()
@@ -806,7 +806,7 @@ func (sf *SyncingFile) Receive(port int, fileType string) (err error) {
 	}
 
 	defer func() {
-		if finalErr := sf.finishProcessing(err); finalErr != nil {
+		if finalErr := sf.finishProcessing(err, dataEngine); finalErr != nil {
 			err = finalErr
 		}
 	}()
@@ -871,7 +871,7 @@ func (sf *SyncingFile) Send(toAddress string, sender Sender) (err error) {
 	return nil
 }
 
-func (sf *SyncingFile) finishProcessing(err error) (finalErr error) {
+func (sf *SyncingFile) finishProcessing(err error, dataEngine string) (finalErr error) {
 	sf.lock.Lock()
 	defer sf.lock.Unlock()
 
@@ -905,6 +905,39 @@ func (sf *SyncingFile) finishProcessing(err error) (finalErr error) {
 		sf.processedSize = stat.Size()
 	}
 	sf.modificationTime = stat.ModTime().UTC().String()
+
+	// If the file is qcow2, we need to convert it to raw for dumping the data to the spdk lvol
+	// This will only happen when preparing the first backing image in data source.
+	if dataEngine == types.DataEnginev2 {
+		imgInfo, qemuErr := util.GetQemuImgInfo(sf.tmpFilePath)
+		if qemuErr != nil {
+			finalErr = errors.Wrapf(qemuErr, "failed to detect if file %v is qcow2", sf.tmpFilePath)
+			return
+		}
+		tmpRawFile := fmt.Sprintf("%v-raw.tmp", sf.tmpFilePath)
+		if imgInfo.Format == "qcow2" {
+			if convertErr := util.ConvertFromQcow2ToRaw(sf.tmpFilePath, tmpRawFile); convertErr != nil {
+				finalErr = errors.Wrapf(convertErr, "failed to create raw image from qcow2 image %v", sf.tmpFilePath)
+				return
+			}
+			if removeErr := os.RemoveAll(sf.tmpFilePath); removeErr != nil {
+				sf.log.Warnf("SyncingFile: failed to remove the qcow2 file %v after converting to raw file", sf.tmpFilePath)
+			}
+			if renameErr := os.Rename(tmpRawFile, sf.tmpFilePath); renameErr != nil {
+				finalErr = errors.Wrapf(renameErr, "failed to rename tmp raw file %v to file %v", tmpRawFile, sf.tmpFilePath)
+				return
+			}
+		}
+
+		stat, statErr := os.Stat(sf.tmpFilePath)
+		if statErr != nil {
+			finalErr = errors.Wrapf(statErr, "failed to stat tmp file %v after converting from qcow2 to raw file", sf.tmpFilePath)
+			return
+		}
+		sf.size = stat.Size()
+		sf.processedSize = stat.Size()
+		sf.modificationTime = stat.ModTime().UTC().String()
+	}
 
 	// Check if there is an existing config file then try to load the checksum
 	configFilePath := util.GetSyncingFileConfigFilePath(sf.filePath)

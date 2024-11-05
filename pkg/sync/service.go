@@ -9,6 +9,7 @@ import (
 	"mime/multipart"
 	"net/http"
 	"net/url"
+	"os"
 	"strconv"
 	"strings"
 	"sync"
@@ -219,6 +220,9 @@ func (s *Service) DownloadToDst(writer http.ResponseWriter, request *http.Reques
 		}
 	}()
 
+	queryParams := request.URL.Query()
+	forV2Creation := queryParams.Get("forV2Creation")
+
 	var filePath string
 	if filePath, err = url.QueryUnescape(mux.Vars(request)["id"]); err != nil {
 		return
@@ -232,6 +236,47 @@ func (s *Service) DownloadToDst(writer http.ResponseWriter, request *http.Reques
 		return
 	}
 
+	sf.lock.RLock()
+	if sf.state != types.StateReady {
+		sf.lock.RUnlock()
+		err = fmt.Errorf("cannot get the reader for a non-ready file, current state %v", sf.state)
+		return
+	}
+	sf.lock.RUnlock()
+
+	// If it is for v2 creation, we don't compress the data and will temporarily transform the qcow2 to raw image
+	if forV2Creation == "true" {
+		stat, statErr := os.Stat(sf.filePath)
+		if statErr != nil {
+			err = errors.Wrapf(statErr, "failed to stat the download file %v", sf.filePath)
+			return
+		}
+
+		src, openErr := os.Open(sf.filePath)
+		if openErr != nil {
+			err = errors.Wrapf(openErr, "failed to stat the download file %v", sf.filePath)
+			return
+		}
+		defer src.Close()
+
+		writer.Header().Set("Content-Length", strconv.FormatInt(stat.Size(), 10))
+		writer.Header().Set("Content-Type", "application/octet-stream")
+
+		if request.Method == http.MethodHead {
+			return
+		}
+
+		if _, ioErr := io.Copy(writer, src); ioErr != nil {
+			err = ioErr
+			return
+		}
+		return
+	}
+
+	// e.g. filePath=/data/backing-images/parrot-6846a0b2/backing
+	filePathSlices := strings.Split(sf.filePath, "/")
+	backingImageNameUUID := filePathSlices[len(filePathSlices)-2]
+
 	src, sfErr := sf.GetFileReader()
 	if sfErr != nil {
 		err = sfErr
@@ -242,15 +287,10 @@ func (s *Service) DownloadToDst(writer http.ResponseWriter, request *http.Reques
 	gzipWriter := gzip.NewWriter(writer)
 	defer gzipWriter.Close()
 
-	// e.g. filePath=/data/backing-images/parrot-6846a0b2/backing
-	filePathSlices := strings.Split(sf.filePath, "/")
-	backingImageNameUUID := filePathSlices[len(filePathSlices)-2]
-
 	writer.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=%s.gz", strings.Split(backingImageNameUUID, "-")[0]))
 	writer.Header().Set("Content-Type", "application/octet-stream")
 	if _, ioErr := io.Copy(gzipWriter, src); ioErr != nil {
 		err = ioErr
-		return
 	}
 }
 
@@ -365,6 +405,7 @@ func (s *Service) doDownloadFromURL(request *http.Request) (err error) {
 	}
 	diskUUID := queryParams.Get("disk-uuid")
 	expectedChecksum := queryParams.Get("expected-checksum")
+	dataEngine := queryParams.Get("data-engine")
 
 	sf, err := s.checkAndInitSyncFile(filePath, uuid, diskUUID, expectedChecksum, 0)
 	if err != nil {
@@ -379,7 +420,7 @@ func (s *Service) doDownloadFromURL(request *http.Request) (err error) {
 			return
 		}
 
-		if _, err := sf.DownloadFromURL(url); err != nil {
+		if _, err := sf.DownloadFromURL(url, dataEngine); err != nil {
 			s.log.Errorf("Sync Service: failed to download sync file %v: %v", filePath, err)
 			return
 		}
@@ -428,6 +469,7 @@ func (s *Service) doCloneFromBackingImage(request *http.Request) (err error) {
 	}
 	diskUUID := queryParams.Get("disk-uuid")
 	expectedChecksum := queryParams.Get("expected-checksum")
+	dataEngine := queryParams.Get(types.DataSourceTypeParameterDataEngine)
 
 	credential := map[string]string{}
 	if err := json.NewDecoder(request.Body).Decode(&credential); err != nil {
@@ -446,7 +488,7 @@ func (s *Service) doCloneFromBackingImage(request *http.Request) (err error) {
 			return
 		}
 
-		if _, err := sf.CloneToFileWithEncryption(sourceBackingImage, sourceBackingImageUUID, encryption, credential); err != nil {
+		if _, err := sf.CloneToFileWithEncryption(sourceBackingImage, sourceBackingImageUUID, encryption, credential, dataEngine); err != nil {
 			s.log.Errorf("Sync Service: failed to clone sync file %v: %v", filePath, err)
 			return
 		}
@@ -499,6 +541,8 @@ func (s *Service) doRestoreFromBackupURL(request *http.Request) (err error) {
 		}
 	}
 
+	dataEngine := queryParams.Get("data-engine")
+
 	sf, err := s.checkAndInitSyncFile(filePath, uuid, diskUUID, expectedChecksum, 0)
 	if err != nil {
 		return err
@@ -510,7 +554,7 @@ func (s *Service) doRestoreFromBackupURL(request *http.Request) (err error) {
 			return
 		}
 
-		if err := sf.RestoreFromBackupURL(backupURL, credential, concurrentLimit); err != nil {
+		if err := sf.RestoreFromBackupURL(backupURL, credential, concurrentLimit, dataEngine); err != nil {
 			s.log.Errorf("Sync Service: failed to download sync file %v: %v", filePath, err)
 			return
 		}
@@ -555,6 +599,8 @@ func (s *Service) doUploadFromRequest(request *http.Request) (err error) {
 		return fmt.Errorf("the uploaded file size %d should be a multiple of %d bytes since Longhorn uses directIO by default", size, types.DefaultSectorSize)
 	}
 
+	dataEngine := queryParams.Get(types.DataSourceTypeParameterDataEngine)
+
 	sf, err := s.checkAndInitSyncFile(filePath, uuid, diskUUID, expectedChecksum, size)
 	if err != nil {
 		return err
@@ -589,7 +635,7 @@ func (s *Service) doUploadFromRequest(request *http.Request) (err error) {
 		return err
 	}
 
-	if _, err := sf.IdleTimeoutCopyToFile(p); err != nil {
+	if _, err := sf.IdleTimeoutCopyToFile(p, dataEngine); err != nil {
 		return err
 	}
 
@@ -638,6 +684,7 @@ func (s *Service) doReceiveFromPeer(request *http.Request) (err error) {
 	if err != nil {
 		return err
 	}
+	dataEngine := queryParams.Get(types.DataSourceTypeParameterDataEngine)
 
 	sf, err := s.checkAndInitSyncFile(filePath, uuid, diskUUID, expectedChecksum, size)
 	if err != nil {
@@ -652,7 +699,7 @@ func (s *Service) doReceiveFromPeer(request *http.Request) (err error) {
 			return
 		}
 
-		if err := sf.Receive(int(port), fileType); err != nil {
+		if err := sf.Receive(int(port), fileType, dataEngine); err != nil {
 			s.log.Errorf("Sync Service: failed to receive sync file %v: %v", filePath, err)
 			return
 		}
