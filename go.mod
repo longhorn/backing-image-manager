@@ -8,7 +8,7 @@ require (
 	github.com/golang/protobuf v1.5.4
 	github.com/gorilla/mux v1.8.1
 	github.com/longhorn/backupstore v0.0.0-20241103035147-065450bb2340
-	github.com/longhorn/go-common-libs v0.0.0-20241102040927-43901cc2fa33
+	github.com/longhorn/go-common-libs v0.0.0-20241109095736-0f258f926a91
 	github.com/longhorn/longhorn-engine v1.8.0-dev-20241103
 	github.com/longhorn/sparse-tools v0.0.0-20241023025917-7951cd783270
 	github.com/longhorn/types v0.0.0-20241101010532-9e901229a935
@@ -63,7 +63,7 @@ require (
 	github.com/shirou/gopsutil/v3 v3.24.5 // indirect
 	github.com/slok/goresilience v0.2.0 // indirect
 	github.com/yusufpapurcu/wmi v1.2.4 // indirect
-	golang.org/x/exp v0.0.0-20241009180824-f66d83c29e7c // indirect
+	golang.org/x/exp v0.0.0-20241108190413-2d47ceb2692f // indirect
 	golang.org/x/sys v0.27.0 // indirect
 	golang.org/x/text v0.20.0 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20240903143218-8af14fe29dc1 // indirect
