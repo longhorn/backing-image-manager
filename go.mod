@@ -8,7 +8,7 @@ require (
 	github.com/RoaringBitmap/roaring v1.9.4
 	github.com/golang/protobuf v1.5.4
 	github.com/gorilla/mux v1.8.1
-	github.com/longhorn/backupstore v0.0.0-20241103035147-065450bb2340
+	github.com/longhorn/backupstore v0.0.0-20241109114317-c5e1abe96eb2
 	github.com/longhorn/longhorn-engine v1.6.3
 	github.com/longhorn/sparse-tools v0.0.0-20241023025917-7951cd783270
 	github.com/pkg/errors v0.9.1
@@ -41,7 +41,7 @@ require (
 	github.com/jmespath/go-jmespath v0.4.0 // indirect
 	github.com/kr/pretty v0.3.1 // indirect
 	github.com/kr/text v0.2.0 // indirect
-	github.com/longhorn/go-common-libs v0.0.0-20241102040927-43901cc2fa33 // indirect
+	github.com/longhorn/go-common-libs v0.0.0-20241109095736-0f258f926a91 // indirect
 	github.com/matttproud/golang_protobuf_extensions v1.0.4 // indirect
 	github.com/moby/sys/mountinfo v0.7.1 // indirect
 	github.com/mschoch/smat v0.2.0 // indirect
