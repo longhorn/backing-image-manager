@@ -2,7 +2,7 @@ module github.com/longhorn/backing-image-manager
 
 go 1.22.2
 
-toolchain go1.23.2
+toolchain go1.23.3
 
 require (
 	github.com/golang/protobuf v1.5.4
