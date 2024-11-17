@@ -9,10 +9,10 @@ require (
 	github.com/golang/protobuf v1.5.4
 	github.com/gorilla/mux v1.8.1
 	github.com/longhorn/backupstore v0.0.0-20241117040525-542fb2c66652
-	github.com/longhorn/go-common-libs v0.0.0-20241109101504-614ae31d2212
+	github.com/longhorn/go-common-libs v0.0.0-20241117040506-5685d80d0eea
 	github.com/longhorn/longhorn-engine v1.7.2
 	github.com/longhorn/sparse-tools v0.0.0-20241023025917-7951cd783270
-	github.com/longhorn/types v0.0.0-20241110123431-85dca7039c42
+	github.com/longhorn/types v0.0.0-20241117042122-c899b8796df9
 	github.com/pkg/errors v0.9.1
 	github.com/rancher/go-fibmap v0.0.0-20160418233256-5fc9f8c1ed47
 	github.com/sirupsen/logrus v1.9.3
