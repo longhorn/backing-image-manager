@@ -8,10 +8,10 @@ require (
 	github.com/RoaringBitmap/roaring v1.9.4
 	github.com/golang/protobuf v1.5.4
 	github.com/gorilla/mux v1.8.1
-	github.com/longhorn/backupstore v0.0.0-20241117040525-542fb2c66652
+	github.com/longhorn/backupstore v0.0.0-20241124092526-138305866a87
 	github.com/longhorn/go-common-libs v0.0.0-20241124035508-d6221574e626
 	github.com/longhorn/longhorn-engine v1.7.2
-	github.com/longhorn/sparse-tools v0.0.0-20241023025917-7951cd783270
+	github.com/longhorn/sparse-tools v0.0.0-20241124090628-9499c1fb63d7
 	github.com/longhorn/types v0.0.0-20241123075624-48c550af4eab
 	github.com/pkg/errors v0.9.1
 	github.com/rancher/go-fibmap v0.0.0-20160418233256-5fc9f8c1ed47
