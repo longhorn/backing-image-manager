@@ -341,7 +341,7 @@ func (m *Manager) Sync(ctx context.Context, req *rpc.SyncRequest) (resp *rpc.Bac
 	}()
 
 	biFilePath := types.GetBackingImageFilePath(m.diskPath, req.Spec.Name, req.Spec.Uuid)
-	if err := m.syncClient.Receive(biFilePath, req.Spec.Uuid, m.diskUUID, req.Spec.Checksum, "", int(port), req.Spec.Size); err != nil {
+	if err := m.syncClient.Receive(biFilePath, req.Spec.Uuid, m.diskUUID, req.Spec.Checksum, "", int(port), req.Spec.Size, types.DataEnginev1); err != nil {
 		portReleaseChannel <- nil
 		return nil, err
 	}
