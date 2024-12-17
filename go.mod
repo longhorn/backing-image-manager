@@ -8,11 +8,11 @@ require (
 	github.com/RoaringBitmap/roaring v1.9.4
 	github.com/golang/protobuf v1.5.4
 	github.com/gorilla/mux v1.8.1
-	github.com/longhorn/backupstore v0.0.0-20241208150358-e44f7d35fe1f
-	github.com/longhorn/go-common-libs v0.0.0-20241208100509-e1932c65c078
+	github.com/longhorn/backupstore v0.0.0-20241216162505-6ea1b1d542a3
+	github.com/longhorn/go-common-libs v0.0.0-20241217111348-5bad87d5320c
 	github.com/longhorn/longhorn-engine v1.7.2
-	github.com/longhorn/sparse-tools v0.0.0-20241124090628-9499c1fb63d7
-	github.com/longhorn/types v0.0.0-20241214151852-cf9e27d3d0a9
+	github.com/longhorn/sparse-tools v0.0.0-20241216160947-2b328f0fa59c
+	github.com/longhorn/types v0.0.0-20241217083824-2e0ecb487ccf
 	github.com/pkg/errors v0.9.1
 	github.com/rancher/go-fibmap v0.0.0-20160418233256-5fc9f8c1ed47
 	github.com/sirupsen/logrus v1.9.3
@@ -48,11 +48,11 @@ require (
 	github.com/longhorn/go-iscsi-helper v0.0.0-20241006012607-08f5166d1fad // indirect
 	github.com/matttproud/golang_protobuf_extensions v1.0.4 // indirect
 	github.com/mitchellh/go-ps v1.0.0 // indirect
-	github.com/moby/sys/mountinfo v0.7.1 // indirect
+	github.com/moby/sys/mountinfo v0.7.2 // indirect
 	github.com/mschoch/smat v0.2.0 // indirect
 	github.com/opencontainers/runc v1.1.14 // indirect
 	github.com/opencontainers/runtime-spec v1.0.3-0.20220909204839-494a5a6aca78 // indirect
-	github.com/pierrec/lz4/v4 v4.1.21 // indirect
+	github.com/pierrec/lz4/v4 v4.1.22 // indirect
 	github.com/power-devops/perfstat v0.0.0-20240221224432-82ca36839d55 // indirect
 	github.com/prometheus/client_golang v1.15.0 // indirect
 	github.com/prometheus/client_model v0.3.0 // indirect
@@ -63,12 +63,12 @@ require (
 	github.com/shirou/gopsutil/v3 v3.24.5 // indirect
 	github.com/slok/goresilience v0.2.0 // indirect
 	github.com/yusufpapurcu/wmi v1.2.4 // indirect
-	golang.org/x/exp v0.0.0-20241204233417-43b7b7cde48d // indirect
+	golang.org/x/exp v0.0.0-20241215155358-4a5509556b9e // indirect
 	golang.org/x/sys v0.28.0 // indirect
 	golang.org/x/text v0.21.0 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20241015192408-796eee8c2d53 // indirect
 	k8s.io/apimachinery v0.31.3 // indirect
 	k8s.io/klog/v2 v2.130.1 // indirect
 	k8s.io/mount-utils v0.31.3 // indirect
-	k8s.io/utils v0.0.0-20240711033017-18e509b52bc8 // indirect
+	k8s.io/utils v0.0.0-20241210054802-24370beab758 // indirect
 )
