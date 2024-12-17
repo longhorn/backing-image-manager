@@ -150,7 +150,7 @@ github.com/kr/pretty
 # github.com/kr/text v0.2.0
 ## explicit
 github.com/kr/text
-# github.com/longhorn/backupstore v0.0.0-20241208150358-e44f7d35fe1f
+# github.com/longhorn/backupstore v0.0.0-20241216162505-6ea1b1d542a3
 ## explicit; go 1.22.7
 github.com/longhorn/backupstore
 github.com/longhorn/backupstore/azblob
@@ -165,7 +165,7 @@ github.com/longhorn/backupstore/s3
 github.com/longhorn/backupstore/types
 github.com/longhorn/backupstore/util
 github.com/longhorn/backupstore/vfs
-# github.com/longhorn/go-common-libs v0.0.0-20241208100509-e1932c65c078
+# github.com/longhorn/go-common-libs v0.0.0-20241216151853-f3a20a6d8f6e
 ## explicit; go 1.22.7
 github.com/longhorn/go-common-libs/backup
 # github.com/longhorn/longhorn-engine v1.6.3
@@ -175,7 +175,7 @@ github.com/longhorn/longhorn-engine/pkg/types
 github.com/longhorn/longhorn-engine/pkg/util
 github.com/longhorn/longhorn-engine/pkg/util/disk
 github.com/longhorn/longhorn-engine/proto/ptypes
-# github.com/longhorn/sparse-tools v0.0.0-20241124090628-9499c1fb63d7
+# github.com/longhorn/sparse-tools v0.0.0-20241216160947-2b328f0fa59c
 ## explicit; go 1.22.0
 github.com/longhorn/sparse-tools/sparse
 github.com/longhorn/sparse-tools/sparse/rest
@@ -184,8 +184,8 @@ github.com/longhorn/sparse-tools/util
 # github.com/matttproud/golang_protobuf_extensions v1.0.4
 ## explicit; go 1.9
 github.com/matttproud/golang_protobuf_extensions/pbutil
-# github.com/moby/sys/mountinfo v0.7.1
-## explicit; go 1.16
+# github.com/moby/sys/mountinfo v0.7.2
+## explicit; go 1.17
 github.com/moby/sys/mountinfo
 # github.com/mschoch/smat v0.2.0
 ## explicit; go 1.13
@@ -199,7 +199,7 @@ github.com/opencontainers/runc/libcontainer/userns
 # github.com/opencontainers/runtime-spec v1.0.3-0.20220909204839-494a5a6aca78
 ## explicit
 github.com/opencontainers/runtime-spec/specs-go
-# github.com/pierrec/lz4/v4 v4.1.21
+# github.com/pierrec/lz4/v4 v4.1.22
 ## explicit; go 1.14
 github.com/pierrec/lz4/v4
 github.com/pierrec/lz4/v4/internal/lz4block
@@ -267,10 +267,10 @@ golang.org/x/text/secure/bidirule
 golang.org/x/text/transform
 golang.org/x/text/unicode/bidi
 golang.org/x/text/unicode/norm
-# google.golang.org/genproto/googleapis/rpc v0.0.0-20240903143218-8af14fe29dc1
+# google.golang.org/genproto/googleapis/rpc v0.0.0-20241015192408-796eee8c2d53
 ## explicit; go 1.21
 google.golang.org/genproto/googleapis/rpc/status
-# google.golang.org/grpc v1.68.1
+# google.golang.org/grpc v1.69.0
 ## explicit; go 1.22
 google.golang.org/grpc
 google.golang.org/grpc/attributes
@@ -391,7 +391,7 @@ k8s.io/klog/v2/internal/sloghandler
 # k8s.io/mount-utils v0.31.3
 ## explicit; go 1.22.0
 k8s.io/mount-utils
-# k8s.io/utils v0.0.0-20240711033017-18e509b52bc8
+# k8s.io/utils v0.0.0-20241210054802-24370beab758
 ## explicit; go 1.18
 k8s.io/utils/clock
 k8s.io/utils/exec
