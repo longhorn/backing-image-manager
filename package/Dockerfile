@@ -1,4 +1,16 @@
-# syntax=docker/dockerfile:1.12.1
+# syntax=docker/dockerfile:1.13.0
+FROM registry.suse.com/bci/golang:1.23 AS builder
+
+WORKDIR /app
+
+# Copy the build script and source code
+COPY . /app
+
+# Make the build script executable
+RUN chmod +x /app/scripts/build
+
+# Run the build script
+RUN /app/scripts/build
 
 FROM registry.suse.com/bci/bci-base:15.6
 
@@ -20,7 +32,8 @@ RUN zypper -n install kmod curl wget nfs-client nfs4-acl-tools fuse \
     librdmacm1 librdmacm-utils libibverbs perl-Config-General libaio-devel sg3_utils \
     iputils telnet iperf qemu-tools iproute2 e2fsprogs e2fsprogs-devel xfsprogs xfsprogs-devel
 
-COPY package/bin/backing-image-manager-${ARCH} /usr/local/bin/backing-image-manager
+COPY --from=builder /app/bin/backing-image-manager-${ARCH} /usr/local/bin/backing-image-manager
+RUN chmod +x /usr/local/bin/backing-image-manager
 
 VOLUME /usr/local/bin
 
