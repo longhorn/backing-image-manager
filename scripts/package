@@ -5,21 +5,53 @@ source $(dirname $0)/version
 
 cd $(dirname $0)/..
 
-PROJECT=`basename "$PWD"`
+project=$(basename "$PWD")
 
-if [ ! -x ./bin/longhorn ]; then
-    ./scripts/build
+command -v buildx >/dev/null && build_cmd=(buildx) || build_cmd=(docker buildx)
+
+# read configurable parameters
+REPO=${REPO:-longhornio}
+IMAGE_NAME=${IMAGE_NAME:-$project}
+TAG=${TAG:-''}
+OUTPUT_ARGS=${OUTPUT_ARGS:-'--load'}
+IS_SECURE=${IS_SECURE:-'false'}
+MACHINE=${MACHINE:-''}
+TARGET_PLATFORMS=${TARGET_PLATFORMS:-''}
+IID_FILE=${IID_FILE:-''}
+IID_FILE_FLAG=${IID_FILE_FLAG:-''}
+
+if [[ -z $TAG ]]; then
+    if api_version=$(./bin/backing-image-manager version --client-only | jq ".clientVersion.backingImageManagerAPIVersion"); then
+      TAG="v${api_version}_$(date -u +%Y%m%d)"
+    else
+      TAG="$VERSION"
+    fi
 fi
 
-cp -r bin package/
+image="${REPO}/${IMAGE_NAME}:${TAG}"
 
-APIVERSION=`./bin/backing-image-manager version --client-only|jq ".clientVersion.backingImageManagerAPIVersion"`
-TAG="v${APIVERSION}_`date -u +%Y%m%d`"
-REPO=${REPO:-longhornio}
-IMAGE=${REPO}/${PROJECT}:${TAG}
+builder_args=()
+[[ $MACHINE ]] && builder_args+=('--builder' "$MACHINE")
 
-buildx build --load --no-cache -t ${IMAGE} -f package/Dockerfile .
+IFS=' ' read -r -a iid_file_args <<<"$IID_FILE_FLAG"
+[[ -n "$IID_FILE" && ${#iid_file_args} == 0 ]] && iid_file_args=('--iidfile' "$IID_FILE")
 
-echo Built ${IMAGE}
+IFS=' ' read -r -a buildx_args <<<"$OUTPUT_ARGS"
+[[ $IS_SECURE == 'true' ]] && buildx_args+=('--sbom=true' '--attest' 'type=provenance,mode=max')
+[[ $TARGET_PLATFORMS ]] && buildx_args+=('--platform' "$TARGET_PLATFORMS")
 
-echo ${IMAGE} > ./bin/latest_image
+echo "${build_cmd[@]}" build --no-cache \
+    "${builder_args[@]}" \
+    "${iid_file_args[@]}" \
+    "${buildx_args[@]}" \
+    -t "$image" -f package/Dockerfile .
+"${build_cmd[@]}" build --no-cache \
+    "${builder_args[@]}" \
+    "${iid_file_args[@]}" \
+    "${buildx_args[@]}" \
+    -t "$image" -f package/Dockerfile .
+
+echo "Built $image"
+
+mkdir ./bin || true
+echo "$image" > ./bin/latest_image
