@@ -2,13 +2,13 @@ module github.com/longhorn/backing-image-manager
 
 go 1.23.0
 
-toolchain go1.23.5
+toolchain go1.23.6
 
 require (
 	github.com/golang/protobuf v1.5.4
 	github.com/gorilla/mux v1.8.1
-	github.com/longhorn/backupstore v0.0.0-20250115162037-d046737d09dc
-	github.com/longhorn/go-common-libs v0.0.0-20250107022351-ec79818ce8db
+	github.com/longhorn/backupstore v0.0.0-20250204055542-0f659475ac46
+	github.com/longhorn/go-common-libs v0.0.0-20250204050409-8ebd4432fd70
 	github.com/longhorn/longhorn-engine v1.8.0
 	github.com/longhorn/sparse-tools v0.0.0-20241216160947-2b328f0fa59c
 	github.com/longhorn/types v0.0.0-20241225162202-00d3a5fd7502
@@ -18,7 +18,7 @@ require (
 	github.com/urfave/cli v1.22.16
 	golang.org/x/net v0.33.0
 	google.golang.org/grpc v1.69.4
-	google.golang.org/protobuf v1.36.4
+	google.golang.org/protobuf v1.36.5
 	gopkg.in/check.v1 v1.0.0-20201130134442-10cb98267c6c
 )
 
@@ -27,7 +27,7 @@ require (
 	github.com/Azure/azure-sdk-for-go/sdk/internal v1.10.0 // indirect
 	github.com/Azure/azure-sdk-for-go/sdk/storage/azblob v1.5.0 // indirect
 	github.com/RoaringBitmap/roaring v1.9.4 // indirect
-	github.com/aws/aws-sdk-go v1.55.5 // indirect
+	github.com/aws/aws-sdk-go v1.55.6 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/bits-and-blooms/bitset v1.12.0 // indirect
 	github.com/c9s/goprocinfo v0.0.0-20210130143923-c95fcf8c64a8 // indirect
@@ -60,7 +60,7 @@ require (
 	github.com/shirou/gopsutil/v3 v3.24.5 // indirect
 	github.com/slok/goresilience v0.2.0 // indirect
 	github.com/yusufpapurcu/wmi v1.2.4 // indirect
-	golang.org/x/exp v0.0.0-20250106191152-7588d65b2ba8 // indirect
+	golang.org/x/exp v0.0.0-20250128182459-e0ece0dbea4c // indirect
 	golang.org/x/sys v0.28.0 // indirect
 	golang.org/x/text v0.21.0 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20241015192408-796eee8c2d53 // indirect
