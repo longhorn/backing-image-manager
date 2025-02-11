@@ -14,7 +14,7 @@ jobs:
     outputs:
       version_major: ${{ steps.build_info.outputs.version_major }}
       version_minor: ${{ steps.build_info.outputs.version_minor }}
-      version_build: ${{ steps.build_info.outputs.version_build }}
+      version_patch: ${{ steps.build_info.outputs.version_patch }}
       image_tag: ${{ steps.build_info.outputs.image_tag }}
 
     steps:
@@ -26,7 +26,7 @@ jobs:
       run: |
         version_major=''
         version_minor=''
-        version_build=''
+        version_patch=''
         image_tag=''
 
         branch=${GITHUB_HEAD_REF:-${GITHUB_REF#refs/heads/}}
@@ -35,23 +35,21 @@ jobs:
           version=$(sed -E 's/^v([0-9]*\.[0-9]*\.[0-9]*).*$/\1/' <<<${{ github.ref_name }} )
           version_major=$(cut -d. -f1 <<<$version)
           version_minor=$(cut -d. -f2 <<<$version)
-          version_build=$(cut -d. -f3 <<<$version)
+          version_patch=$(cut -d. -f3 <<<$version)
           image_tag=${{ github.ref_name }}
         elif [[ "$ref" =~ 'refs/heads/' ]]; then
           image_tag="${branch}-head"
-        elif [[ "$ref" =~ 'refs/pull/' ]]; then
-          image_tag="pr${{ github.event.number }}"
         fi
 
         echo "version_major=${version_major}" >>$GITHUB_OUTPUT
         echo "version_minor=${version_minor}" >>$GITHUB_OUTPUT
-        echo "version_build=${version_build}" >>$GITHUB_OUTPUT
+        echo "version_patch=${version_patch}" >>$GITHUB_OUTPUT
         echo "image_tag=${image_tag}" >>$GITHUB_OUTPUT
 
         cat <<EOF
         version_major=${version_major}
         version_minor=${version_minor}
-        version_build=${version_build}
+        version_patch=${version_patch}
         image_tag=${image_tag}
         EOF
 

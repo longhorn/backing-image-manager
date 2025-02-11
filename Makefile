@@ -27,9 +27,9 @@ buildx-machine:
 # - IID_FILE_FLAG: optional, options to generate image ID file
 .PHONY: workflow-image-build-push workflow-image-build-push-secure
 workflow-image-build-push: buildx-machine
-	MACHINE=$(MACHINE) OUTPUT_ARGS='--push' bash scripts/package
+	MACHINE=$(MACHINE) PUSH='true' bash scripts/package
 workflow-image-build-push-secure: buildx-machine
-	MACHINE=$(MACHINE) OUTPUT_ARGS='--push' IS_SECURE=true bash scripts/package
+	MACHINE=$(MACHINE) PUSH='true' IS_SECURE=true bash scripts/package
 
 trash: .dapper
 	./.dapper -m bind trash
