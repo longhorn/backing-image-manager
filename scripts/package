@@ -5,53 +5,59 @@ source $(dirname $0)/version
 
 cd $(dirname $0)/..
 
-project=$(basename "$PWD")
+PROJECT=$(basename "${PWD}")
 
-command -v buildx >/dev/null && build_cmd=(buildx) || build_cmd=(docker buildx)
+command -v buildx >/dev/null && BUILD_CMD=(buildx) || BUILD_CMD=(docker buildx)
 
 # read configurable parameters
 REPO=${REPO:-longhornio}
-IMAGE_NAME=${IMAGE_NAME:-$project}
+IMAGE_NAME=${IMAGE_NAME:-${PROJECT}}
 TAG=${TAG:-''}
-OUTPUT_ARGS=${OUTPUT_ARGS:-'--load'}
+PUSH=${PUSH:-'false'}
 IS_SECURE=${IS_SECURE:-'false'}
 MACHINE=${MACHINE:-''}
 TARGET_PLATFORMS=${TARGET_PLATFORMS:-''}
 IID_FILE=${IID_FILE:-''}
 IID_FILE_FLAG=${IID_FILE_FLAG:-''}
 
-if [[ -z $TAG ]]; then
-    if api_version=$(./bin/backing-image-manager version --client-only | jq ".clientVersion.backingImageManagerAPIVersion"); then
-      TAG="v${api_version}_$(date -u +%Y%m%d)"
+if [[ -z "${TAG}" ]]; then
+    if API_VERSION=$(./bin/backing-image-manager version --client-only | jq ".clientVersion.backingImageManagerAPIVersion"); then
+      TAG="v${API_VERSION}_$(date -u +%Y%m%d)"
     else
-      TAG="$VERSION"
+      TAG="${VERSION}"
     fi
 fi
 
-image="${REPO}/${IMAGE_NAME}:${TAG}"
+IMAGE="${REPO}/${IMAGE_NAME}:${TAG}"
 
-builder_args=()
-[[ $MACHINE ]] && builder_args+=('--builder' "$MACHINE")
+BUILDER_ARGS=()
+[[ ${MACHINE} ]] && BUILDER_ARGS+=('--builder' "${MACHINE}")
 
-IFS=' ' read -r -a iid_file_args <<<"$IID_FILE_FLAG"
-[[ -n "$IID_FILE" && ${#iid_file_args} == 0 ]] && iid_file_args=('--iidfile' "$IID_FILE")
+IFS=' ' read -r -a IID_FILE_ARGS <<<"${IID_FILE_FLAG}"
+[[ -n "${IID_FILE}" && ${#IID_FILE_ARGS} == 0 ]] && IID_FILE_ARGS=('--iidfile' "${IID_FILE}")
 
-IFS=' ' read -r -a buildx_args <<<"$OUTPUT_ARGS"
-[[ $IS_SECURE == 'true' ]] && buildx_args+=('--sbom=true' '--attest' 'type=provenance,mode=max')
-[[ $TARGET_PLATFORMS ]] && buildx_args+=('--platform' "$TARGET_PLATFORMS")
+BUILDX_ARGS=()
 
-echo "${build_cmd[@]}" build --no-cache \
-    "${builder_args[@]}" \
-    "${iid_file_args[@]}" \
-    "${buildx_args[@]}" \
-    -t "$image" -f package/Dockerfile .
-"${build_cmd[@]}" build --no-cache \
-    "${builder_args[@]}" \
-    "${iid_file_args[@]}" \
-    "${buildx_args[@]}" \
-    -t "$image" -f package/Dockerfile .
+if [[ "${PUSH}" == 'true' ]]; then
+    BUILDX_ARGS+=('--push')
+else
+    BUILDX_ARGS+=('--load')
+fi
 
-echo "Built $image"
+[[ ${IS_SECURE} == 'true' ]] && BUILDX_ARGS+=('--sbom=true' '--attest' 'type=provenance,mode=max')
+[[ ${TARGET_PLATFORMS} ]] && BUILDX_ARGS+=('--platform' "${TARGET_PLATFORMS}")
+
+IMAGE_BUILD_CMD_ARGS=(
+    build --no-cache \
+    "${BUILDER_ARGS[@]}" \
+    "${IID_FILE_ARGS[@]}" \
+    "${BUILDX_ARGS[@]}" \
+    -t "${IMAGE}" -f package/Dockerfile .
+)
+echo "${BUILD_CMD[@]}" "${IMAGE_BUILD_CMD_ARGS[@]}"
+"${BUILD_CMD[@]}" "${IMAGE_BUILD_CMD_ARGS[@]}"
+
+echo "Built ${IMAGE}"
 
 mkdir ./bin || true
-echo "$image" > ./bin/latest_image
+echo "${IMAGE}" > ./bin/latest_image
