@@ -82,4 +82,5 @@ jobs:
       env:
         REPO: docker.io/longhornio
         TAG: ${{ needs.build.outputs.image_tag }}
+        TARGET_PLATFORMS: linux/amd64,linux/arm64
       run: make workflow-image-build-push
