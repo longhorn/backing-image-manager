@@ -150,7 +150,7 @@ func (m *Manager) monitoring() {
 		case <-m.ctx.Done():
 			m.log.Info("Backing Image Manager: stopped monitoring due to the context done")
 			done = true
-			break
+			break // nolint: staticcheck
 		case <-ticker.C:
 			if _, err := m.listAndUpdate(); err != nil {
 				m.log.WithError(err).Warn("failed to list and update backing image files")
@@ -554,19 +554,19 @@ func (m *Manager) releasePorts(start, end int32) error {
 
 func ParsePortRange(portRange string) (int32, int32, error) {
 	if portRange == "" {
-		return 0, 0, fmt.Errorf("Empty port range")
+		return 0, 0, fmt.Errorf("empty port range")
 	}
 	parts := strings.Split(portRange, "-")
 	if len(parts) != 2 {
-		return 0, 0, fmt.Errorf("Invalid format for range: %s", portRange)
+		return 0, 0, fmt.Errorf("invalid format for range: %s", portRange)
 	}
 	portStart, err := strconv.Atoi(strings.TrimSpace(parts[0]))
 	if err != nil {
-		return 0, 0, fmt.Errorf("Invalid start port for range: %s", err)
+		return 0, 0, fmt.Errorf("invalid start port for range: %s", err)
 	}
 	portEnd, err := strconv.Atoi(strings.TrimSpace(parts[1]))
 	if err != nil {
-		return 0, 0, fmt.Errorf("Invalid end port for range: %s", err)
+		return 0, 0, fmt.Errorf("invalid end port for range: %s", err)
 	}
 	return int32(portStart), int32(portEnd), nil
 }

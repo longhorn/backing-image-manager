@@ -613,7 +613,9 @@ func (sf *SyncingFile) CloneToFileWithEncryption(sourceBackingImage, sourceBacki
 	sourceFile, tmpRawFile, writeZero, err := sf.prepareCloneSourceFile(sourceBackingImage, sourceBackingImageUUID, encryption)
 	defer func() {
 		if tmpRawFile != "" {
-			os.RemoveAll(tmpRawFile)
+			if errRemove := os.RemoveAll(tmpRawFile); errRemove != nil {
+				sf.log.WithError(errRemove).Errorf("Failed to remove the tmp raw file %v", tmpRawFile)
+			}
 		}
 	}()
 	if err != nil {
@@ -628,7 +630,9 @@ func (sf *SyncingFile) CloneToFileWithEncryption(sourceBackingImage, sourceBacki
 	sourceFileReader, sourceLoopDevicePath, err := sf.openCloneSourceFile(sourceFile, encryption, credential)
 	defer func() {
 		if sourceFileReader != nil {
-			sourceFileReader.Close()
+			if errClose := sourceFileReader.Close(); errClose != nil {
+				sf.log.WithError(errClose).Error("Failed to close the source file reader")
+			}
 		}
 		if sourceLoopDevicePath == "" {
 			sf.closeCryptoDevice(sourceLoopDevicePath)
@@ -641,7 +645,9 @@ func (sf *SyncingFile) CloneToFileWithEncryption(sourceBackingImage, sourceBacki
 	targetFileWriter, targetLoopDevicePath, err := sf.openCloneTargetFile(encryption, credential)
 	defer func() {
 		if targetFileWriter != nil {
-			targetFileWriter.Close()
+			if errClose := targetFileWriter.Close(); errClose != nil {
+				sf.log.WithError(errClose).Error("Failed to close the target file writer")
+			}
 		}
 		if targetLoopDevicePath == "" {
 			sf.closeCryptoDevice(targetLoopDevicePath)
@@ -751,7 +757,9 @@ func (sf *SyncingFile) prepareCloneTargetFile(sourceFile string, encryption type
 	if err = f.Truncate(sf.size); err != nil {
 		return err
 	}
-	f.Close()
+	if errClose := f.Close(); errClose != nil {
+		logrus.WithError(errClose).Error("Failed to close the file")
+	}
 	return nil
 }
 
@@ -776,7 +784,11 @@ func (sf *SyncingFile) IdleTimeoutCopyToFile(src io.ReadCloser, dataEngine strin
 	if err != nil {
 		return 0, err
 	}
-	defer f.Close()
+	defer func() {
+		if errClose := f.Close(); errClose != nil {
+			logrus.WithError(errClose).Error("Failed to close the file")
+		}
+	}()
 	if err = f.Truncate(sf.size); err != nil {
 		return 0, err
 	}
@@ -1090,7 +1102,7 @@ func (sf *SyncingFile) writeConfigNoLock() {
 
 func (sf *SyncingFile) setFileSizeForEncryption(sourceSize int64, encryption types.EncryptionType) error {
 	sf.lock.Lock()
-	if encryption == types.EncryptionTypeIgnore {
+	if encryption == types.EncryptionTypeIgnore { // nolint: staticcheck
 		sf.size = sourceSize
 	} else if encryption == types.EncryptionTypeEncrypt {
 		// LUKS 16MB data size is introduced here: https://gitlab.com/cryptsetup/cryptsetup/-/blob/master/docs/v2.1.0-ReleaseNotes#L27
