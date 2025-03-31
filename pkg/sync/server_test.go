@@ -68,7 +68,9 @@ func (s *SyncTestSuite) SetUpTest(c *C) {
 
 func (s *SyncTestSuite) TearDownTest(c *C) {
 	if s.dir != "" {
-		os.RemoveAll(s.dir)
+		if err := os.RemoveAll(s.dir); err != nil {
+			logrus.WithError(err).Error("Failed to remove test directory")
+		}
 	}
 
 	s.cancel()
@@ -411,7 +413,11 @@ func (s *SyncTestSuite) TestFetch(c *C) {
 	secondPath := filepath.Join(secondDir, fileName)
 	err = os.MkdirAll(secondDir, 0666)
 	c.Assert(err, IsNil)
-	defer os.RemoveAll(secondDir)
+	defer func() {
+		if errRemove := os.RemoveAll(secondDir); errRemove != nil {
+			logrus.WithError(errRemove).Error("Failed to remove test directory")
+		}
+	}()
 
 	// Moving the existing file with the config file to another place would skip the checksum calculation.
 	err = cli.Fetch(curPath, secondPath, TestSyncingFileUUID, TestDiskUUID, checksum, sizeInMB*MB)
@@ -617,7 +623,11 @@ func (s *SyncTestSuite) TestReadyFileValidation(c *C) {
 
 	f, err := os.OpenFile(curPath, os.O_RDWR, 0666)
 	c.Assert(err, IsNil)
-	defer f.Close()
+	defer func() {
+		if errClose := f.Close(); errClose != nil {
+			logrus.WithError(errClose).Error("Failed to close file")
+		}
+	}()
 
 	// Change the file modification time without affecting the data.
 	// File state should be state unknown with a different modification time,

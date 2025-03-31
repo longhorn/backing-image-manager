@@ -141,8 +141,13 @@ func (s *TestSuite) TearDownSuite(c *C) {
 	if s.cancel != nil {
 		s.cancel()
 	}
-	os.RemoveAll(s.testDiskPath1)
-	os.RemoveAll(s.testDiskPath2)
+	if err := os.RemoveAll(s.testDiskPath1); err != nil {
+		logrus.WithError(err).Error("Failed to remove test disk path 1")
+	}
+
+	if err := os.RemoveAll(s.testDiskPath2); err != nil {
+		logrus.WithError(err).Error("Failed to remove test disk path 2")
+	}
 }
 
 func (s *TestSuite) TearDownTest(c *C) {
@@ -341,7 +346,11 @@ func (s *TestSuite) TestSingleBackingImageSync(c *C) {
 	logrus.Debugf("preparing the original file %v for the test, this may be time-consuming", biFilePath1)
 	err = generateRandomDataFile(biFilePath1, sizeInMB)
 	c.Assert(err, IsNil)
-	defer os.RemoveAll(biFilePath1)
+	defer func() {
+		if errRemove := os.RemoveAll(biFilePath1); errRemove != nil {
+			logrus.WithError(errRemove).Error("Failed to remove the original file")
+		}
+	}()
 	checksum, err := util.GetFileChecksum(biFilePath1)
 	c.Assert(err, IsNil)
 	logrus.Debugf("the original file %v for the test is ready", biFilePath1)
@@ -399,7 +408,11 @@ func (s *TestSuite) TestBackingImageDownloadToLocal(c *C) {
 	logrus.Debugf("preparing the original file %v for the test, this may be time-consuming", biFilePath1)
 	err = generateRandomDataFile(biFilePath1, sizeInMB)
 	c.Assert(err, IsNil)
-	defer os.RemoveAll(biFilePath1)
+	defer func() {
+		if errRemove := os.RemoveAll(biFilePath1); errRemove != nil {
+			logrus.WithError(errRemove).Error("Failed to remove the original file")
+		}
+	}()
 	checksum, err := util.GetFileChecksum(biFilePath1)
 	c.Assert(err, IsNil)
 	logrus.Debugf("the original file %v for the test is ready", biFilePath1)
@@ -430,7 +443,11 @@ func (s *TestSuite) TestBackingImageDownloadToLocal(c *C) {
 	}
 	err = syncCli1.DownloadToDst(srcFilePath, downloadFilePath)
 	c.Assert(err, IsNil)
-	defer os.RemoveAll(downloadFilePath)
+	defer func() {
+		if errRemove := os.RemoveAll(downloadFilePath); errRemove != nil {
+			logrus.WithError(errRemove).Error("Failed to remove the download file")
+		}
+	}()
 
 	unzipDownloadFilePath := downloadFilePath + "-unzip"
 	err = util.GunzipFile(downloadFilePath, unzipDownloadFilePath)
@@ -457,7 +474,11 @@ func (s *TestSuite) TestDuplicateCalls(c *C) {
 	logrus.Debugf("preparing the original file %v for the test, this may be time-consuming", biFilePath1)
 	err = generateRandomDataFile(biFilePath1, sizeInMB)
 	c.Assert(err, IsNil)
-	defer os.RemoveAll(biFilePath1)
+	defer func() {
+		if errRemove := os.RemoveAll(biFilePath1); errRemove != nil {
+			logrus.WithError(errRemove).Error("Failed to remove the original file")
+		}
+	}()
 	checksum, err := util.GetFileChecksum(biFilePath1)
 	c.Assert(err, IsNil)
 	logrus.Debugf("the original file %v for the test is ready", biFilePath1)
@@ -574,7 +595,11 @@ func generateSimpleTestFile(filePath string, size int64) error {
 	if err != nil {
 		return err
 	}
-	defer f.Close()
+	defer func() {
+		if errClose := f.Close(); errClose != nil {
+			logrus.WithError(errClose).Error("Failed to close file")
+		}
+	}()
 	return f.Truncate(size)
 }
 
