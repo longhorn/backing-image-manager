@@ -80,7 +80,9 @@ func loadBackingImageLocation(backingimage *BackingImage, disk enginetypes.DiffD
 }
 
 func (bi *BackingImage) Close() {
-	bi.Disk.Close()
+	if err := bi.Disk.Close(); err != nil {
+		logrus.WithError(err).Errorf("Failed to close backing image %s", bi.Path)
+	}
 }
 
 func (bi *BackingImage) ReadAt(buf []byte, offset int64) (int, error) {

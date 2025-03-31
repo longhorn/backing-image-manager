@@ -237,10 +237,18 @@ func (s *Service) DownloadToDst(writer http.ResponseWriter, request *http.Reques
 		err = sfErr
 		return
 	}
-	defer src.Close()
+	defer func() {
+		if errClose := src.Close(); errClose != nil {
+			s.log.WithError(errClose).Errorf("Failed to close file %v", sf.filePath)
+		}
+	}()
 
 	gzipWriter := gzip.NewWriter(writer)
-	defer gzipWriter.Close()
+	defer func() {
+		if errClose := gzipWriter.Close(); errClose != nil {
+			s.log.WithError(errClose).Error("Failed to close gzip writer")
+		}
+	}()
 
 	// e.g. filePath=/data/backing-images/parrot-6846a0b2/backing
 	filePathSlices := strings.Split(sf.filePath, "/")
@@ -581,7 +589,11 @@ func (s *Service) doUploadFromRequest(request *http.Request) (err error) {
 	if p == nil || p.FormName() != "chunk" {
 		return fmt.Errorf("cannot get the uploaded data since the upload request doesn't contain form 'chunk'")
 	}
-	defer p.Close()
+	defer func() {
+		if errClose := p.Close(); errClose != nil {
+			s.log.WithError(errClose).Errorf("Failed to close part %v", p.FormName())
+		}
+	}()
 
 	if err := sf.WaitForStateNonPending(); err != nil {
 		s.log.Errorf("Sync Service: failed to wait for sync file %v becoming non-pending state before starting the actual upload: %v", filePath, err)
