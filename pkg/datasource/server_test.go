@@ -66,7 +66,9 @@ func (s *DataSourceTestSuite) SetUpTest(c *C) {
 
 func (s *DataSourceTestSuite) TearDownTest(c *C) {
 	if s.dir != "" {
-		os.RemoveAll(s.dir)
+		if err := os.RemoveAll(s.dir); err != nil {
+			logrus.WithError(err).Errorf("Failed to remove test directory %v", s.dir)
+		}
 	}
 
 	s.cancel()

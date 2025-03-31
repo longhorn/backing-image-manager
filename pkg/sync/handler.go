@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/pkg/errors"
+	"github.com/sirupsen/logrus"
 
 	"github.com/longhorn/backing-image-manager/pkg/types"
 )
@@ -45,7 +46,11 @@ func (h *HTTPHandler) GetSizeFromURL(url string) (size int64, err error) {
 	if err != nil {
 		return 0, err
 	}
-	defer resp.Body.Close()
+	defer func() {
+		if errClose := resp.Body.Close(); errClose != nil {
+			logrus.WithError(errClose).Error("Failed to close response body")
+		}
+	}()
 
 	if resp.StatusCode != http.StatusOK {
 		return 0, fmt.Errorf("expected status code 200 from %s, got %s", url, resp.Status)
@@ -79,7 +84,11 @@ func (h *HTTPHandler) DownloadFromURL(ctx context.Context, url, filePath string,
 	if err != nil {
 		return 0, err
 	}
-	defer resp.Body.Close()
+	defer func() {
+		if errClose := resp.Body.Close(); errClose != nil {
+			logrus.WithError(errClose).Error("Failed to close response body")
+		}
+	}()
 
 	if resp.StatusCode != http.StatusOK {
 		return 0, fmt.Errorf("expected status code 200 from %s, got %s", url, resp.Status)
@@ -89,7 +98,11 @@ func (h *HTTPHandler) DownloadFromURL(ctx context.Context, url, filePath string,
 	if err != nil {
 		return 0, err
 	}
-	defer outFile.Close()
+	defer func() {
+		if errClose := outFile.Close(); errClose != nil {
+			logrus.WithError(errClose).Error("Failed to close destination file")
+		}
+	}()
 
 	copied, err := IdleTimeoutCopy(ctx, cancel, resp.Body, outFile, updater, false)
 	if err != nil {
@@ -170,7 +183,7 @@ func IdleTimeoutCopy(ctx context.Context, cancel context.CancelFunc, src io.Read
 				if rErr != io.EOF {
 					err = rErr
 				}
-				break
+				break // nolint: staticcheck
 			}
 		}
 	}
@@ -217,7 +230,10 @@ func (mh *MockHandler) mockFile(ctx context.Context, filePath string, updater Pr
 	if err != nil {
 		return 0, err
 	}
-	f.Close()
+	if errClose := f.Close(); errClose != nil {
+		logrus.WithError(errClose).Error("Failed to close file")
+	}
+
 	if err := os.Truncate(filePath, MockFileSize); err != nil {
 		return 0, err
 	}
