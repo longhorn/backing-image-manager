@@ -12,7 +12,7 @@ import (
 
 	"github.com/golang/protobuf/ptypes/empty"
 	butil "github.com/longhorn/backupstore/util"
-	lhBitmap "github.com/longhorn/go-common-libs/bitmap"
+	lhbitmap "github.com/longhorn/go-common-libs/bitmap"
 	rpc "github.com/longhorn/types/pkg/generated/bimrpc"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
@@ -39,7 +39,7 @@ type Manager struct {
 	portRangeMin int32
 
 	portRangeMax   int32
-	availablePorts *lhBitmap.Bitmap
+	availablePorts *lhbitmap.Bitmap
 
 	// Need to acquire lock when operating biFileInfoMap or broadcastRequired.
 	lock          *sync.RWMutex
@@ -66,7 +66,7 @@ func NewManager(ctx context.Context, syncAddress, diskUUID, diskPath, portRange 
 	if err != nil {
 		return nil, err
 	}
-	bitmap, err := lhBitmap.NewBitmap(start, end)
+	bitmap, err := lhbitmap.NewBitmap(start, end)
 	if err != nil {
 		return nil, err
 	}
