@@ -2,6 +2,7 @@ package manager
 
 import (
 	"fmt"
+	"net"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -376,7 +377,7 @@ func (m *Manager) Sync(ctx context.Context, req *rpc.SyncRequest) (resp *rpc.Bac
 		if err != nil {
 			return
 		}
-		toAddress := fmt.Sprintf("%s:%d", toIP, port)
+		toAddress := net.JoinHostPort(toIP, strconv.Itoa(int(port)))
 
 		// sender.Send is a non-blocking call
 		sender := client.NewBackingImageManagerClient(req.FromAddress)
