@@ -9,7 +9,7 @@ require (
 	github.com/gorilla/mux v1.8.1
 	github.com/longhorn/backupstore v0.0.0-20250608034139-079a7cc0a3c7
 	github.com/longhorn/go-common-libs v0.0.0-20250604144850-3295fad1e72f
-	github.com/longhorn/longhorn-engine v1.8.1
+	github.com/longhorn/longhorn-engine v1.8.2
 	github.com/longhorn/sparse-tools v0.0.0-20241216160947-2b328f0fa59c
 	github.com/longhorn/types v0.0.0-20250613005741-b79d2bcff04b
 	github.com/pkg/errors v0.9.1
@@ -43,7 +43,7 @@ require (
 	github.com/jmespath/go-jmespath v0.4.0 // indirect
 	github.com/kr/pretty v0.3.1 // indirect
 	github.com/kr/text v0.2.0 // indirect
-	github.com/longhorn/go-iscsi-helper v0.0.0-20250111093313-7e1930499625 // indirect
+	github.com/longhorn/go-iscsi-helper v0.0.0-20250605024026-2bccf377d28d // indirect
 	github.com/matttproud/golang_protobuf_extensions v1.0.4 // indirect
 	github.com/mitchellh/go-ps v1.0.0 // indirect
 	github.com/moby/sys/mountinfo v0.7.2 // indirect
@@ -66,6 +66,6 @@ require (
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20241015192408-796eee8c2d53 // indirect
 	k8s.io/apimachinery v0.31.3 // indirect
 	k8s.io/klog/v2 v2.130.1 // indirect
-	k8s.io/mount-utils v0.32.2 // indirect
+	k8s.io/mount-utils v0.32.3 // indirect
 	k8s.io/utils v0.0.0-20241210054802-24370beab758 // indirect
 )
