@@ -7,8 +7,8 @@ toolchain go1.24.5
 require (
 	github.com/golang/protobuf v1.5.4
 	github.com/gorilla/mux v1.8.1
-	github.com/longhorn/backupstore v0.0.0-20250716050439-d920cc13cf0f
-	github.com/longhorn/go-common-libs v0.0.0-20250712065607-11215ac4de96
+	github.com/longhorn/backupstore v0.0.0-20250722065859-712d1ff30a8d
+	github.com/longhorn/go-common-libs v0.0.0-20250725014231-2c0bac610814
 	github.com/longhorn/longhorn-engine v1.9.0
 	github.com/longhorn/sparse-tools v0.0.0-20241216160947-2b328f0fa59c
 	github.com/longhorn/types v0.0.0-20250710112743-e3a1e9e2a9c1
@@ -34,10 +34,12 @@ require (
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
 	github.com/cpuguy83/go-md2man/v2 v2.0.7 // indirect
 	github.com/felixge/httpsnoop v1.0.4 // indirect
+	github.com/fxamacker/cbor/v2 v2.7.0 // indirect
 	github.com/gammazero/deque v0.2.1 // indirect
 	github.com/gammazero/workerpool v1.1.3 // indirect
 	github.com/go-logr/logr v1.4.2 // indirect
 	github.com/go-ole/go-ole v1.3.0 // indirect
+	github.com/gogo/protobuf v1.3.2 // indirect
 	github.com/google/uuid v1.6.0 // indirect
 	github.com/gorilla/handlers v1.5.2 // indirect
 	github.com/jmespath/go-jmespath v0.4.0 // indirect
@@ -59,11 +61,13 @@ require (
 	github.com/russross/blackfriday/v2 v2.1.0 // indirect
 	github.com/shirou/gopsutil/v3 v3.24.5 // indirect
 	github.com/slok/goresilience v0.2.0 // indirect
+	github.com/x448/float16 v0.8.4 // indirect
 	github.com/yusufpapurcu/wmi v1.2.4 // indirect
-	golang.org/x/exp v0.0.0-20250711185948-6ae5c78190dc // indirect
+	golang.org/x/exp v0.0.0-20250718183923-645b1fa84792 // indirect
 	golang.org/x/sys v0.32.0 // indirect
 	golang.org/x/text v0.24.0 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20250324211829-b45e905df463 // indirect
+	gopkg.in/inf.v0 v0.9.1 // indirect
 	k8s.io/apimachinery v0.31.3 // indirect
 	k8s.io/klog/v2 v2.130.1 // indirect
 	k8s.io/mount-utils v0.32.3 // indirect
