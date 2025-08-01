@@ -129,6 +129,7 @@ func IdleTimeoutCopy(ctx context.Context, cancel context.CancelFunc, src io.Read
 			case <-ctx.Done():
 				done = true
 			case <-t.C:
+				logrus.WithField("HTTPTimeout", types.HTTPTimeout.Seconds()).Error("IO timeout exceeded, cancel the copy")
 				cancel()
 				done = true
 			case _, writeChOpen := <-writeSeekCh:
