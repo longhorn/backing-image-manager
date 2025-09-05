@@ -16,6 +16,7 @@ import (
 	"github.com/sirupsen/logrus"
 
 	butil "github.com/longhorn/backupstore/util"
+	imageutil "github.com/longhorn/go-common-libs/backingimage"
 	lhns "github.com/longhorn/go-common-libs/ns"
 	lhtypes "github.com/longhorn/go-common-libs/types"
 	sparserest "github.com/longhorn/sparse-tools/sparse/rest"
@@ -723,7 +724,7 @@ func (sf *SyncingFile) prepareCloneSourceFile(sourceBackingImage, sourceBackingI
 		writeZero = true
 
 		// If the source file is qcow2 when encrypting we need to convert and use its raw image
-		imgInfo, err := util.GetQemuImgInfo(sourceFile)
+		imgInfo, err := imageutil.NewQemuImgExecutor().GetImageInfo(sourceFile)
 		if err != nil {
 			return "", tmpRawFile, writeZero, errors.Wrapf(err, "failed to get source backing file %v qemu info", sourceFile)
 		}
@@ -921,7 +922,7 @@ func (sf *SyncingFile) finishProcessing(err error, dataEngine string) (finalErr 
 	// If the file is qcow2, we need to convert it to raw for dumping the data to the spdk lvol
 	// This will only happen when preparing the first backing image in data source.
 	if dataEngine == types.DataEnginev2 {
-		imgInfo, qemuErr := util.GetQemuImgInfo(sf.tmpFilePath)
+		imgInfo, qemuErr := imageutil.NewQemuImgExecutor().GetImageInfo(sf.tmpFilePath)
 		if qemuErr != nil {
 			finalErr = errors.Wrapf(qemuErr, "failed to detect if file %v is qcow2", sf.tmpFilePath)
 			return
@@ -1040,7 +1041,7 @@ func (sf *SyncingFile) updateSyncReadyNoLock() {
 func (sf *SyncingFile) updateVirtualSizeNoLock(filePath string) {
 	// This only works if filePath is valid - sometimes we need to call it
 	// with sf.tmpFilePath, sometimes with sf.filePath :-/
-	imgInfo, err := util.GetQemuImgInfo(filePath)
+	imgInfo, err := imageutil.NewQemuImgExecutor().GetImageInfo(filePath)
 	if err != nil {
 		sf.log.WithError(err).Warnf("SyncingFile: failed to get backing image virtual size")
 	}

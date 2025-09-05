@@ -6,16 +6,20 @@ import (
 	"os"
 	"sync"
 
-	"github.com/longhorn/backing-image-manager/pkg/types"
-	"github.com/longhorn/backing-image-manager/pkg/util"
+	"github.com/rancher/go-fibmap"
+	"github.com/sirupsen/logrus"
+
 	"github.com/longhorn/backupstore"
 	"github.com/longhorn/backupstore/common"
+	"github.com/longhorn/sparse-tools/sparse"
+
+	imageutil "github.com/longhorn/go-common-libs/backingimage"
+
 	enginetypes "github.com/longhorn/longhorn-engine/pkg/types"
 	engineutil "github.com/longhorn/longhorn-engine/pkg/util"
 	diskutil "github.com/longhorn/longhorn-engine/pkg/util/disk"
-	"github.com/longhorn/sparse-tools/sparse"
-	"github.com/rancher/go-fibmap"
-	"github.com/sirupsen/logrus"
+
+	"github.com/longhorn/backing-image-manager/pkg/types"
 )
 
 const (
@@ -185,7 +189,7 @@ func OpenBackingImage(path string) (*BackingImage, error) {
 		return nil, err
 	}
 
-	imgInfo, err := util.GetQemuImgInfo(file)
+	imgInfo, err := imageutil.NewQemuImgExecutor().GetImageInfo(file)
 	if err != nil {
 		return nil, err
 	}
