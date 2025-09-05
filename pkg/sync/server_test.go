@@ -16,8 +16,9 @@ import (
 
 	"github.com/sirupsen/logrus"
 
-	"github.com/longhorn/backing-image-manager/api"
+	imageutil "github.com/longhorn/go-common-libs/backingimage"
 
+	"github.com/longhorn/backing-image-manager/api"
 	"github.com/longhorn/backing-image-manager/pkg/client"
 	"github.com/longhorn/backing-image-manager/pkg/types"
 	"github.com/longhorn/backing-image-manager/pkg/util"
@@ -507,7 +508,7 @@ func (s *SyncTestSuite) TestDownloadToDst(c *C) {
 	c.Assert(err, IsNil)
 	c.Assert(downloadChecksum, Equals, checksum)
 	// Downloaded file can be identified as a qcow2 file as well.
-	downloadFileInfo, err := util.GetQemuImgInfo(unzipDownloadFilePath)
+	downloadFileInfo, err := imageutil.NewQemuImgExecutor().GetImageInfo(unzipDownloadFilePath)
 	c.Assert(err, IsNil)
 	c.Assert(downloadFileInfo.Format, Equals, "qcow2")
 }
@@ -843,7 +844,7 @@ func createQcow2File(filePath string, sizeInGB int64) error {
 	// by default". The least worst workaround for this I could think of
 	// is using `dd` to stick an extra 512 byte block of zeros on the end
 	// if the file size isn't evenly divisible by 512.
-	err := exec.Command(util.QemuImgBinary, "create", "-f", "qcow2", filePath, strconv.FormatInt(sizeInGB, 10)+"G").Run()
+	_, err := imageutil.NewQemuImgExecutor().Exec([]string{}, "create", "-f", "qcow2", filePath, strconv.FormatInt(sizeInGB, 10)+"G")
 	if err != nil {
 		return err
 	}
