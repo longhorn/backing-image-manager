@@ -172,8 +172,14 @@ github.com/longhorn/backupstore/s3
 github.com/longhorn/backupstore/types
 github.com/longhorn/backupstore/util
 github.com/longhorn/backupstore/vfs
+<<<<<<< HEAD
 # github.com/longhorn/go-common-libs v0.0.0-20250809060702-aec53ac032f0
 ## explicit; go 1.23.0
+=======
+# github.com/longhorn/go-common-libs v0.0.0-20250905093241-e9576a7c89fa
+## explicit; go 1.24.0
+github.com/longhorn/go-common-libs/backingimage
+>>>>>>> 63a873b (chore: extract qemu-img utilities to common lib)
 github.com/longhorn/go-common-libs/backup
 github.com/longhorn/go-common-libs/bitmap
 github.com/longhorn/go-common-libs/exec

@@ -8,10 +8,17 @@ require (
 	github.com/golang/protobuf v1.5.4
 	github.com/gorilla/mux v1.8.1
 	github.com/longhorn/backupstore v0.0.0-20250804022317-794abf817297
+<<<<<<< HEAD
 	github.com/longhorn/go-common-libs v0.0.0-20250809060702-aec53ac032f0
 	github.com/longhorn/longhorn-engine v1.8.2
 	github.com/longhorn/sparse-tools v0.0.0-20241216160947-2b328f0fa59c
 	github.com/longhorn/types v0.0.0-20250710112743-e3a1e9e2a9c1
+=======
+	github.com/longhorn/go-common-libs v0.0.0-20250905093241-e9576a7c89fa
+	github.com/longhorn/longhorn-engine v1.9.1
+	github.com/longhorn/sparse-tools v0.0.0-20250826041019-4aae87cb253a
+	github.com/longhorn/types v0.0.0-20250831081209-ea63b0b5f6e1
+>>>>>>> 63a873b (chore: extract qemu-img utilities to common lib)
 	github.com/pkg/errors v0.9.1
 	github.com/rancher/go-fibmap v0.0.0-20160418233256-5fc9f8c1ed47
 	github.com/sirupsen/logrus v1.9.3
