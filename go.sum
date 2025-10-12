@@ -99,8 +99,8 @@ github.com/longhorn/longhorn-engine v1.9.2 h1:2WB+5QENqO2xtVOJfxa0nX1D40/Qpxu8YL
 github.com/longhorn/longhorn-engine v1.9.2/go.mod h1:JwIMErlXODX8Ee4P4CrShkX0Q82+0gUIA5bzgC10s0c=
 github.com/longhorn/sparse-tools v0.0.0-20250826041019-4aae87cb253a h1:uiECueW4EyOjfaw0GgKlbJjAjDBgQlsDiQjXDU262VY=
 github.com/longhorn/sparse-tools v0.0.0-20250826041019-4aae87cb253a/go.mod h1:dfbJqfI8+T9ZCp5zhTYcBi/64hPBNt5/vFF3gTlfMmc=
-github.com/longhorn/types v0.0.0-20250915085125-0638a2eac534 h1:x8iHLF2GMcPAkcxwUIDcvWRlI5wdO5y5ucUJCtP2MNU=
-github.com/longhorn/types v0.0.0-20250915085125-0638a2eac534/go.mod h1:8aYKwOZk/8r1LIukSAmrjI5DL2+PyRcyeflhDLLhROw=
+github.com/longhorn/types v0.0.0-20251012091916-f701e0df060f h1:NQyZtWug42tJ1RDJCEry5uolJaeyWGflfKnXJd66evU=
+github.com/longhorn/types v0.0.0-20251012091916-f701e0df060f/go.mod h1:uRrQ6Am55uqSvPeV1J4TBrC9a2QtTE9SD+SDCkXFrfY=
 github.com/matttproud/golang_protobuf_extensions v1.0.1/go.mod h1:D8He9yQNgCq6Z5Ld7szi9bcBfOoFv/3dc6xSMkL2PC0=
 github.com/matttproud/golang_protobuf_extensions v1.0.4 h1:mmDVorXM7PCGKw94cs5zkfA9PSy5pEvNWRP0ET0TIVo=
 github.com/matttproud/golang_protobuf_extensions v1.0.4/go.mod h1:BSXmuO+STAnVfrANrmjBb36TMTDstsz7MSK+HVaYKv4=
