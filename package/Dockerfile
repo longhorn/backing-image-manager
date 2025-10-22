@@ -29,7 +29,7 @@ RUN zypper -n addrepo --refresh https://download.opensuse.org/repositories/syste
     zypper update -y
 
 RUN zypper -n install \
-    sg3_utils iputils qemu-tools iproute2 e2fsprogs e2fsprogs-devel xfsprogs xfsprogs-devel
+    sg3_utils iputils qemu-tools iproute2
 
 COPY --from=builder /app/bin/backing-image-manager-${ARCH} /usr/local/bin/backing-image-manager
 RUN chmod +x /usr/local/bin/backing-image-manager
