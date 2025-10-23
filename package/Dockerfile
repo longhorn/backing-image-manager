@@ -28,7 +28,7 @@ RUN zypper -n addrepo --refresh https://download.opensuse.org/repositories/syste
     zypper -n ref && \
     zypper update -y
 
-RUN zypper -n install qemu-tools
+#RUN zypper -n install qemu-tools
 
 COPY --from=builder /app/bin/backing-image-manager-${ARCH} /usr/local/bin/backing-image-manager
 RUN chmod +x /usr/local/bin/backing-image-manager
