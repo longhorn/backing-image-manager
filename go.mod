@@ -7,18 +7,18 @@ toolchain go1.23.6
 require (
 	github.com/golang/protobuf v1.5.4
 	github.com/gorilla/mux v1.8.1
-	github.com/longhorn/backupstore v0.0.0-20250804022317-794abf817297
-	github.com/longhorn/go-common-libs v0.0.0-20250809060702-aec53ac032f0
+	github.com/longhorn/backupstore 53b736c32aef
+	github.com/longhorn/go-common-libs 3788c6f8aba8
 	github.com/longhorn/longhorn-engine v1.8.2
-	github.com/longhorn/sparse-tools v0.0.0-20241216160947-2b328f0fa59c
-	github.com/longhorn/types v0.0.0-20250710112743-e3a1e9e2a9c1
+	github.com/longhorn/sparse-tools ae3aca526fd7
+	github.com/longhorn/types 2b0f01ee4a71
 	github.com/pkg/errors v0.9.1
 	github.com/rancher/go-fibmap v0.0.0-20160418233256-5fc9f8c1ed47
 	github.com/sirupsen/logrus v1.9.3
 	github.com/urfave/cli v1.22.17
 	golang.org/x/net v0.38.0
 	google.golang.org/grpc v1.73.0
-	google.golang.org/protobuf v1.36.7
+	google.golang.org/protobuf v1.36.10
 	gopkg.in/check.v1 v1.0.0-20201130134442-10cb98267c6c
 )
 
