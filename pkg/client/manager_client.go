@@ -269,6 +269,8 @@ func (cli *BackingImageManagerClient) Watch() (*api.BackingImageStream, error) {
 	ctx, cancel := context.WithCancel(context.Background())
 	stream, err := client.Watch(ctx, &emptypb.Empty{})
 	if err != nil {
+		cancel()
+		_ = conn.Close()
 		return nil, err
 	}
 	return api.NewBackingImageStream(conn, cancel, stream), nil
