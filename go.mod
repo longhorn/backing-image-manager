@@ -7,7 +7,7 @@ toolchain go1.25.4
 require (
 	github.com/golang/protobuf v1.5.4
 	github.com/gorilla/mux v1.8.1
-	github.com/longhorn/backupstore v0.0.0-20251123052608-f16bd24911d3
+	github.com/longhorn/backupstore v0.0.0-20251123054148-021939243385
 	github.com/longhorn/go-common-libs v0.0.0-20251116145113-3788c6f8aba8
 	github.com/longhorn/longhorn-engine v1.10.1
 	github.com/longhorn/sparse-tools v0.0.0-20251020055717-ae3aca526fd7
