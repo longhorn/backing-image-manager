@@ -7,8 +7,8 @@ toolchain go1.25.5
 require (
 	github.com/golang/protobuf v1.5.4
 	github.com/gorilla/mux v1.8.1
-	github.com/longhorn/backupstore v0.0.0-20251207100523-1140ccc38333
-	github.com/longhorn/go-common-libs v0.0.0-20251130104056-3332521977c9
+	github.com/longhorn/backupstore v0.0.0-20251213143132-51fdc08d1cd9
+	github.com/longhorn/go-common-libs v0.0.0-20251213114131-1a1ec1f0270e
 	github.com/longhorn/longhorn-engine v1.9.2
 	github.com/longhorn/sparse-tools v0.0.0-20251020055717-ae3aca526fd7
 	github.com/longhorn/types v0.0.0-20251207085945-9c40bd62daff
@@ -17,7 +17,7 @@ require (
 	github.com/sirupsen/logrus v1.9.3
 	github.com/urfave/cli v1.22.17
 	google.golang.org/grpc v1.77.0
-	google.golang.org/protobuf v1.36.10
+	google.golang.org/protobuf v1.36.11
 	gopkg.in/check.v1 v1.0.0-20201130134442-10cb98267c6c
 )
 
@@ -84,7 +84,7 @@ require (
 	github.com/slok/goresilience v0.2.0 // indirect
 	github.com/x448/float16 v0.8.4 // indirect
 	github.com/yusufpapurcu/wmi v1.2.4 // indirect
-	golang.org/x/exp v0.0.0-20251125195548-87e1e737ad39 // indirect
+	golang.org/x/exp v0.0.0-20251209150349-8475f28825e9 // indirect
 	golang.org/x/net v0.47.0 // indirect
 	golang.org/x/sys v0.38.0 // indirect
 	golang.org/x/text v0.31.0 // indirect
