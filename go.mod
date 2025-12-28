@@ -11,7 +11,7 @@ require (
 	github.com/longhorn/go-common-libs v0.0.0-20251220083855-f666c812e595
 	github.com/longhorn/longhorn-engine v1.10.1
 	github.com/longhorn/sparse-tools v0.0.0-20251020055717-ae3aca526fd7
-	github.com/longhorn/types v0.0.0-20251218094636-43d032f49660
+	github.com/longhorn/types v0.0.0-20251224083914-4e86c5c8ca75
 	github.com/pkg/errors v0.9.1
 	github.com/rancher/go-fibmap v0.0.0-20160418233256-5fc9f8c1ed47
 	github.com/sirupsen/logrus v1.9.3
