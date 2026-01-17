@@ -1,6 +1,7 @@
 package datasource
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -13,7 +14,6 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
-	"golang.org/x/net/context"
 
 	repclient "github.com/longhorn/longhorn-engine/pkg/replica/client"
 
