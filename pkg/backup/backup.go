@@ -8,7 +8,8 @@ import (
 	"github.com/longhorn/backing-image-manager/pkg/util"
 	"github.com/longhorn/backupstore/backupbackingimage"
 	engineutil "github.com/longhorn/longhorn-engine/pkg/util"
-	"github.com/pkg/errors"
+
+	"github.com/cockroachdb/errors"
 	"github.com/sirupsen/logrus"
 
 	// Involve backupstore drivers for registration
