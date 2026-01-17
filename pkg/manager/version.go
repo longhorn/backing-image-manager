@@ -1,8 +1,10 @@
 package manager
 
 import (
+	"context"
+
 	rpc "github.com/longhorn/types/pkg/generated/bimrpc"
-	"golang.org/x/net/context"
+
 	"google.golang.org/protobuf/types/known/emptypb"
 
 	"github.com/longhorn/backing-image-manager/pkg/meta"
