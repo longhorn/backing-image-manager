@@ -108,6 +108,7 @@ func DetectGRPCServerAvailability(address string, waitIntervalInSecond int, shou
 			grpc.WithTransportCredentials(insecure.NewCredentials()),
 			grpc.WithNoProxy(),
 			grpc.WithBlock(), // nolint: staticcheck
+			grpc.WithDisableServiceConfig(),
 		}
 		conn, err := grpc.DialContext(ctx, address, grpcOpts...) // nolint: staticcheck
 		defer cancel()
