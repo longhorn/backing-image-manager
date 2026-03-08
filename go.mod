@@ -2,21 +2,21 @@ module github.com/longhorn/backing-image-manager
 
 go 1.25.0
 
-toolchain go1.26.0
+toolchain go1.26.1
 
 require (
 	github.com/golang/protobuf v1.5.4
 	github.com/gorilla/mux v1.8.1
-	github.com/longhorn/backupstore v0.0.0-20260304025831-03d9bbc06a99
-	github.com/longhorn/go-common-libs v0.0.0-20260223034035-98eef598b5bd
+	github.com/longhorn/backupstore v0.0.0-20260306105805-ea08687ca2cd
+	github.com/longhorn/go-common-libs v0.0.0-20260307044012-ae36fc92e72e
 	github.com/longhorn/longhorn-engine v1.9.2
 	github.com/longhorn/sparse-tools v0.0.0-20260117144214-070853c24eda
-	github.com/longhorn/types v0.0.0-20260118234234-63598269a247
+	github.com/longhorn/types v0.0.0-20260304051809-1002ef5005c7
 	github.com/pkg/errors v0.9.1
 	github.com/rancher/go-fibmap v0.0.0-20160418233256-5fc9f8c1ed47
 	github.com/sirupsen/logrus v1.9.4
 	github.com/urfave/cli v1.22.17
-	google.golang.org/grpc v1.79.1
+	google.golang.org/grpc v1.79.2
 	google.golang.org/protobuf v1.36.11
 	gopkg.in/check.v1 v1.0.0-20201130134442-10cb98267c6c
 )
