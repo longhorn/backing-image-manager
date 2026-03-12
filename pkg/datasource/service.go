@@ -352,7 +352,10 @@ func (s *Service) Upload(writer http.ResponseWriter, request *http.Request) {
 	request.URL.RawQuery = q.Encode()
 	s.log.Debugf("DataSource Service: forwarding upload request to sync server %v", request.URL.String())
 
-	proxy := &httputil.ReverseProxy{Director: func(r *http.Request) {}}
+	proxy := &httputil.ReverseProxy{
+		Director:  func(r *http.Request) {},
+		Transport: util.NoProxyTransport,
+	}
 	proxy.ServeHTTP(writer, request)
 }
 
