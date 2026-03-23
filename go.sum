@@ -77,8 +77,6 @@ github.com/davecgh/go-spew v1.1.0/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSs
 github.com/davecgh/go-spew v1.1.1/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
 github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc h1:U9qPSI2PIWSS1VwoXQT9A3Wy9MM3WgvqSxFWenqJduM=
 github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
-github.com/davidcheng0922/go-common-libs v0.0.0-20260323032226-99d6d1e3b6af h1:Q4GgMDvAE+vTbFTgEOzJf4nfHnD+fxky5NJ6Sv8wgL4=
-github.com/davidcheng0922/go-common-libs v0.0.0-20260323032226-99d6d1e3b6af/go.mod h1:AeRjIP0TQpgrFuUliwemkb5qNOWNLi4xdkTx3YCD/j8=
 github.com/felixge/httpsnoop v1.0.4 h1:NFTV2Zj1bL4mc9sqWACXbQFVBBg2W3GPvqp8/ESS2Wg=
 github.com/felixge/httpsnoop v1.0.4/go.mod h1:m8KPJKqk1gH5J9DgRY2ASl2lWCfGKXixSwevea8zH2U=
 github.com/fxamacker/cbor/v2 v2.7.0 h1:iM5WgngdRBanHcxugY4JySA0nk1wZorNOpTgCMedv5E=
@@ -129,6 +127,8 @@ github.com/kylelemons/godebug v1.1.0 h1:RPNrshWIDI6G2gRW9EHilWtl7Z6Sb1BR0xunSBf0
 github.com/kylelemons/godebug v1.1.0/go.mod h1:9/0rRGxNHcop5bhtWyNeEfOS8JIWk580+fNqagV/RAw=
 github.com/longhorn/backupstore v0.0.0-20260306105805-ea08687ca2cd h1:8twmeae8JY5EJBh8cW3/GnTgHat8vRPaM0yyid/uU5U=
 github.com/longhorn/backupstore v0.0.0-20260306105805-ea08687ca2cd/go.mod h1:fAsL1BKyKV1zN5oBIhJgPG9ENEChDS+FEQRHNMUpBzk=
+github.com/longhorn/go-common-libs v0.0.0-20260323115845-a31a74cd171a h1:EjCbfPGHOj/h3u/KQBpcM7z9qMrapRAJlTO5jKopPbk=
+github.com/longhorn/go-common-libs v0.0.0-20260323115845-a31a74cd171a/go.mod h1:AeRjIP0TQpgrFuUliwemkb5qNOWNLi4xdkTx3YCD/j8=
 github.com/longhorn/go-iscsi-helper v0.0.0-20250810143507-5c5f9a0060b4 h1:i6Wac1SO2YwXkqZetnc1KZc+2PnFZ9xSUs99nFAhHiU=
 github.com/longhorn/go-iscsi-helper v0.0.0-20250810143507-5c5f9a0060b4/go.mod h1:EIkghFAyqv+8ktznS4a+leJ6KKQLPt9zrcdS2Zsfk+M=
 github.com/longhorn/longhorn-engine v1.9.2 h1:2WB+5QENqO2xtVOJfxa0nX1D40/Qpxu8YLzwaxgiOBg=

@@ -303,7 +303,7 @@ github.com/longhorn/backupstore/s3
 github.com/longhorn/backupstore/types
 github.com/longhorn/backupstore/util
 github.com/longhorn/backupstore/vfs
-# github.com/longhorn/go-common-libs v0.0.0-20260307044012-ae36fc92e72e => github.com/davidcheng0922/go-common-libs v0.0.0-20260323032226-99d6d1e3b6af
+# github.com/longhorn/go-common-libs v0.0.0-20260323115845-a31a74cd171a
 ## explicit; go 1.25.0
 github.com/longhorn/go-common-libs/backingimage
 github.com/longhorn/go-common-libs/backup
@@ -590,4 +590,3 @@ k8s.io/utils/clock
 k8s.io/utils/exec
 k8s.io/utils/io
 k8s.io/utils/keymutex
-# github.com/longhorn/go-common-libs => github.com/davidcheng0922/go-common-libs v0.0.0-20260323032226-99d6d1e3b6af
