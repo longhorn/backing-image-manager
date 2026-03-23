@@ -8,6 +8,7 @@ import (
 	"github.com/sirupsen/logrus"
 
 	"github.com/longhorn/backing-image-manager/pkg/types"
+
 	lhns "github.com/longhorn/go-common-libs/ns"
 	lhtypes "github.com/longhorn/go-common-libs/types"
 )
@@ -19,21 +20,35 @@ const (
 	CryptoKeyDefaultHash   = "sha256"
 	CryptoKeyDefaultSize   = "256"
 	CryptoDefaultPBKDF     = "argon2i"
+
+	// Prefer no default value to avoid changing the existing cryptsetup behavior.
+	// When empty, Longhorn does not pass the argument to cryptsetup, and cryptsetup will use its default value.
+	CryptoDefaultPBKDFForceIterations = ""
+	CryptoDefaultPBKDFMemory          = ""
 )
 
 // EncryptParams keeps the customized cipher options from the secret CR
 type EncryptParams struct {
-	KeyProvider string
-	KeyCipher   string
-	KeyHash     string
-	KeySize     string
-	PBKDF       string
+	KeyProvider          string
+	KeyCipher            string
+	KeyHash              string
+	KeySize              string
+	PBKDF                string
+	PBKDFForceIterations string // Optional. Passed to cryptsetup as --pbkdf-force-iterations when set.
+	PBKDFMemory          string // Optional. Passed to cryptsetup as --pbkdf-memory when set. Unit: KiB.
 }
 
-func NewEncryptParams(keyProvider, keyCipher, keyHash, keySize, pbkdf string) *EncryptParams {
-	return &EncryptParams{KeyProvider: keyProvider, KeyCipher: keyCipher, KeyHash: keyHash, KeySize: keySize, PBKDF: pbkdf}
+func NewEncryptParams(keyProvider, keyCipher, keyHash, keySize, pbkdf, pbkdfForceIterations, pbkdfMemory string) *EncryptParams {
+	return &EncryptParams{
+		KeyProvider:          keyProvider,
+		KeyCipher:            keyCipher,
+		KeyHash:              keyHash,
+		KeySize:              keySize,
+		PBKDF:                pbkdf,
+		PBKDFForceIterations: pbkdfForceIterations,
+		PBKDFMemory:          pbkdfMemory,
+	}
 }
-
 func (cp *EncryptParams) GetKeyCipher() string {
 	if cp.KeyCipher == "" {
 		return CryptoKeyDefaultCipher
@@ -62,6 +77,20 @@ func (cp *EncryptParams) GetPBKDF() string {
 	return cp.PBKDF
 }
 
+func (cp *EncryptParams) GetPBKDFForceIterations() string {
+	if cp.PBKDFForceIterations == "" {
+		return CryptoDefaultPBKDFForceIterations
+	}
+	return cp.PBKDFForceIterations
+}
+
+func (cp *EncryptParams) GetPBKDFMemory() string {
+	if cp.PBKDFMemory == "" {
+		return CryptoDefaultPBKDFMemory
+	}
+	return cp.PBKDFMemory
+}
+
 // EncryptBackingImage encrypts provided device with LUKS.
 func EncryptBackingImage(devicePath, passphrase string, cryptoParams *EncryptParams) error {
 	namespaces := []lhtypes.Namespace{lhtypes.NamespaceMnt, lhtypes.NamespaceIpc}
@@ -71,13 +100,16 @@ func EncryptBackingImage(devicePath, passphrase string, cryptoParams *EncryptPar
 	}
 
 	logrus.Infof("Encrypting device %s with LUKS", devicePath)
-	if _, err := nsexec.LuksFormat(
-		devicePath, passphrase,
-		cryptoParams.GetKeyCipher(),
-		cryptoParams.GetKeyHash(),
-		cryptoParams.GetKeySize(),
-		cryptoParams.GetPBKDF(),
-		lhtypes.LuksTimeout); err != nil {
+	options := &lhns.LuksFormatOptions{
+		KeyCipher:            cryptoParams.GetKeyCipher(),
+		KeyHash:              cryptoParams.GetKeyHash(),
+		KeySize:              cryptoParams.GetKeySize(),
+		PBKDF:                cryptoParams.GetPBKDF(),
+		PBKDFForceIterations: cryptoParams.GetPBKDFForceIterations(),
+		PBKDFMemory:          cryptoParams.GetPBKDFMemory(),
+	}
+
+	if _, err := nsexec.LuksFormat(devicePath, passphrase, options, lhtypes.LuksTimeout); err != nil {
 		return errors.Wrapf(err, "failed to encrypt device %s with LUKS", devicePath)
 	}
 	return nil
