@@ -1,6 +1,7 @@
 package manager
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -11,12 +12,8 @@ import (
 	"time"
 
 	"github.com/golang/protobuf/ptypes/empty"
-	butil "github.com/longhorn/backupstore/util"
-	lhBitmap "github.com/longhorn/go-common-libs/bitmap"
-	rpc "github.com/longhorn/types/pkg/generated/bimrpc"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
-	"golang.org/x/net/context"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/emptypb"
@@ -27,6 +24,10 @@ import (
 	"github.com/longhorn/backing-image-manager/pkg/types"
 	"github.com/longhorn/backing-image-manager/pkg/util"
 	"github.com/longhorn/backing-image-manager/pkg/util/broadcaster"
+
+	butil "github.com/longhorn/backupstore/util"
+	lhBitmap "github.com/longhorn/go-common-libs/bitmap"
+	rpc "github.com/longhorn/types/pkg/generated/bimrpc"
 )
 
 type Manager struct {
