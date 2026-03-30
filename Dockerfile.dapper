@@ -4,6 +4,8 @@ ARG DAPPER_HOST_ARCH
 ARG http_proxy
 ARG https_proxy
 
+ENV GOLANGCI_LINT_VERSION=v2.11.4
+
 ENV HOST_ARCH=${DAPPER_HOST_ARCH} ARCH=${DAPPER_HOST_ARCH}
 ENV DAPPER_DOCKER_SOCKET true
 ENV DAPPER_ENV TAG REPO DRONE_REPO DRONE_PULL_REQUEST DRONE_COMMIT_REF ARCHS
@@ -24,7 +26,9 @@ RUN zypper -n install cmake wget curl git less file \
     perl-Config-General libaio-devel glibc-devel-static glibc-devel iptables libltdl7 libdevmapper1_03 iproute2 jq docker gcc
 
 ## Install golangci-lint
-RUN curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(go env GOPATH)/bin latest
+RUN curl -fsSL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh -o /tmp/install.sh \
+    && chmod +x /tmp/install.sh \
+    && /tmp/install.sh -b /usr/local/bin ${GOLANGCI_LINT_VERSION}
 
 ## Install Docker Buildx: The docker version in dapper is too old to have buildx. Install it manually.
 RUN curl -sSfLO https://github.com/docker/buildx/releases/download/v0.13.1/buildx-v0.13.1.linux-${ARCH} && \
