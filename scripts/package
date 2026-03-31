@@ -19,9 +19,35 @@ MACHINE=${MACHINE:-''}
 TARGET_PLATFORMS=${TARGET_PLATFORMS:-''}
 IID_FILE=${IID_FILE:-''}
 IID_FILE_FLAG=${IID_FILE_FLAG:-''}
+SRC_BRANCH=${SRC_BRANCH:-''}
+SRC_TAG=${SRC_TAG:-''}
 
-if [[ -z "${TAG}" ]]; then
-    if API_VERSION=$(./bin/backing-image-manager version --client-only | jq ".clientVersion.backingImageManagerAPIVersion"); then
+BUILDER_ARGS=()
+[[ $MACHINE ]] && BUILDER_ARGS+=('--builder' "$MACHINE")
+
+BUILDX_ARGS=()
+
+case $(uname -m) in
+aarch64 | arm64)
+    BUILDERARCH=arm64
+    ;;
+x86_64)
+    BUILDERARCH=amd64
+    ;;
+*)
+    echo "$(uname -a): unsupported architecture"
+    exit 1
+esac
+
+if [[ ${TARGET_PLATFORMS} ]] ; then
+    IFS='/' read -r OS ARCH <<<"${TARGET_PLATFORMS}"
+    BUILDX_ARGS+=('--platform' "${TARGET_PLATFORMS}")
+else
+    BUILDX_ARGS+=('--platform' "linux/${BUILDERARCH}")
+fi
+
+if [[ -z $TAG ]]; then
+    if API_VERSION=$(./bin/backing-image-manager-"${BUILDERARCH}" version --client-only | jq ".clientVersion.backingImageManagerAPIVersion"); then
       TAG="v${API_VERSION}_$(date -u +%Y%m%d)"
     else
       TAG="${VERSION}"
@@ -30,13 +56,8 @@ fi
 
 IMAGE="${REPO}/${IMAGE_NAME}:${TAG}"
 
-BUILDER_ARGS=()
-[[ ${MACHINE} ]] && BUILDER_ARGS+=('--builder' "${MACHINE}")
-
 IFS=' ' read -r -a IID_FILE_ARGS <<<"${IID_FILE_FLAG}"
 [[ -n "${IID_FILE}" && ${#IID_FILE_ARGS} == 0 ]] && IID_FILE_ARGS=('--iidfile' "${IID_FILE}")
-
-BUILDX_ARGS=()
 
 if [[ "${PUSH}" == 'true' ]]; then
     BUILDX_ARGS+=('--push')
@@ -44,14 +65,26 @@ else
     BUILDX_ARGS+=('--load')
 fi
 
-[[ ${IS_SECURE} == 'true' ]] && BUILDX_ARGS+=('--sbom=true' '--attest' 'type=provenance,mode=max')
-[[ ${TARGET_PLATFORMS} ]] && BUILDX_ARGS+=('--platform' "${TARGET_PLATFORMS}")
+[[ $IS_SECURE == 'true' ]] && BUILDX_ARGS+=('--sbom=true' '--attest' 'type=provenance,mode=max')
 
+IMAGE_ARGS=()
+[[ -n "${SRC_BRANCH}" ]] && IMAGE_ARGS+=(--build-arg SRC_BRANCH="${SRC_BRANCH}")
+[[ -n "${SRC_TAG}" ]] && IMAGE_ARGS+=(--build-arg SRC_TAG="${SRC_TAG}")
+
+# update base IMAGE to get latest changes
+grep 'FROM.*/' package/Dockerfile | awk '{print $2}' | while read -r STAGE_BASE_IMAGE
+do
+    docker pull "${STAGE_BASE_IMAGE}"
+done
+BASE_IMAGE=$(grep 'FROM.*AS release' package/Dockerfile | awk '{print $2}')
+
+echo "Building image ${IMAGE} based on ${BASE_IMAGE} with ARCH=${ARCH} SRC_BRANCH=${SRC_BRANCH} SRC_TAG=${SRC_TAG}"
 IMAGE_BUILD_CMD_ARGS=(
     build --no-cache \
     "${BUILDER_ARGS[@]}" \
     "${IID_FILE_ARGS[@]}" \
     "${BUILDX_ARGS[@]}" \
+    "${IMAGE_ARGS[@]}" \
     -t "${IMAGE}" -f package/Dockerfile .
 )
 echo "${BUILD_CMD[@]}" "${IMAGE_BUILD_CMD_ARGS[@]}"
