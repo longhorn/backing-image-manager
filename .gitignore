@@ -20,9 +20,10 @@
 # vim temp file
 .*.swp
 
-# Rancher
-.dapper
+# Misc
 /bin
 
 # Protocol buffer compilation
 .protobuild
+
+cscope*
