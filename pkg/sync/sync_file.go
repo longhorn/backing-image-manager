@@ -1154,10 +1154,7 @@ func (sf *SyncingFile) setupCryptoDevice(file string, needFormat bool, credentia
 	// If we are working on encryption, the target device has not been formatted with the cryptsetup and it needs to be formatted first.
 	// If we are working on decryption, the source is a encrypted file and we don't need to format the source device again or the metadata will be replaced.
 	if needFormat {
-		cryptoParams := crypto.NewEncryptParams(keyProvider,
-			credential[lhtypes.CryptoKeyCipher], credential[lhtypes.CryptoKeyHash], credential[lhtypes.CryptoKeySize],
-			credential[lhtypes.CryptoPBKDF], credential[lhtypes.CryptoPBKDFForceIterations], credential[lhtypes.CryptoPBKDFMemory])
-
+		cryptoParams := crypto.NewEncryptParams(keyProvider, credential[lhtypes.CryptoKeyCipher], credential[lhtypes.CryptoKeyHash], credential[lhtypes.CryptoKeySize], credential[lhtypes.CryptoPBKDF])
 		if err := crypto.EncryptBackingImage(loopDevicePath, passphrase, cryptoParams); err != nil {
 			return loopDevicePath, err
 		}
