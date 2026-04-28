@@ -71,12 +71,15 @@ func EncryptBackingImage(devicePath, passphrase string, cryptoParams *EncryptPar
 	}
 
 	logrus.Infof("Encrypting device %s with LUKS", devicePath)
+	options := &lhns.LuksFormatOptions{
+		KeyCipher: cryptoParams.GetKeyCipher(),
+		KeyHash:   cryptoParams.GetKeyHash(),
+		KeySize:   cryptoParams.GetKeySize(),
+		PBKDF:     cryptoParams.GetPBKDF(),
+	}
 	if _, err := nsexec.LuksFormat(
 		devicePath, passphrase,
-		cryptoParams.GetKeyCipher(),
-		cryptoParams.GetKeyHash(),
-		cryptoParams.GetKeySize(),
-		cryptoParams.GetPBKDF(),
+		options,
 		lhtypes.LuksTimeout); err != nil {
 		return errors.Wrapf(err, "failed to encrypt device %s with LUKS", devicePath)
 	}
