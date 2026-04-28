@@ -1,6 +1,7 @@
 package manager
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -11,15 +12,15 @@ import (
 	"time"
 
 	"github.com/golang/protobuf/ptypes/empty"
-	butil "github.com/longhorn/backupstore/util"
-	lhBitmap "github.com/longhorn/go-common-libs/bitmap"
-	rpc "github.com/longhorn/types/pkg/generated/bimrpc"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
-	"golang.org/x/net/context"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/emptypb"
+
+	butil "github.com/longhorn/backupstore/util"
+	lhBitmap "github.com/longhorn/go-common-libs/bitmap"
+	rpc "github.com/longhorn/types/pkg/generated/bimrpc"
 
 	"github.com/longhorn/backing-image-manager/api"
 	"github.com/longhorn/backing-image-manager/pkg/backup"
