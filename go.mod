@@ -8,8 +8,8 @@ require (
 	github.com/golang/protobuf v1.5.4
 	github.com/gorilla/mux v1.8.1
 	github.com/longhorn/backupstore v0.0.0-20260502085909-21ee466f5a8a
-	github.com/longhorn/go-common-libs v0.0.0-20260502033232-8cc14de85b45
-	github.com/longhorn/longhorn-engine v1.12.0-dev-20260419.0.20260429072047-589f2d5665a3
+	github.com/longhorn/go-common-libs v0.0.0-20260502161928-1e84fa75a8f1
+	github.com/longhorn/longhorn-engine v1.12.0-rc1
 	github.com/longhorn/sparse-tools v0.0.0-20260423074222-280e61de741a
 	github.com/longhorn/types v0.0.0-20260424095800-4b6385093e88
 	github.com/pkg/errors v0.9.1
@@ -17,7 +17,7 @@ require (
 	github.com/sirupsen/logrus v1.9.4
 	github.com/urfave/cli v1.22.17
 	google.golang.org/grpc v1.80.0
-	google.golang.org/protobuf v1.36.11
+	google.golang.org/protobuf v1.36.12-0.20260120151049-f2248ac996af
 	gopkg.in/check.v1 v1.0.0-20201130134442-10cb98267c6c
 )
 
@@ -51,7 +51,7 @@ require (
 	github.com/bits-and-blooms/bitset v1.12.0 // indirect
 	github.com/c9s/goprocinfo v0.0.0-20210130143923-c95fcf8c64a8 // indirect
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
-	github.com/cockroachdb/errors v1.12.0 // indirect
+	github.com/cockroachdb/errors v1.13.0 // indirect
 	github.com/cockroachdb/logtags v0.0.0-20230118201751-21c54148d20b // indirect
 	github.com/cockroachdb/redact v1.1.5 // indirect
 	github.com/cpuguy83/go-md2man/v2 v2.0.7 // indirect
@@ -59,7 +59,7 @@ require (
 	github.com/fxamacker/cbor/v2 v2.9.0 // indirect
 	github.com/gammazero/deque v0.2.1 // indirect
 	github.com/gammazero/workerpool v1.1.3 // indirect
-	github.com/getsentry/sentry-go v0.27.0 // indirect
+	github.com/getsentry/sentry-go v0.46.0 // indirect
 	github.com/go-logr/logr v1.4.3 // indirect
 	github.com/go-ole/go-ole v1.3.0 // indirect
 	github.com/gogo/protobuf v1.3.2 // indirect
@@ -84,14 +84,13 @@ require (
 	github.com/slok/goresilience v0.2.0 // indirect
 	github.com/x448/float16 v0.8.4 // indirect
 	github.com/yusufpapurcu/wmi v1.2.4 // indirect
-	go.uber.org/goleak v1.3.0 // indirect
 	golang.org/x/exp v0.0.0-20260410095643-746e56fc9e2f // indirect
 	golang.org/x/net v0.49.0 // indirect
 	golang.org/x/sys v0.43.0 // indirect
 	golang.org/x/text v0.33.0 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20260120221211-b8f7ae30c516 // indirect
 	gopkg.in/inf.v0 v0.9.1 // indirect
-	k8s.io/apimachinery v0.35.3 // indirect
+	k8s.io/apimachinery v0.36.0 // indirect
 	k8s.io/klog/v2 v2.140.0 // indirect
 	k8s.io/mount-utils v0.36.0 // indirect
 	k8s.io/utils v0.0.0-20260210185600-b8788abfbbc2 // indirect

@@ -196,8 +196,8 @@ github.com/c9s/goprocinfo/linux
 # github.com/cespare/xxhash/v2 v2.3.0
 ## explicit; go 1.11
 github.com/cespare/xxhash/v2
-# github.com/cockroachdb/errors v1.12.0
-## explicit; go 1.23.0
+# github.com/cockroachdb/errors v1.13.0
+## explicit; go 1.25.0
 github.com/cockroachdb/errors
 github.com/cockroachdb/errors/assert
 github.com/cockroachdb/errors/barriers
@@ -246,14 +246,20 @@ github.com/gammazero/deque
 # github.com/gammazero/workerpool v1.1.3
 ## explicit; go 1.18
 github.com/gammazero/workerpool
-# github.com/getsentry/sentry-go v0.27.0
-## explicit; go 1.18
+# github.com/getsentry/sentry-go v0.46.0
+## explicit; go 1.25.0
 github.com/getsentry/sentry-go
+github.com/getsentry/sentry-go/attribute
 github.com/getsentry/sentry-go/internal/debug
+github.com/getsentry/sentry-go/internal/debuglog
+github.com/getsentry/sentry-go/internal/http
 github.com/getsentry/sentry-go/internal/otel/baggage
 github.com/getsentry/sentry-go/internal/otel/baggage/internal/baggage
+github.com/getsentry/sentry-go/internal/protocol
 github.com/getsentry/sentry-go/internal/ratelimit
-github.com/getsentry/sentry-go/internal/traceparser
+github.com/getsentry/sentry-go/internal/telemetry
+github.com/getsentry/sentry-go/internal/util
+github.com/getsentry/sentry-go/report
 # github.com/go-logr/logr v1.4.3
 ## explicit; go 1.18
 github.com/go-logr/logr
@@ -303,7 +309,7 @@ github.com/longhorn/backupstore/s3
 github.com/longhorn/backupstore/types
 github.com/longhorn/backupstore/util
 github.com/longhorn/backupstore/vfs
-# github.com/longhorn/go-common-libs v0.0.0-20260502033232-8cc14de85b45
+# github.com/longhorn/go-common-libs v0.0.0-20260502161928-1e84fa75a8f1
 ## explicit; go 1.25.0
 github.com/longhorn/go-common-libs/backingimage
 github.com/longhorn/go-common-libs/backup
@@ -323,7 +329,7 @@ github.com/longhorn/go-iscsi-helper/iscsidev
 github.com/longhorn/go-iscsi-helper/longhorndev
 github.com/longhorn/go-iscsi-helper/types
 github.com/longhorn/go-iscsi-helper/util
-# github.com/longhorn/longhorn-engine v1.12.0-dev-20260419.0.20260429072047-589f2d5665a3
+# github.com/longhorn/longhorn-engine v1.12.0-rc1
 ## explicit; go 1.26.0
 github.com/longhorn/longhorn-engine/pkg/interceptor
 github.com/longhorn/longhorn-engine/pkg/replica/client
@@ -414,8 +420,6 @@ github.com/x448/float16
 # github.com/yusufpapurcu/wmi v1.2.4
 ## explicit; go 1.16
 github.com/yusufpapurcu/wmi
-# go.uber.org/goleak v1.3.0
-## explicit; go 1.20
 # golang.org/x/exp v0.0.0-20260410095643-746e56fc9e2f
 ## explicit; go 1.25.0
 golang.org/x/exp/constraints
@@ -518,7 +522,7 @@ google.golang.org/grpc/serviceconfig
 google.golang.org/grpc/stats
 google.golang.org/grpc/status
 google.golang.org/grpc/tap
-# google.golang.org/protobuf v1.36.11
+# google.golang.org/protobuf v1.36.12-0.20260120151049-f2248ac996af
 ## explicit; go 1.23
 google.golang.org/protobuf/encoding/protojson
 google.golang.org/protobuf/encoding/prototext
@@ -564,8 +568,8 @@ gopkg.in/check.v1
 # gopkg.in/inf.v0 v0.9.1
 ## explicit
 gopkg.in/inf.v0
-# k8s.io/apimachinery v0.35.3
-## explicit; go 1.25.0
+# k8s.io/apimachinery v0.36.0
+## explicit; go 1.26.0
 k8s.io/apimachinery/pkg/api/resource
 k8s.io/apimachinery/pkg/runtime/serializer/cbor/direct
 k8s.io/apimachinery/pkg/runtime/serializer/cbor/internal/modes
@@ -582,6 +586,8 @@ k8s.io/klog/v2/internal/dbg
 k8s.io/klog/v2/internal/serialize
 k8s.io/klog/v2/internal/severity
 k8s.io/klog/v2/internal/sloghandler
+k8s.io/klog/v2/internal/verbosity
+k8s.io/klog/v2/textlogger
 # k8s.io/mount-utils v0.36.0
 ## explicit; go 1.26.0
 k8s.io/mount-utils
