@@ -12,7 +12,7 @@ RUN chmod +x /app/scripts/build
 # Run the build script
 RUN /app/scripts/build
 
-FROM registry.suse.com/bci/bci-base:15.7@sha256:3267acc7b9744218250e91e1d2d3176a113d88c4c55158945beb46150c0c7df2
+FROM registry.suse.com/bci/bci-base:15.7@sha256:db2d7fc699a46f797023ee030e312be40859d514eb824cca216370775fd0f3b9
 
 ARG TARGETPLATFORM
 RUN if [ "$TARGETPLATFORM" != "linux/amd64" ] && [ "$TARGETPLATFORM" != "linux/arm64" ]; then \
