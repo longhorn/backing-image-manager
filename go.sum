@@ -13,6 +13,8 @@ github.com/AzureAD/microsoft-authentication-library-for-go v1.2.2/go.mod h1:wP83
 github.com/BurntSushi/toml v1.5.0/go.mod h1:ukJfTF/6rtPPRCnwkur4qwRxa8vTRFBF0uk2lLoLwho=
 github.com/RoaringBitmap/roaring v1.9.4 h1:yhEIoH4YezLYT04s1nHehNO64EKFTop/wBhxv2QzDdQ=
 github.com/RoaringBitmap/roaring v1.9.4/go.mod h1:6AXUsoIEzDTFFQCe1RbGA6uFONMhvejWj5rqITANK90=
+github.com/avast/retry-go/v4 v4.7.0 h1:yjDs35SlGvKwRNSykujfjdMxMhMQQM0TnIjJaHB+Zio=
+github.com/avast/retry-go/v4 v4.7.0/go.mod h1:ZMPDa3sY2bKgpLtap9JRUgk2yTAba7cgiFhqxY2Sg6Q=
 github.com/aws/aws-sdk-go-v2 v1.41.5 h1:dj5kopbwUsVUVFgO4Fi5BIT3t4WyqIDjGKCangnV/yY=
 github.com/aws/aws-sdk-go-v2 v1.41.5/go.mod h1:mwsPRE8ceUUpiTgF7QmQIJ7lgsKUPQOUl3o72QBrE1o=
 github.com/aws/aws-sdk-go-v2/aws/protocol/eventstream v1.7.8 h1:eBMB84YGghSocM7PsjmmPffTa+1FBUeNvGvFou6V/4o=
@@ -133,8 +135,8 @@ github.com/longhorn/go-iscsi-helper v0.0.0-20250810143507-5c5f9a0060b4 h1:i6Wac1
 github.com/longhorn/go-iscsi-helper v0.0.0-20250810143507-5c5f9a0060b4/go.mod h1:EIkghFAyqv+8ktznS4a+leJ6KKQLPt9zrcdS2Zsfk+M=
 github.com/longhorn/longhorn-engine v1.9.2 h1:2WB+5QENqO2xtVOJfxa0nX1D40/Qpxu8YLzwaxgiOBg=
 github.com/longhorn/longhorn-engine v1.9.2/go.mod h1:JwIMErlXODX8Ee4P4CrShkX0Q82+0gUIA5bzgC10s0c=
-github.com/longhorn/sparse-tools v0.0.0-20251020055717-ae3aca526fd7 h1:t+ufkrgYbdzSjfGmsorKS7wjHR8nkOtzlOQOVKTrYDk=
-github.com/longhorn/sparse-tools v0.0.0-20251020055717-ae3aca526fd7/go.mod h1:WfRkt5pFnDaULAjFtoGlWhwQwyIx/vgMnH+jXQNlnQ8=
+github.com/longhorn/sparse-tools v0.0.0-20260423074222-280e61de741a h1:xb71oeVPI7XZymAAG8ts5deC8s40dnX5IgxTYAB/qnk=
+github.com/longhorn/sparse-tools v0.0.0-20260423074222-280e61de741a/go.mod h1:d8l9nyC8No3PIfYHwZunnBj88y5M4sDM+h6uZyTtaNk=
 github.com/longhorn/types v0.0.0-20260327130848-66f6de8a2fb3 h1:g7+NsK5z7MkySxzSS5HpwXogiMefQdWkfbCmx5/TCaw=
 github.com/longhorn/types v0.0.0-20260327130848-66f6de8a2fb3/go.mod h1:JjRATl5N8MzlvUIDSFKOlsINg484dne7Y0c/r2x9i0I=
 github.com/matttproud/golang_protobuf_extensions v1.0.1/go.mod h1:D8He9yQNgCq6Z5Ld7szi9bcBfOoFv/3dc6xSMkL2PC0=

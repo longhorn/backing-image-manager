@@ -44,6 +44,9 @@ github.com/Azure/azure-sdk-for-go/sdk/storage/azblob/service
 ## explicit; go 1.14
 github.com/RoaringBitmap/roaring
 github.com/RoaringBitmap/roaring/internal
+# github.com/avast/retry-go/v4 v4.7.0
+## explicit; go 1.20
+github.com/avast/retry-go/v4
 # github.com/aws/aws-sdk-go-v2 v1.41.5
 ## explicit; go 1.24
 github.com/aws/aws-sdk-go-v2/aws
@@ -329,7 +332,7 @@ github.com/longhorn/longhorn-engine/pkg/replica/client
 github.com/longhorn/longhorn-engine/pkg/types
 github.com/longhorn/longhorn-engine/pkg/util
 github.com/longhorn/longhorn-engine/pkg/util/disk
-# github.com/longhorn/sparse-tools v0.0.0-20251020055717-ae3aca526fd7
+# github.com/longhorn/sparse-tools v0.0.0-20260423074222-280e61de741a
 ## explicit; go 1.24.0
 github.com/longhorn/sparse-tools/sparse
 github.com/longhorn/sparse-tools/sparse/rest
