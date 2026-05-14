@@ -99,7 +99,7 @@ github.com/aws/aws-sdk-go-v2/feature/ec2/imds/internal/config
 # github.com/aws/aws-sdk-go-v2/feature/s3/manager v1.19.8
 ## explicit; go 1.22
 github.com/aws/aws-sdk-go-v2/feature/s3/manager
-# github.com/aws/aws-sdk-go-v2/feature/s3/transfermanager v0.1.17
+# github.com/aws/aws-sdk-go-v2/feature/s3/transfermanager v0.1.18
 ## explicit; go 1.24
 github.com/aws/aws-sdk-go-v2/feature/s3/transfermanager
 github.com/aws/aws-sdk-go-v2/feature/s3/transfermanager/types
@@ -128,7 +128,7 @@ github.com/aws/aws-sdk-go-v2/service/internal/presigned-url
 github.com/aws/aws-sdk-go-v2/service/internal/s3shared
 github.com/aws/aws-sdk-go-v2/service/internal/s3shared/arn
 github.com/aws/aws-sdk-go-v2/service/internal/s3shared/config
-# github.com/aws/aws-sdk-go-v2/service/s3 v1.99.1
+# github.com/aws/aws-sdk-go-v2/service/s3 v1.100.0
 ## explicit; go 1.24
 github.com/aws/aws-sdk-go-v2/service/s3
 github.com/aws/aws-sdk-go-v2/service/s3/internal/arn
@@ -155,7 +155,7 @@ github.com/aws/aws-sdk-go-v2/service/ssooidc/types
 github.com/aws/aws-sdk-go-v2/service/sts
 github.com/aws/aws-sdk-go-v2/service/sts/internal/endpoints
 github.com/aws/aws-sdk-go-v2/service/sts/types
-# github.com/aws/smithy-go v1.25.0
+# github.com/aws/smithy-go v1.25.1
 ## explicit; go 1.24
 github.com/aws/smithy-go
 github.com/aws/smithy-go/auth
@@ -294,7 +294,7 @@ github.com/kr/pretty
 # github.com/kr/text v0.2.0
 ## explicit
 github.com/kr/text
-# github.com/longhorn/backupstore v0.0.0-20260502085909-21ee466f5a8a
+# github.com/longhorn/backupstore v0.0.0-20260512085050-2a21a780e44c
 ## explicit; go 1.25.0
 github.com/longhorn/backupstore
 github.com/longhorn/backupstore/azblob
@@ -309,7 +309,7 @@ github.com/longhorn/backupstore/s3
 github.com/longhorn/backupstore/types
 github.com/longhorn/backupstore/util
 github.com/longhorn/backupstore/vfs
-# github.com/longhorn/go-common-libs v0.0.0-20260502161928-1e84fa75a8f1
+# github.com/longhorn/go-common-libs v0.0.0-20260512083219-bb6c10ce1050
 ## explicit; go 1.25.0
 github.com/longhorn/go-common-libs/backingimage
 github.com/longhorn/go-common-libs/backup
@@ -342,7 +342,7 @@ github.com/longhorn/sparse-tools/sparse
 github.com/longhorn/sparse-tools/sparse/rest
 github.com/longhorn/sparse-tools/types
 github.com/longhorn/sparse-tools/util
-# github.com/longhorn/types v0.0.0-20260424095800-4b6385093e88
+# github.com/longhorn/types v0.0.0-20260513135851-499d5d1f4e79
 ## explicit; go 1.24.0
 github.com/longhorn/types/pkg/generated/bimrpc
 github.com/longhorn/types/pkg/generated/enginerpc
