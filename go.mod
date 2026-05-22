@@ -9,7 +9,7 @@ require (
 	github.com/gorilla/mux v1.8.1
 	github.com/longhorn/backupstore v0.0.0-20260512085050-2a21a780e44c
 	github.com/longhorn/go-common-libs v0.0.0-20260512083219-bb6c10ce1050
-	github.com/longhorn/longhorn-engine v1.12.0-rc1
+	github.com/longhorn/longhorn-engine v1.12.0-rc3
 	github.com/longhorn/sparse-tools v0.0.0-20260423074222-280e61de741a
 	github.com/longhorn/types v0.0.0-20260513135851-499d5d1f4e79
 	github.com/pkg/errors v0.9.1
@@ -92,7 +92,7 @@ require (
 	gopkg.in/inf.v0 v0.9.1 // indirect
 	k8s.io/apimachinery v0.36.0 // indirect
 	k8s.io/klog/v2 v2.140.0 // indirect
-	k8s.io/mount-utils v0.36.0 // indirect
+	k8s.io/mount-utils v0.36.1 // indirect
 	k8s.io/utils v0.0.0-20260210185600-b8788abfbbc2 // indirect
 	sigs.k8s.io/json v0.0.0-20250730193827-2d320260d730 // indirect
 )
