@@ -16,8 +16,9 @@ WORKDIR ${DAPPER_SOURCE}
 ENTRYPOINT ["./scripts/entry"]
 CMD ["ci"]
 
-RUN zypper -n addrepo --refresh https://download.opensuse.org/repositories/system:/snappy/openSUSE_Factory/system:snappy.repo && \
-    zypper --gpg-auto-import-keys ref
+RUN zypper --gpg-auto-import-keys ref && \
+    zypper -n ref && \
+    zypper update -y
 
 # Install packages
 RUN zypper -n install cmake wget curl git less file \
