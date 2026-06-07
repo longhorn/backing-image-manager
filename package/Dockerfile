@@ -22,15 +22,27 @@ RUN if [ "$TARGETPLATFORM" != "linux/amd64" ] && [ "$TARGETPLATFORM" != "linux/a
 
 ENV ARCH ${TARGETPLATFORM#linux/}
 
-RUN zypper -n addrepo --refresh https://download.opensuse.org/repositories/system:/snappy/openSUSE_Factory/system:snappy.repo && \
-    zypper -n addrepo --refresh https://download.opensuse.org/repositories/network:/utilities/15.6/network:utilities.repo && \
-    zypper --gpg-auto-import-keys ref && \
+RUN zypper --gpg-auto-import-keys ref && \
     zypper -n ref && \
     zypper update -y
 
 RUN zypper -n install kmod curl wget nfs-client nfs4-acl-tools fuse \
     librdmacm1 librdmacm-utils libibverbs perl-Config-General libaio-devel sg3_utils \
-    iputils telnet iperf qemu-tools iproute2 e2fsprogs e2fsprogs-devel xfsprogs xfsprogs-devel
+    iputils telnet qemu-tools iproute2 e2fsprogs e2fsprogs-devel xfsprogs xfsprogs-devel
+
+RUN if [ "$ARCH" = "amd64" ]; then \
+        REPO_URL="https://download.opensuse.org/repositories/network:utilities/openSUSE_Factory/network:utilities.repo"; \
+    elif [ "$ARCH" = "arm64" ]; then \
+        REPO_URL="https://download.opensuse.org/repositories/network:utilities/openSUSE_Factory_ARM/network:utilities.repo"; \
+    else \
+        echo "Unsupported architecture: $ARCH" && exit 1; \
+    fi && \
+    zypper -n addrepo --refresh "$REPO_URL" && \
+    zypper --gpg-auto-import-keys ref && \
+    zypper -n ref && \
+    zypper update -y
+
+RUN zypper -n install iperf
 
 COPY --from=builder /app/bin/backing-image-manager-${ARCH} /usr/local/bin/backing-image-manager
 RUN chmod +x /usr/local/bin/backing-image-manager
