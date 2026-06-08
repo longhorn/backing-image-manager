@@ -1,6 +1,8 @@
 module github.com/longhorn/backing-image-manager
 
-go 1.25.11
+go 1.25.10
+
+replace github.com/longhorn/types => github.com/longhorn/types v0.0.0-20260417071722-2f1958bc30e5
 
 require (
 	github.com/golang/protobuf v1.5.4
