@@ -336,8 +336,8 @@ github.com/longhorn/sparse-tools/sparse
 github.com/longhorn/sparse-tools/sparse/rest
 github.com/longhorn/sparse-tools/types
 github.com/longhorn/sparse-tools/util
-# github.com/longhorn/types v0.0.0-20260602074022-85db2ba11d69
-## explicit; go 1.25.0
+# github.com/longhorn/types v0.0.0-20260602074022-85db2ba11d69 => github.com/longhorn/types v0.0.0-20260327130848-66f6de8a2fb3
+## explicit; go 1.24.0
 github.com/longhorn/types/pkg/generated/bimrpc
 github.com/longhorn/types/pkg/generated/enginerpc
 # github.com/matttproud/golang_protobuf_extensions v1.0.4
@@ -595,3 +595,4 @@ k8s.io/utils/clock
 k8s.io/utils/exec
 k8s.io/utils/io
 k8s.io/utils/keymutex
+# github.com/longhorn/types => github.com/longhorn/types v0.0.0-20260327130848-66f6de8a2fb3
