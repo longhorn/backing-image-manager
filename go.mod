@@ -1,6 +1,6 @@
 module github.com/longhorn/backing-image-manager
 
-go 1.25.10
+go 1.25
 
 replace github.com/longhorn/types => github.com/longhorn/types v0.0.0-20260327130848-66f6de8a2fb3
 
