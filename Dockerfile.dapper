@@ -1,6 +1,6 @@
 FROM golangci/golangci-lint:v2.12.2@sha256:5cceeef04e53efe1470638d4b4b4f5ceefd574955ab3941b2d9a68a8c9ad5240 AS golangci-lint
 
-FROM registry.suse.com/bci/golang:1.25@sha256:f32509af2462947e5fdc9b054970f63515c54ab1b1c2d52c994f85146e0f6ad7
+FROM registry.suse.com/bci/golang:1.25@sha256:2dc5bfb1f6ad133910dacd9d00a090e9020e4c76cb6e3cad743478c78134c41a
 
 ARG DAPPER_HOST_ARCH
 ARG http_proxy
