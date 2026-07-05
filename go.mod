@@ -1,6 +1,6 @@
 module github.com/longhorn/backing-image-manager
 
-go 1.25
+go 1.25.0
 
 replace github.com/longhorn/types => github.com/longhorn/types v0.0.0-20260417071722-2f1958bc30e5
 
@@ -8,7 +8,7 @@ require (
 	github.com/cockroachdb/errors v1.12.0
 	github.com/golang/protobuf v1.5.4
 	github.com/gorilla/mux v1.8.1
-	github.com/longhorn/backupstore v0.0.0-20260525102750-1ed7dde50b68
+	github.com/longhorn/backupstore v0.0.0-20260618071319-84c767bdab16
 	github.com/longhorn/go-common-libs v0.0.0-20260525102658-c0739cd3e2c2
 	github.com/longhorn/longhorn-engine v1.10.2
 	github.com/longhorn/sparse-tools v0.0.0-20260423074222-280e61de741a
