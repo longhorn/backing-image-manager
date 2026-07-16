@@ -1,17 +1,17 @@
 module github.com/longhorn/backing-image-manager
 
-go 1.25.0
+go 1.25.10
 
-replace github.com/longhorn/types => github.com/longhorn/types v0.0.0-20260417071722-2f1958bc30e5
+replace github.com/longhorn/types => github.com/longhorn/types v0.0.0-20260709032252-3d0a3cd8f06f
 
 require (
 	github.com/golang/protobuf v1.5.4
 	github.com/gorilla/mux v1.8.1
-	github.com/longhorn/backupstore v0.0.0-20260618071319-84c767bdab16
-	github.com/longhorn/go-common-libs v0.0.0-20260525102658-c0739cd3e2c2
+	github.com/longhorn/backupstore v0.0.0-20260709065232-ca96411485d4
+	github.com/longhorn/go-common-libs v0.0.0-20260716070930-439af9b33f41
 	github.com/longhorn/longhorn-engine v1.11.2
 	github.com/longhorn/sparse-tools v0.0.0-20260423074222-280e61de741a
-	github.com/longhorn/types v0.0.0-20260602074022-85db2ba11d69
+	github.com/longhorn/types v0.0.0-20260709032252-3d0a3cd8f06f
 	github.com/pkg/errors v0.9.1
 	github.com/rancher/go-fibmap v0.0.0-20160418233256-5fc9f8c1ed47
 	github.com/sirupsen/logrus v1.9.4
@@ -84,7 +84,6 @@ require (
 	github.com/slok/goresilience v0.2.0 // indirect
 	github.com/x448/float16 v0.8.4 // indirect
 	github.com/yusufpapurcu/wmi v1.2.4 // indirect
-	golang.org/x/exp v0.0.0-20260508232706-74f9aab9d74a // indirect
 	golang.org/x/net v0.56.0 // indirect
 	golang.org/x/sys v0.46.0 // indirect
 	golang.org/x/text v0.38.0 // indirect
