@@ -5,7 +5,7 @@ go 1.26.0
 require (
 	github.com/golang/protobuf v1.5.4
 	github.com/gorilla/mux v1.8.1
-	github.com/longhorn/backupstore v0.0.0-20260709065232-ca96411485d4
+	github.com/longhorn/backupstore v0.0.0-20260722010828-e5f4ddc47e4d
 	github.com/longhorn/go-common-libs v0.0.0-20260716070930-439af9b33f41
 	github.com/longhorn/longhorn-engine v1.12.0
 	github.com/longhorn/sparse-tools v0.0.0-20260423074222-280e61de741a
