@@ -7,11 +7,11 @@ replace github.com/longhorn/types => github.com/longhorn/types v0.0.0-2026041707
 require (
 	github.com/golang/protobuf v1.5.4
 	github.com/gorilla/mux v1.8.1
-	github.com/longhorn/backupstore v0.0.0-20260618071319-84c767bdab16
-	github.com/longhorn/go-common-libs v0.0.0-20260624092814-b3e1f4451fb9
+	github.com/longhorn/backupstore v0.0.0-20260722010828-e5f4ddc47e4d
+	github.com/longhorn/go-common-libs v0.0.0-20260709061022-21a84065aa86
 	github.com/longhorn/longhorn-engine v1.11.3
 	github.com/longhorn/sparse-tools v0.0.0-20260423074222-280e61de741a
-	github.com/longhorn/types v0.0.0-20260602074022-85db2ba11d69
+	github.com/longhorn/types v0.0.0-20260608145242-38c27234df4b
 	github.com/pkg/errors v0.9.1
 	github.com/rancher/go-fibmap v0.0.0-20160418233256-5fc9f8c1ed47
 	github.com/sirupsen/logrus v1.9.4
