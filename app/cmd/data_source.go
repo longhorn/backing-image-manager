@@ -7,62 +7,63 @@ import (
 	"strings"
 
 	"github.com/sirupsen/logrus"
-	"github.com/urfave/cli"
+	"github.com/urfave/cli/v3"
 
 	"github.com/longhorn/backing-image-manager/pkg/datasource"
 	"github.com/longhorn/backing-image-manager/pkg/sync"
 	"github.com/longhorn/backing-image-manager/pkg/types"
 )
 
-func DataSourceCmd() cli.Command {
-	return cli.Command{
+func DataSourceCmd() *cli.Command {
+	return &cli.Command{
 		Name: "data-source",
 		Flags: []cli.Flag{
-			cli.StringFlag{
+			&cli.StringFlag{
 				Name:  "listen",
 				Value: "localhost:" + strconv.Itoa(types.DefaultDataSourceServerPort),
 				Usage: "Specify the data source server endpoint to listen on host:port. Defaults to localhost:8000",
 			},
-			cli.StringFlag{
+			&cli.StringFlag{
 				Name:  "sync-listen",
 				Value: "localhost:" + strconv.Itoa(types.DefaultSyncServerPort),
 				Usage: "Specify the sync server endpoint to listen on host:port. Defaults to localhost:8001",
 			},
-			cli.StringFlag{
+			&cli.StringFlag{
 				Name:  "name",
 				Usage: "The name of the backing image",
 			},
-			cli.StringFlag{
+			&cli.StringFlag{
 				Name:  "uuid",
 				Usage: "The uuid of the backing image",
 			},
-			cli.StringFlag{
+			&cli.StringFlag{
 				Name:  "source-type",
 				Usage: "There are 3 ways to prepare a backing image file data: download, upload and export-from-volume",
 			},
-			cli.StringSliceFlag{
+			&cli.StringSliceFlag{
 				Name:  "parameters",
 				Usage: "Parameters for backing image of different source type.",
 			},
-			cli.StringFlag{
+			&cli.StringFlag{
 				Name:  "checksum",
 				Value: "",
 				Usage: "The SHA512 checksum of the backing images",
 			},
-			cli.StringSliceFlag{
+			&cli.StringSliceFlag{
 				Name:  "credential",
 				Usage: "Credential for restoring backing image from backup store.",
 			},
 		},
-		Action: func(c *cli.Context) {
+		Action: func(ctx context.Context, c *cli.Command) error {
 			if err := dataSource(c); err != nil {
 				logrus.WithError(err).Fatalf("Error running data-source command")
 			}
+			return nil
 		},
 	}
 }
 
-func dataSource(c *cli.Context) error {
+func dataSource(c *cli.Command) error {
 	logrus.SetLevel(logrus.DebugLevel)
 
 	listen := c.String("listen")

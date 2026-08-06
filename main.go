@@ -1,13 +1,14 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"path"
 	"runtime"
 
 	"github.com/sirupsen/logrus"
-	"github.com/urfave/cli"
+	"github.com/urfave/cli/v3"
 
 	"github.com/longhorn/backing-image-manager/app/cmd"
 	"github.com/longhorn/backing-image-manager/pkg/meta"
@@ -21,9 +22,6 @@ var (
 )
 
 func main() {
-	a := cli.NewApp()
-
-	a.Version = Version
 	meta.Version = Version
 	meta.GitCommit = GitCommit
 	meta.BuildDate = BuildDate
@@ -38,24 +36,27 @@ func main() {
 		FullTimestamp: true,
 	})
 
-	a.Before = func(c *cli.Context) error {
-		if c.GlobalBool("debug") {
-			logrus.SetLevel(logrus.DebugLevel)
-		}
-		return nil
-	}
-	a.Flags = []cli.Flag{
-		cli.BoolFlag{
-			Name: "debug",
+	a := &cli.Command{
+		Version: Version,
+		Before: func(ctx context.Context, c *cli.Command) (context.Context, error) {
+			if c.Bool("debug") {
+				logrus.SetLevel(logrus.DebugLevel)
+			}
+			return ctx, nil
+		},
+		Flags: []cli.Flag{
+			&cli.BoolFlag{
+				Name: "debug",
+			},
+		},
+		Commands: []*cli.Command{
+			cmd.StartCmd(),
+			cmd.BackingImageCmd(),
+			cmd.DataSourceCmd(),
+			VersionCmd(),
 		},
 	}
-	a.Commands = []cli.Command{
-		cmd.StartCmd(),
-		cmd.BackingImageCmd(),
-		cmd.DataSourceCmd(),
-		VersionCmd(),
-	}
-	if err := a.Run(os.Args); err != nil {
+	if err := a.Run(context.Background(), os.Args); err != nil {
 		logrus.Fatal("Error when executing command: ", err)
 	}
 }
