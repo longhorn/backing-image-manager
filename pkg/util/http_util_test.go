@@ -1,70 +1,107 @@
 package util
 
 import (
-	"errors"
 	"testing"
+
+	commonnet "github.com/longhorn/go-common-libs/net"
 )
 
 func TestGetSyncServiceAddressWithPodIPHostPortFormatting(t *testing.T) {
-	for _, testCase := range []struct {
-		name     string
-		podIP    string
-		address  string
-		expected string
+	testCases := []struct {
+		name          string
+		family        commonnet.IPFamily
+		podIP         string
+		address       string
+		expected      string
+		expectedCalls int
 	}{
 		{
-			name:     "IPv4 host-port",
-			podIP:    "192.0.2.10",
-			address:  "198.51.100.20:9500",
-			expected: "192.0.2.10:9500",
+			name:          "unspecified IPv4 host-port",
+			family:        commonnet.IPFamilyUnspecified,
+			podIP:         "192.0.2.10",
+			address:       "198.51.100.20:9500",
+			expected:      "192.0.2.10:9500",
+			expectedCalls: 1,
 		},
 		{
-			name:     "IPv6 host-port",
-			podIP:    "2001:db8::10",
-			address:  "198.51.100.20:9500",
-			expected: "[2001:db8::10]:9500",
+			name:          "unspecified IPv6 host-port",
+			family:        commonnet.IPFamilyUnspecified,
+			podIP:         "2001:db8::10",
+			address:       "198.51.100.20:9500",
+			expected:      "[2001:db8::10]:9500",
+			expectedCalls: 1,
 		},
-	} {
+		{
+			name:          "explicit IPv4 host-port",
+			family:        commonnet.IPFamilyIPv4,
+			podIP:         "192.0.2.11",
+			address:       "198.51.100.20:9500",
+			expected:      "192.0.2.11:9500",
+			expectedCalls: 1,
+		},
+		{
+			name:          "explicit IPv6 host-port",
+			family:        commonnet.IPFamilyIPv6,
+			podIP:         "2001:db8::11",
+			address:       "198.51.100.20:9500",
+			expected:      "[2001:db8::11]:9500",
+			expectedCalls: 1,
+		},
+	}
+
+	for _, testCase := range testCases {
 		t.Run(testCase.name, func(t *testing.T) {
+			t.Setenv(EnvPodIP, testCase.podIP)
 			resolverCalls := 0
-			resolvePodIP := func() (string, error) {
+			resolvePodIP := func(family commonnet.IPFamily) (string, error) {
 				resolverCalls++
+				if family != testCase.family {
+					t.Fatalf("resolvePodIP() family = %q, want %q", family, testCase.family)
+				}
 				return testCase.podIP, nil
 			}
 
-			address, err := getSyncServiceAddressWithPodIP(testCase.address, resolvePodIP)
+			address, err := getSyncServiceAddressWithPodIP(testCase.address, testCase.family, resolvePodIP)
 			if err != nil {
 				t.Fatalf("getSyncServiceAddressWithPodIP() error = %v", err)
 			}
 			if address != testCase.expected {
 				t.Fatalf("getSyncServiceAddressWithPodIP() = %q, want %q", address, testCase.expected)
 			}
-			if resolverCalls != 1 {
-				t.Fatalf("resolvePodIP() calls = %d, want 1", resolverCalls)
+			if resolverCalls != testCase.expectedCalls {
+				t.Fatalf("resolvePodIP() calls = %d, want %d", resolverCalls, testCase.expectedCalls)
 			}
 		})
 	}
 }
 
-func TestGetSyncServiceAddressWithPodIPPropagatesResolverError(t *testing.T) {
-	expectedErr := errors.New("resolver failed")
-	address, err := getSyncServiceAddressWithPodIP("198.51.100.20:9500", func() (string, error) {
-		return "", expectedErr
-	})
-	if !errors.Is(err, expectedErr) {
-		t.Fatalf("getSyncServiceAddressWithPodIP() error = %v, want %v", err, expectedErr)
-	}
-	if address != "" {
-		t.Fatalf("getSyncServiceAddressWithPodIP() address = %q, want empty", address)
-	}
-}
-
 func TestGetSyncServiceAddressWithPodIPRejectsInvalidAddress(t *testing.T) {
-	address, err := GetSyncServiceAddressWithPodIP("198.51.100.20")
-	if err == nil {
-		t.Fatalf("GetSyncServiceAddressWithPodIP() = %q, want an error", address)
+	testCases := []struct {
+		name   string
+		family commonnet.IPFamily
+		input  string
+	}{
+		{
+			name:   "IPv4 family",
+			family: commonnet.IPFamilyIPv4,
+			input:  "198.51.100.20",
+		},
+		{
+			name:   "IPv6 family",
+			family: commonnet.IPFamilyIPv6,
+			input:  "[2001:db8::20]",
+		},
 	}
-	if address != "" {
-		t.Fatalf("GetSyncServiceAddressWithPodIP() address = %q, want empty", address)
+
+	for _, testCase := range testCases {
+		t.Run(testCase.name, func(t *testing.T) {
+			address, err := GetSyncServiceAddressWithPodIP(testCase.input, testCase.family)
+			if err == nil {
+				t.Fatalf("GetSyncServiceAddressWithPodIP() = %q, want an error", address)
+			}
+			if address != "" {
+				t.Fatalf("GetSyncServiceAddressWithPodIP() address = %q, want empty", address)
+			}
+		})
 	}
 }

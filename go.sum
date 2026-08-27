@@ -10,8 +10,8 @@ github.com/Azure/azure-sdk-for-go/sdk/storage/azblob v1.5.0 h1:mlmW46Q0B79I+Aj4a
 github.com/Azure/azure-sdk-for-go/sdk/storage/azblob v1.5.0/go.mod h1:PXe2h+LKcWTX9afWdZoHyODqR4fBa5boUM/8uJfZ0Jo=
 github.com/AzureAD/microsoft-authentication-library-for-go v1.2.2 h1:XHOnouVk1mxXfQidrMEnLlPk9UMeRtyBTnEFtxkV0kU=
 github.com/AzureAD/microsoft-authentication-library-for-go v1.2.2/go.mod h1:wP83P5OoQ5p6ip3ScPr0BAq0BvuPAvacpEuSzyouqAI=
-github.com/COLDTURNIP/longhorn-go-common-libs v0.0.0-20260827012520-a9fb770e6dc1 h1:Yz+1+Z8UeRtjFuYOkGUIRy+dx+xP5xQ2V85ddHfHAUg=
-github.com/COLDTURNIP/longhorn-go-common-libs v0.0.0-20260827012520-a9fb770e6dc1/go.mod h1:pjOR2fdQA0dNp3is1xfA+Ni2PjPDP+JuOoSEjdL2cfQ=
+github.com/COLDTURNIP/longhorn-go-common-libs v0.0.0-20260827012540-13e0cad280ce h1:Ocr1ZOMMMR6nrvz4KogM8fdPI8NzpeDLG4/hcmobKTs=
+github.com/COLDTURNIP/longhorn-go-common-libs v0.0.0-20260827012540-13e0cad280ce/go.mod h1:pjOR2fdQA0dNp3is1xfA+Ni2PjPDP+JuOoSEjdL2cfQ=
 github.com/RoaringBitmap/roaring v1.9.4 h1:yhEIoH4YezLYT04s1nHehNO64EKFTop/wBhxv2QzDdQ=
 github.com/RoaringBitmap/roaring v1.9.4/go.mod h1:6AXUsoIEzDTFFQCe1RbGA6uFONMhvejWj5rqITANK90=
 github.com/avast/retry-go/v4 v4.7.0 h1:yjDs35SlGvKwRNSykujfjdMxMhMQQM0TnIjJaHB+Zio=

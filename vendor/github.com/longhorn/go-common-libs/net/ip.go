@@ -4,9 +4,9 @@ import (
 	"fmt"
 	"net"
 	"os"
+	"strings"
 
 	"github.com/cockroachdb/errors"
-	"github.com/sirupsen/logrus"
 )
 
 const (
@@ -14,6 +14,26 @@ const (
 
 	StorageNetworkInterface = "lhnet1"
 )
+
+// IPFamily identifies an IP address family.
+type IPFamily string
+
+const (
+	IPFamilyUnspecified IPFamily = ""
+	IPFamilyIPv4        IPFamily = "ipv4"
+	IPFamilyIPv6        IPFamily = "ipv6"
+)
+
+// ParseIPFamily parses an IP family case-insensitively.
+func ParseIPFamily(value string) (IPFamily, error) {
+	family := IPFamily(strings.ToLower(value))
+	switch family {
+	case IPFamilyUnspecified, IPFamilyIPv4, IPFamilyIPv6:
+		return family, nil
+	default:
+		return "", fmt.Errorf("invalid IP family %q", value)
+	}
+}
 
 // getInterfaceAddrs returns the addresses for an interface. A false found
 // value means that the interface does not exist.
@@ -23,20 +43,22 @@ func getInterfaceAddrs(name string) (addrs []net.Addr, found bool, err error) {
 		return nil, true, err
 	}
 
+	var iface *net.Interface
 	for i := range interfaces {
-		if interfaces[i].Name != name {
-			continue
+		if interfaces[i].Name == name {
+			iface = &interfaces[i]
+			break
 		}
-
-		addrs, err = interfaces[i].Addrs()
-		if err != nil {
-			return nil, true, errors.Wrapf(err, "interface %s doesn't have address", name)
-		}
-
-		return addrs, true, nil
+	}
+	if iface == nil {
+		return nil, false, nil
+	}
+	addrs, err = iface.Addrs()
+	if err != nil {
+		return nil, true, errors.Wrapf(err, "interface %s doesn't have address", name)
 	}
 
-	return nil, false, nil
+	return addrs, true, nil
 }
 
 func getIPFromAddr(addr net.Addr) net.IP {
@@ -56,8 +78,141 @@ func getIPFromAddr(addr net.Addr) net.IP {
 	}
 }
 
-// getIPForPodByNetworkPreference resolves a pod IP using the storage network
-// first, then the validated POD_IP value when the storage network is absent.
+func getLocalIPFromAddrsByFamily(addrs []net.Addr, family IPFamily) string {
+	for _, addr := range addrs {
+		ip := getIPFromAddr(addr)
+		if ip == nil {
+			continue
+		}
+
+		switch family {
+		case IPFamilyIPv4:
+			if ipv4 := ip.To4(); ipv4 != nil {
+				return ipv4.String()
+			}
+		case IPFamilyIPv6:
+			if ip.To4() == nil {
+				if ipv6 := ip.To16(); ipv6 != nil && ipv6.IsGlobalUnicast() {
+					return ipv6.String()
+				}
+			}
+		}
+	}
+
+	return ""
+}
+
+func getInterfaceNameByIP(ip net.IP) (string, error) {
+	return getInterfaceNameByIPWithHooks(ip, net.Interfaces, func(iface net.Interface) ([]net.Addr, error) {
+		return iface.Addrs()
+	})
+}
+
+func getInterfaceNameByIPWithHooks(
+	ip net.IP,
+	interfacesFunc func() ([]net.Interface, error),
+	addrsFunc func(net.Interface) ([]net.Addr, error),
+) (string, error) {
+	if ip == nil {
+		return "", nil
+	}
+
+	interfaces, err := interfacesFunc()
+	if err != nil {
+		return "", err
+	}
+
+	for _, iface := range interfaces {
+		addrs, err := addrsFunc(iface)
+		if err != nil {
+			return "", errors.Wrapf(err, "interface %s doesn't have address", iface.Name)
+		}
+
+		for _, addr := range addrs {
+			addrIP := getIPFromAddr(addr)
+			if addrIP != nil && addrIP.To16() != nil && addrIP.Equal(ip) {
+				return iface.Name, nil
+			}
+		}
+	}
+
+	return "", nil
+}
+
+// GetLocalIPv4fromInterface returns the local IPv4 address.
+func GetLocalIPv4fromInterface(name string) (ip string, err error) {
+	addrs, found, err := getInterfaceAddrs(name)
+	if err != nil {
+		return "", err
+	}
+	if !found {
+		return "", fmt.Errorf("interface %s doesn't exist", name)
+	}
+
+	if ip := getLocalIPFromAddrsByFamily(addrs, IPFamilyIPv4); ip != "" {
+		return ip, nil
+	}
+
+	return "", errors.Errorf("interface %s don't have an IPv4 address", name)
+}
+
+func getIPForPod(family IPFamily, podIP string,
+	interfaceAddrs func(string) ([]net.Addr, bool, error),
+	interfaceNameByIP func(net.IP) (string, error)) (string, error) {
+	switch family {
+	case IPFamilyUnspecified:
+		addrs, found, err := interfaceAddrs(StorageNetworkInterface)
+		if found && err == nil {
+			if ip := getLocalIPFromAddrsByFamily(addrs, IPFamilyIPv4); ip != "" {
+				return ip, nil
+			}
+		}
+		if podIP != "" {
+			return podIP, nil
+		}
+		return "", fmt.Errorf("can't get a ip from either the specified interface or the environment variable")
+	case IPFamilyIPv4, IPFamilyIPv6:
+	default:
+		return "", fmt.Errorf("invalid IP family %q", family)
+	}
+
+	addrs, found, err := interfaceAddrs(StorageNetworkInterface)
+	if found {
+		if err != nil {
+			return "", err
+		}
+		if ip := getLocalIPFromAddrsByFamily(addrs, family); ip != "" {
+			return ip, nil
+		}
+		return "", fmt.Errorf("storage network interface %s has no %s address", StorageNetworkInterface, family)
+	}
+
+	parsedPodIP := net.ParseIP(podIP)
+	if ipMatchesFamily(parsedPodIP, family) {
+		return podIP, nil
+	}
+
+	if parsedPodIP != nil {
+		interfaceName, err := interfaceNameByIP(parsedPodIP)
+		if err != nil {
+			return "", err
+		}
+		if interfaceName != "" {
+			addrs, found, err := interfaceAddrs(interfaceName)
+			if err != nil {
+				return "", err
+			}
+			if found {
+				if ip := getLocalIPFromAddrsByFamily(addrs, family); ip != "" {
+					return ip, nil
+				}
+			}
+		}
+	}
+
+	return "", fmt.Errorf("can't get a ip from either the specified interface or the environment variable")
+}
+
 func getIPForPodByNetworkPreference(podIP string,
 	interfaceAddrs func(string) ([]net.Addr, bool, error)) (string, error) {
 	addrs, found, err := interfaceAddrs(StorageNetworkInterface)
@@ -71,7 +226,6 @@ func getIPForPodByNetworkPreference(podIP string,
 				return ip.String(), nil
 			}
 		}
-
 		return "", errors.Errorf("storage network interface %s has no usable global-unicast address", StorageNetworkInterface)
 	}
 
@@ -89,47 +243,39 @@ func GetIPForPodByNetworkPreference() (ip string, err error) {
 	return getIPForPodByNetworkPreference(os.Getenv(EnvPodIP), getInterfaceAddrs)
 }
 
-// GetLocalIPv4fromInterface returns the local IPv4 address.
-func GetLocalIPv4fromInterface(name string) (ip string, err error) {
-	iface, err := net.InterfaceByName(name)
-	if err != nil {
-		return "", err
+func ipMatchesFamily(ip net.IP, family IPFamily) bool {
+	if ip == nil {
+		return false
 	}
 
-	addrs, err := iface.Addrs()
-	if err != nil {
-		return "", errors.Wrapf(err, "interface %s doesn't have address", name)
-	}
-
-	var ipv4 net.IP
-	for _, addr := range addrs {
-		if ipv4 = addr.(*net.IPNet).IP.To4(); ipv4 != nil {
-			break
+	switch family {
+	case IPFamilyIPv4:
+		return ip.To4() != nil
+	case IPFamilyIPv6:
+		if ip.To4() != nil {
+			return false
 		}
+		ipv6 := ip.To16()
+		return ipv6 != nil && ipv6.IsGlobalUnicast()
+	default:
+		return false
 	}
-	if ipv4 == nil {
-		return "", errors.Errorf("interface %s don't have an IPv4 address", name)
-	}
-
-	return ipv4.String(), nil
 }
 
-// GetIPForPod returns the IP address for the pod from the storage network first or the cluster network.
+// GetIPForPod returns the pod IP using the storage network IPv4 address when
+// available, and otherwise falls back to the raw POD_IP value.
 func GetIPForPod() (ip string, err error) {
-	var storageIP string
-	if ip, err := GetLocalIPv4fromInterface(StorageNetworkInterface); err != nil {
-		storageIP = os.Getenv(EnvPodIP)
-		logrus.WithError(err).Tracef("Failed to get IP from %v interface, fallback to use the default pod IP %v",
-			StorageNetworkInterface, storageIP)
-	} else {
-		storageIP = ip
-	}
+	return GetIPForPodByFamily(IPFamilyUnspecified)
+}
 
-	if storageIP == "" {
-		return "", fmt.Errorf("can't get a ip from either the specified interface or the environment variable")
-	}
-
-	return storageIP, nil
+// GetIPForPodByFamily returns the pod IP for the requested address family.
+func GetIPForPodByFamily(family IPFamily) (ip string, err error) {
+	return getIPForPod(
+		family,
+		os.Getenv(EnvPodIP),
+		getInterfaceAddrs,
+		getInterfaceNameByIP,
+	)
 }
 
 // IsLoopbackHost checks if the given host is a loopback host.

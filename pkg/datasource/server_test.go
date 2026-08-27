@@ -14,13 +14,15 @@ import (
 
 	"github.com/sirupsen/logrus"
 
+	. "gopkg.in/check.v1"
+
+	commonnet "github.com/longhorn/go-common-libs/net"
+
 	"github.com/longhorn/backing-image-manager/api"
 	"github.com/longhorn/backing-image-manager/pkg/client"
 	"github.com/longhorn/backing-image-manager/pkg/sync"
 	"github.com/longhorn/backing-image-manager/pkg/types"
 	"github.com/longhorn/backing-image-manager/pkg/util"
-
-	. "gopkg.in/check.v1"
 )
 
 const (
@@ -80,7 +82,7 @@ func (s *DataSourceTestSuite) BenchmarkDownload(c *C) {
 	biName := "data-source-download-file"
 
 	go func() {
-		_ = NewServer(s.ctx, s.addr, s.syncAddr, "", string(types.DataSourceTypeDownload), biName, TestBackingImageUUID, s.dir,
+		_ = NewServer(s.ctx, s.addr, s.syncAddr, commonnet.IPFamilyUnspecified, "", string(types.DataSourceTypeDownload), biName, TestBackingImageUUID, s.dir,
 			map[string]string{types.DataSourceTypeDownloadParameterURL: "http://mock-download"}, map[string]string{},
 			&sync.MockHandler{})
 	}()
@@ -118,7 +120,7 @@ func (s *DataSourceTestSuite) BenchmarkUpload(c *C) {
 
 	// Test if the proxy works
 	go func() {
-		_ = NewServer(s.ctx, s.addr, s.syncAddr, checksum, string(types.DataSourceTypeUpload), biName, TestBackingImageUUID, s.dir, map[string]string{"fileType": types.SyncingFileTypeQcow2}, map[string]string{}, &sync.HTTPHandler{})
+		_ = NewServer(s.ctx, s.addr, s.syncAddr, commonnet.IPFamilyUnspecified, checksum, string(types.DataSourceTypeUpload), biName, TestBackingImageUUID, s.dir, map[string]string{"fileType": types.SyncingFileTypeQcow2}, map[string]string{}, &sync.HTTPHandler{})
 	}()
 
 	err = checkAndWaitForServer(s.addr, s.syncAddr, 5, true)
@@ -155,7 +157,7 @@ func (s *DataSourceTestSuite) TestTimeoutExportingFromVolume(c *C) {
 		types.DataSourceTypeExportFromVolumeParameterSnapshotName:  "invalid-snap",
 	}
 	go func() {
-		_ = NewServer(s.ctx, s.addr, s.syncAddr, "", string(types.DataSourceTypeExportFromVolume), biName, TestBackingImageUUID, s.dir,
+		_ = NewServer(s.ctx, s.addr, s.syncAddr, commonnet.IPFamilyUnspecified, "", string(types.DataSourceTypeExportFromVolume), biName, TestBackingImageUUID, s.dir,
 			parameters, map[string]string{}, &sync.HTTPHandler{})
 	}()
 	err := checkAndWaitForServer(s.addr, s.syncAddr, 5, true)
@@ -183,7 +185,7 @@ func (s *DataSourceTestSuite) TestTransfer(c *C) {
 	downloadedFilePath := types.GetDataSourceFilePath(s.dir, biName, TestBackingImageUUID)
 
 	go func() {
-		_ = NewServer(s.ctx, s.addr, s.syncAddr, "", string(types.DataSourceTypeDownload), biName, TestBackingImageUUID, s.dir,
+		_ = NewServer(s.ctx, s.addr, s.syncAddr, commonnet.IPFamilyUnspecified, "", string(types.DataSourceTypeDownload), biName, TestBackingImageUUID, s.dir,
 			map[string]string{types.DataSourceTypeDownloadParameterURL: "http://mock-download"}, map[string]string{},
 			&sync.MockHandler{})
 	}()

@@ -64,21 +64,25 @@ func DetectHTTPServerAvailability(url string, waitIntervalInSecond int, shouldAv
 	}
 }
 
-func GetIPForPod() (ip string, err error) {
-	return commonnet.GetIPForPodByNetworkPreference()
+func GetIPForPod(family commonnet.IPFamily) (ip string, err error) {
+	if family == commonnet.IPFamilyUnspecified {
+		return commonnet.GetIPForPodByNetworkPreference()
+	}
+	return commonnet.GetIPForPodByFamily(family)
 }
 
-func GetSyncServiceAddressWithPodIP(address string) (string, error) {
-	return getSyncServiceAddressWithPodIP(address, GetIPForPod)
+func GetSyncServiceAddressWithPodIP(address string, family commonnet.IPFamily) (string, error) {
+	return getSyncServiceAddressWithPodIP(address, family, GetIPForPod)
 }
 
-func getSyncServiceAddressWithPodIP(address string,
-	resolvePodIP func() (string, error)) (string, error) {
+func getSyncServiceAddressWithPodIP(address string, family commonnet.IPFamily,
+	resolvePodIP func(commonnet.IPFamily) (string, error)) (string, error) {
 	_, port, err := net.SplitHostPort(address)
 	if err != nil {
 		return "", err
 	}
-	podIP, err := resolvePodIP()
+
+	podIP, err := resolvePodIP(family)
 	if err != nil {
 		return "", err
 	}

@@ -15,17 +15,21 @@ import (
 	"time"
 
 	"github.com/sirupsen/logrus"
+
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+
+	. "gopkg.in/check.v1"
+
+	commonnet "github.com/longhorn/go-common-libs/net"
 
 	"github.com/longhorn/backing-image-manager/api"
 	"github.com/longhorn/backing-image-manager/pkg/client"
 	"github.com/longhorn/backing-image-manager/pkg/datasource"
-	filesync "github.com/longhorn/backing-image-manager/pkg/sync"
 	"github.com/longhorn/backing-image-manager/pkg/types"
 	"github.com/longhorn/backing-image-manager/pkg/util"
 
-	. "gopkg.in/check.v1"
+	filesync "github.com/longhorn/backing-image-manager/pkg/sync"
 )
 
 const (
@@ -117,14 +121,14 @@ func (s *TestSuite) SetUpSuite(c *C) {
 	s.addr1 = fmt.Sprintf("localhost:%d", TestManagerServerPort1)
 	s.syncAddr1 = fmt.Sprintf("localhost:%d", TestSyncServerPort1)
 	go func() {
-		_ = NewServer(s.ctx, s.addr1, s.syncAddr1, TestDiskUUID1, s.testDiskPath1, "30001-31000", &filesync.HTTPHandler{})
+		_ = NewServer(s.ctx, s.addr1, s.syncAddr1, commonnet.IPFamilyUnspecified, TestDiskUUID1, s.testDiskPath1, "30001-31000", &filesync.HTTPHandler{})
 	}()
 
 	s.addr2 = fmt.Sprintf("localhost:%d", TestManagerServerPort2)
 	s.syncAddr2 = fmt.Sprintf("localhost:%d", TestSyncServerPort2)
 
 	go func() {
-		_ = NewServer(s.ctx, s.addr2, s.syncAddr2, TestDiskUUID1, s.testDiskPath2, "31001-32000", &filesync.HTTPHandler{})
+		_ = NewServer(s.ctx, s.addr2, s.syncAddr2, commonnet.IPFamilyUnspecified, TestDiskUUID1, s.testDiskPath2, "31001-32000", &filesync.HTTPHandler{})
 	}()
 
 	err = checkAndWaitForServer(s.addr1, 5, true)
@@ -652,7 +656,7 @@ func checkAndWaitForServer(address string, waitIntervalInSecond int, shouldAvail
 
 func launchAndWaitTestDataSourceServer(ctx context.Context, addr, syncAddr, biName, biUUID, checksum, diskPath string) bool {
 	go func() {
-		_ = datasource.NewServer(ctx, addr, syncAddr,
+		_ = datasource.NewServer(ctx, addr, syncAddr, commonnet.IPFamilyUnspecified,
 			checksum, string(types.DataSourceTypeDownload), biName, biUUID, diskPath,
 			map[string]string{types.DataSourceTypeDownloadParameterURL: "http://mock-download"}, map[string]string{},
 			&filesync.MockHandler{},

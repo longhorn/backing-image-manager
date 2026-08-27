@@ -15,6 +15,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 
+	commonnet "github.com/longhorn/go-common-libs/net"
 	repclient "github.com/longhorn/longhorn-engine/pkg/replica/client"
 
 	"github.com/longhorn/backing-image-manager/api"
@@ -45,6 +46,7 @@ type Service struct {
 	uuid             string
 	diskUUID         string
 	sourceType       types.DataSourceType
+	ipFamily         commonnet.IPFamily
 	parameters       map[string]string
 	credential       map[string]string
 	expectedChecksum string
@@ -54,11 +56,15 @@ type Service struct {
 }
 
 func LaunchService(ctx context.Context, cancel context.CancelFunc,
-	syncListenAddr, checksum, sourceType, name, uuid, diskPathInContainer string,
+	syncListenAddr string, ipFamily commonnet.IPFamily, checksum, sourceType, name, uuid, diskPathInContainer string,
 	parameters map[string]string, credential map[string]string) (*Service, error) {
 
 	if name == "" || uuid == "" {
 		return nil, fmt.Errorf("the backing image name or uuid is not specified")
+	}
+	parsedIPFamily, err := commonnet.ParseIPFamily(string(ipFamily))
+	if err != nil {
+		return nil, err
 	}
 	diskUUID, err := util.GetDiskConfig(diskPathInContainer)
 	if err != nil {
@@ -84,6 +90,7 @@ func LaunchService(ctx context.Context, cancel context.CancelFunc,
 		uuid:             uuid,
 		diskUUID:         diskUUID,
 		sourceType:       types.DataSourceType(sourceType),
+		ipFamily:         parsedIPFamily,
 		parameters:       parameters,
 		credential:       credential,
 		expectedChecksum: checksum,
@@ -115,6 +122,7 @@ func LaunchService(ctx context.Context, cancel context.CancelFunc,
 			"name":             s.name,
 			"uuid":             s.uuid,
 			"sourceType":       s.sourceType,
+			"ipFamily":         s.ipFamily,
 			"diskUUID":         s.diskUUID,
 			"parameters":       s.parameters,
 			"expectedChecksum": s.expectedChecksum,
@@ -296,7 +304,7 @@ func (s *Service) exportFromVolume(parameters map[string]string) error {
 	}
 
 	// TODO: Use the storage IP of the sync service after launching the separate sync server pod.
-	storageIP, err := util.GetIPForPod()
+	storageIP, err := util.GetIPForPod(s.ipFamily)
 	if err != nil {
 		return fmt.Errorf("failed to get an available ip during volume export")
 	}

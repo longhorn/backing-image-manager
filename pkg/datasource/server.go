@@ -7,11 +7,13 @@ import (
 
 	"github.com/sirupsen/logrus"
 
+	commonnet "github.com/longhorn/go-common-libs/net"
+
 	"github.com/longhorn/backing-image-manager/pkg/sync"
 	"github.com/longhorn/backing-image-manager/pkg/util"
 )
 
-func NewServer(parentCtx context.Context, listenAddr, syncListenAddr, checksum, sourceType, biName, biUUID, diskPathInContainer string, parameters map[string]string, credential map[string]string, handler sync.Handler) error {
+func NewServer(parentCtx context.Context, listenAddr, syncListenAddr string, ipFamily commonnet.IPFamily, checksum, sourceType, biName, biUUID, diskPathInContainer string, parameters map[string]string, credential map[string]string, handler sync.Handler) error {
 	ctx, cancel := context.WithCancel(parentCtx)
 	defer cancel()
 	srv := &http.Server{
@@ -29,7 +31,7 @@ func NewServer(parentCtx context.Context, listenAddr, syncListenAddr, checksum, 
 		return fmt.Errorf("failed to wait for sync service running in 5 second")
 	}
 
-	service, err := LaunchService(ctx, cancel, syncListenAddr, checksum, sourceType, biName, biUUID, diskPathInContainer, parameters, credential)
+	service, err := LaunchService(ctx, cancel, syncListenAddr, ipFamily, checksum, sourceType, biName, biUUID, diskPathInContainer, parameters, credential)
 	if err != nil {
 		return err
 	}
