@@ -9,9 +9,10 @@ import (
 	"github.com/urfave/cli/v3"
 
 	"github.com/longhorn/backing-image-manager/pkg/manager"
-	filesync "github.com/longhorn/backing-image-manager/pkg/sync"
 	"github.com/longhorn/backing-image-manager/pkg/types"
 	"github.com/longhorn/backing-image-manager/pkg/util"
+
+	filesync "github.com/longhorn/backing-image-manager/pkg/sync"
 )
 
 func StartCmd() *cli.Command {
@@ -63,5 +64,5 @@ func start(c *cli.Command) error {
 		return fmt.Errorf("invalid input disk UUID %v, which doesn't match disk UUID %v the disk config file", diskUUID, diskUUIDInFile)
 	}
 
-	return manager.NewServer(context.Background(), listen, syncListen, diskUUID, types.DiskPathInContainer, portRange, &filesync.HTTPHandler{})
+	return manager.NewServer(context.Background(), listen, syncListen, diskUUID, types.DiskPathInContainer, portRange, &filesync.HTTPHandler{}, util.GetIPForPod)
 }
