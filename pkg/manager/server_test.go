@@ -18,14 +18,15 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
+	. "gopkg.in/check.v1"
+
 	"github.com/longhorn/backing-image-manager/api"
 	"github.com/longhorn/backing-image-manager/pkg/client"
 	"github.com/longhorn/backing-image-manager/pkg/datasource"
-	filesync "github.com/longhorn/backing-image-manager/pkg/sync"
 	"github.com/longhorn/backing-image-manager/pkg/types"
 	"github.com/longhorn/backing-image-manager/pkg/util"
 
-	. "gopkg.in/check.v1"
+	filesync "github.com/longhorn/backing-image-manager/pkg/sync"
 )
 
 const (
@@ -61,6 +62,10 @@ type TestSuite struct {
 }
 
 var _ = Suite(&TestSuite{})
+
+func resolvePodIP() (string, error) {
+	return "127.0.0.1", nil
+}
 
 func (s *TestSuite) prepareDirs(c *C) {
 	currentUser, err := user.Current()
@@ -108,26 +113,23 @@ func (s *TestSuite) prepareDirs(c *C) {
 func (s *TestSuite) SetUpSuite(c *C) {
 	logrus.SetLevel(logrus.DebugLevel)
 
-	err := os.Setenv(util.EnvPodIP, "localhost")
-	c.Assert(err, IsNil)
-
 	s.prepareDirs(c)
 
 	s.ctx, s.cancel = context.WithCancel(context.Background())
-	s.addr1 = fmt.Sprintf("localhost:%d", TestManagerServerPort1)
-	s.syncAddr1 = fmt.Sprintf("localhost:%d", TestSyncServerPort1)
+	s.addr1 = fmt.Sprintf("127.0.0.1:%d", TestManagerServerPort1)
+	s.syncAddr1 = fmt.Sprintf("127.0.0.1:%d", TestSyncServerPort1)
 	go func() {
-		_ = NewServer(s.ctx, s.addr1, s.syncAddr1, TestDiskUUID1, s.testDiskPath1, "30001-31000", &filesync.HTTPHandler{})
+		_ = NewServer(s.ctx, s.addr1, s.syncAddr1, TestDiskUUID1, s.testDiskPath1, "30001-31000", &filesync.HTTPHandler{}, resolvePodIP)
 	}()
 
-	s.addr2 = fmt.Sprintf("localhost:%d", TestManagerServerPort2)
-	s.syncAddr2 = fmt.Sprintf("localhost:%d", TestSyncServerPort2)
+	s.addr2 = fmt.Sprintf("127.0.0.1:%d", TestManagerServerPort2)
+	s.syncAddr2 = fmt.Sprintf("127.0.0.1:%d", TestSyncServerPort2)
 
 	go func() {
-		_ = NewServer(s.ctx, s.addr2, s.syncAddr2, TestDiskUUID1, s.testDiskPath2, "31001-32000", &filesync.HTTPHandler{})
+		_ = NewServer(s.ctx, s.addr2, s.syncAddr2, TestDiskUUID1, s.testDiskPath2, "31001-32000", &filesync.HTTPHandler{}, resolvePodIP)
 	}()
 
-	err = checkAndWaitForServer(s.addr1, 5, true)
+	err := checkAndWaitForServer(s.addr1, 5, true)
 	c.Assert(err, IsNil)
 	err = checkAndWaitForServer(s.addr2, 5, true)
 	c.Assert(err, IsNil)
@@ -655,7 +657,7 @@ func launchAndWaitTestDataSourceServer(ctx context.Context, addr, syncAddr, biNa
 		_ = datasource.NewServer(ctx, addr, syncAddr,
 			checksum, string(types.DataSourceTypeDownload), biName, biUUID, diskPath,
 			map[string]string{types.DataSourceTypeDownloadParameterURL: "http://mock-download"}, map[string]string{},
-			&filesync.MockHandler{},
+			&filesync.MockHandler{}, resolvePodIP,
 		)
 	}()
 

@@ -8,17 +8,18 @@ import (
 	"os/signal"
 	"syscall"
 
-	rpc "github.com/longhorn/types/pkg/generated/bimrpc"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/reflection"
 
+	rpc "github.com/longhorn/types/pkg/generated/bimrpc"
+
 	"github.com/longhorn/backing-image-manager/pkg/sync"
 	"github.com/longhorn/backing-image-manager/pkg/util"
 )
 
-func NewServer(parentCtx context.Context, listenAddr, syncListenAddr, diskUUID, diskPathInContainer, portRange string, syncHandler sync.Handler) error {
+func NewServer(parentCtx context.Context, listenAddr, syncListenAddr, diskUUID, diskPathInContainer, portRange string, syncHandler sync.Handler, resolvePodIP util.PodIPResolver) error {
 	ctx, cancel := context.WithCancel(parentCtx)
 
 	// TODO: May launch the sync service separately
@@ -38,7 +39,7 @@ func NewServer(parentCtx context.Context, listenAddr, syncListenAddr, diskUUID, 
 		return errors.Wrap(err, "Failed to listen")
 	}
 
-	bim, err := NewManager(ctx, syncListenAddr, diskUUID, diskPathInContainer, portRange)
+	bim, err := NewManager(ctx, syncListenAddr, diskUUID, diskPathInContainer, portRange, resolvePodIP)
 	if err != nil {
 		return err
 	}

@@ -38,6 +38,7 @@ type Manager struct {
 	syncAddress  string
 	diskUUID     string
 	diskPath     string
+	resolvePodIP util.PodIPResolver
 	portRangeMin int32
 
 	portRangeMax   int32
@@ -58,7 +59,10 @@ type Manager struct {
 	log logrus.FieldLogger
 }
 
-func NewManager(ctx context.Context, syncAddress, diskUUID, diskPath, portRange string) (*Manager, error) {
+func NewManager(ctx context.Context, syncAddress, diskUUID, diskPath, portRange string, resolvePodIP util.PodIPResolver) (*Manager, error) {
+	if resolvePodIP == nil {
+		return nil, errors.New("pod IP resolver is required")
+	}
 	workDir := filepath.Join(diskPath, types.BackingImageManagerDirectoryName)
 	if err := os.MkdirAll(workDir, 0666); err != nil && !os.IsExist(err) {
 		return nil, err
@@ -75,9 +79,10 @@ func NewManager(ctx context.Context, syncAddress, diskUUID, diskPath, portRange 
 	m := &Manager{
 		ctx: ctx,
 
-		syncAddress: syncAddress,
-		diskUUID:    diskUUID,
-		diskPath:    diskPath,
+		syncAddress:  syncAddress,
+		diskUUID:     diskUUID,
+		diskPath:     diskPath,
+		resolvePodIP: resolvePodIP,
 
 		portRangeMin:   start,
 		portRangeMax:   end,
@@ -373,7 +378,7 @@ func (m *Manager) Sync(ctx context.Context, req *rpc.SyncRequest) (resp *rpc.Bac
 			return
 		}
 
-		toIP, err := util.GetIPForPod()
+		toIP, err := m.resolvePodIP()
 		if err != nil {
 			return
 		}
@@ -519,7 +524,7 @@ func (m *Manager) PrepareDownload(ctx context.Context, req *rpc.PrepareDownloadR
 		return nil, status.Errorf(codes.FailedPrecondition, "invalid backing image state %v for the download", bi.Status.State)
 	}
 
-	address, err := util.GetSyncServiceAddressWithPodIP(m.syncAddress)
+	address, err := util.GetSyncServiceAddressWithPodIP(m.syncAddress, m.resolvePodIP)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to get sync service address: %v", err)
 	}
