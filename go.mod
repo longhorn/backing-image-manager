@@ -15,7 +15,7 @@ require (
 	github.com/sirupsen/logrus v1.9.4
 	github.com/urfave/cli v1.22.17
 	google.golang.org/grpc v1.82.1
-	google.golang.org/protobuf v1.36.12-0.20260120151049-f2248ac996af
+	google.golang.org/protobuf v1.36.12
 	gopkg.in/check.v1 v1.0.0-20201130134442-10cb98267c6c
 )
 
