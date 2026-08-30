@@ -12,7 +12,7 @@ require (
 	github.com/longhorn/types v0.0.0-20260709032252-3d0a3cd8f06f
 	github.com/pkg/errors v0.9.1
 	github.com/rancher/go-fibmap v0.0.0-20160418233256-5fc9f8c1ed47
-	github.com/sirupsen/logrus v1.9.4
+	github.com/sirupsen/logrus v1.10.0
 	github.com/urfave/cli/v3 v3.10.1
 	google.golang.org/grpc v1.83.0
 	google.golang.org/protobuf v1.36.11
