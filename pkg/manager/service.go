@@ -21,6 +21,7 @@ import (
 
 	butil "github.com/longhorn/backupstore/util"
 	lhbitmap "github.com/longhorn/go-common-libs/bitmap"
+	commonnet "github.com/longhorn/go-common-libs/net"
 	rpc "github.com/longhorn/types/pkg/generated/bimrpc"
 
 	"github.com/longhorn/backing-image-manager/api"
@@ -36,6 +37,7 @@ type Manager struct {
 	ctx context.Context
 
 	syncAddress  string
+	ipFamily     commonnet.IPFamily
 	diskUUID     string
 	diskPath     string
 	resolvePodIP util.PodIPResolver
@@ -59,7 +61,7 @@ type Manager struct {
 	log logrus.FieldLogger
 }
 
-func NewManager(ctx context.Context, syncAddress, diskUUID, diskPath, portRange string, resolvePodIP util.PodIPResolver) (*Manager, error) {
+func NewManager(ctx context.Context, syncAddress string, ipFamily commonnet.IPFamily, diskUUID, diskPath, portRange string, resolvePodIP util.PodIPResolver) (*Manager, error) {
 	if resolvePodIP == nil {
 		return nil, errors.New("pod IP resolver is required")
 	}
@@ -80,6 +82,7 @@ func NewManager(ctx context.Context, syncAddress, diskUUID, diskPath, portRange 
 		ctx: ctx,
 
 		syncAddress:  syncAddress,
+		ipFamily:     ipFamily,
 		diskUUID:     diskUUID,
 		diskPath:     diskPath,
 		resolvePodIP: resolvePodIP,
@@ -378,12 +381,11 @@ func (m *Manager) Sync(ctx context.Context, req *rpc.SyncRequest) (resp *rpc.Bac
 			return
 		}
 
-		toIP, err := m.resolvePodIP()
+		toIP, err := m.resolvePodIP(m.ipFamily)
 		if err != nil {
 			return
 		}
 		toAddress := net.JoinHostPort(toIP, strconv.Itoa(int(port)))
-
 		// sender.Send is a non-blocking call
 		sender := client.NewBackingImageManagerClient(req.FromAddress)
 		if err = sender.Send(req.Spec.Name, req.Spec.Uuid, toAddress); err != nil {
@@ -524,7 +526,7 @@ func (m *Manager) PrepareDownload(ctx context.Context, req *rpc.PrepareDownloadR
 		return nil, status.Errorf(codes.FailedPrecondition, "invalid backing image state %v for the download", bi.Status.State)
 	}
 
-	address, err := util.GetSyncServiceAddressWithPodIP(m.syncAddress, m.resolvePodIP)
+	address, err := util.GetSyncServiceAddressWithPodIP(m.syncAddress, m.ipFamily, m.resolvePodIP)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to get sync service address: %v", err)
 	}

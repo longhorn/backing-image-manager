@@ -14,7 +14,7 @@ import (
 
 const HTTPClientErrorPrefixTemplate = "resp.StatusCode(%d) != http.StatusOK(200)"
 
-type PodIPResolver func() (string, error)
+type PodIPResolver func(commonnet.IPFamily) (string, error)
 
 // NoProxyTransport is a copy of http.DefaultTransport with Proxy disabled.
 // Use it for all intra-pod HTTP calls so that requests are never forwarded to
@@ -62,17 +62,21 @@ func DetectHTTPServerAvailability(url string, waitIntervalInSecond int, shouldAv
 	}
 }
 
-func GetIPForPod() (ip string, err error) {
-	return commonnet.GetIPForPodByNetwork()
+func GetIPForPod(family commonnet.IPFamily) (ip string, err error) {
+	if family == commonnet.IPFamilyUnspecified {
+		return commonnet.GetIPForPodByNetwork()
+	}
+	return commonnet.GetIPForPodByNetworkAndFamily(family)
 }
 
-func GetSyncServiceAddressWithPodIP(address string,
+func GetSyncServiceAddressWithPodIP(address string, family commonnet.IPFamily,
 	resolvePodIP PodIPResolver) (string, error) {
 	_, port, err := net.SplitHostPort(address)
 	if err != nil {
 		return "", err
 	}
-	podIP, err := resolvePodIP()
+
+	podIP, err := resolvePodIP(family)
 	if err != nil {
 		return "", err
 	}
