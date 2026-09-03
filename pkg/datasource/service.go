@@ -47,6 +47,7 @@ type Service struct {
 	sourceType       types.DataSourceType
 	parameters       map[string]string
 	credential       map[string]string
+	resolvePodIP     util.PodIPResolver
 	expectedChecksum string
 
 	syncListenAddr string
@@ -55,7 +56,10 @@ type Service struct {
 
 func LaunchService(ctx context.Context, cancel context.CancelFunc,
 	syncListenAddr, checksum, sourceType, name, uuid, diskPathInContainer string,
-	parameters map[string]string, credential map[string]string) (*Service, error) {
+	parameters map[string]string, credential map[string]string, resolvePodIP util.PodIPResolver) (*Service, error) {
+	if resolvePodIP == nil {
+		return nil, errors.New("pod IP resolver is required")
+	}
 
 	if name == "" || uuid == "" {
 		return nil, fmt.Errorf("the backing image name or uuid is not specified")
@@ -87,6 +91,7 @@ func LaunchService(ctx context.Context, cancel context.CancelFunc,
 		parameters:       parameters,
 		credential:       credential,
 		expectedChecksum: checksum,
+		resolvePodIP:     resolvePodIP,
 
 		syncListenAddr: syncListenAddr,
 		syncClient: client.SyncClient{
@@ -296,9 +301,9 @@ func (s *Service) exportFromVolume(parameters map[string]string) error {
 	}
 
 	// TODO: Use the storage IP of the sync service after launching the separate sync server pod.
-	storageIP, err := util.GetIPForPod()
+	storageIP, err := s.resolvePodIP()
 	if err != nil {
-		return fmt.Errorf("failed to get an available ip during volume export")
+		return errors.Wrapf(err, "failed to get an available ip during volume export")
 	}
 	s.log.Infof("DataSource Service: export volume via %v", storageIP)
 
