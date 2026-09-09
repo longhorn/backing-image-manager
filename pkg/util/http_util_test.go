@@ -24,6 +24,7 @@ func TestGetBackingImageDownloadAddressHostPortFormatting(t *testing.T) {
 			expected: "[2001:db8::10]:9500",
 		},
 	}
+
 	for _, testCase := range testCases {
 		t.Run(testCase.name, func(t *testing.T) {
 			t.Setenv("POD_IP", testCase.podIP)
@@ -52,6 +53,7 @@ func TestGetBackingImageDownloadAddressRejectsInvalidAddress(t *testing.T) {
 			input: "[2001:db8::20]",
 		},
 	}
+
 	for _, testCase := range testCases {
 		t.Run(testCase.name, func(t *testing.T) {
 			address, err := GetBackingImageDownloadAddress(testCase.input)
