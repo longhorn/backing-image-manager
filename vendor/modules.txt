@@ -319,6 +319,7 @@ github.com/longhorn/go-common-libs/backup
 github.com/longhorn/go-common-libs/bitmap
 github.com/longhorn/go-common-libs/exec
 github.com/longhorn/go-common-libs/io
+github.com/longhorn/go-common-libs/net
 github.com/longhorn/go-common-libs/ns
 github.com/longhorn/go-common-libs/proc
 github.com/longhorn/go-common-libs/sync

@@ -1,9 +1,14 @@
 package manager
 
 import (
+	"compress/gzip"
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
+	"net/http/httptest"
+	"net/http/httputil"
+	"net/url"
 	"os"
 	"os/exec"
 	"os/user"
@@ -15,17 +20,22 @@ import (
 	"time"
 
 	"github.com/sirupsen/logrus"
+
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+
+	. "gopkg.in/check.v1"
+
+	commonnet "github.com/longhorn/go-common-libs/net"
+	rpc "github.com/longhorn/types/pkg/generated/bimrpc"
 
 	"github.com/longhorn/backing-image-manager/api"
 	"github.com/longhorn/backing-image-manager/pkg/client"
 	"github.com/longhorn/backing-image-manager/pkg/datasource"
-	filesync "github.com/longhorn/backing-image-manager/pkg/sync"
 	"github.com/longhorn/backing-image-manager/pkg/types"
 	"github.com/longhorn/backing-image-manager/pkg/util"
 
-	. "gopkg.in/check.v1"
+	filesync "github.com/longhorn/backing-image-manager/pkg/sync"
 )
 
 const (
@@ -42,6 +52,107 @@ const (
 	TestSyncServerPort2    = 8203
 	TestFirstReservedPort  = 8204
 )
+
+func TestPrepareDownloadUsesPodIPForHTTPProxy(t *testing.T) {
+	biName := "prepare-download-proxy"
+	biUUID := "prepare-download-proxy-uuid"
+	data := strings.Repeat("download through the primary pod address\n", 512)
+
+	diskPath := t.TempDir()
+	diskConfig, err := json.Marshal(&util.DiskConfig{DiskUUID: "prepare-download-proxy-disk"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(diskPath, util.DiskConfigFile), diskConfig, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	biPath := types.GetBackingImageFilePath(diskPath, biName, biUUID)
+	if err := os.MkdirAll(filepath.Dir(biPath), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(biPath, []byte(data), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	t.Setenv(commonnet.EnvPodIP, "127.0.0.1")
+	ctx, cancel := context.WithCancel(t.Context())
+	defer cancel()
+	syncServer := httptest.NewUnstartedServer(nil)
+	syncAddr := syncServer.Listener.Addr().String()
+	service, err := filesync.InitService(ctx, syncAddr, &filesync.HTTPHandler{})
+	if err != nil {
+		syncServer.Close()
+		t.Fatal(err)
+	}
+	syncServer.Config.Handler = filesync.NewRouter(service)
+	syncServer.Start()
+	defer syncServer.Close()
+	manager, err := NewManager(ctx, syncAddr, "prepare-download-proxy-disk", diskPath, "30001-31000",
+		func() (string, error) { return "127.0.0.2", nil })
+	if err != nil {
+		t.Fatal(err)
+	}
+	checksum, err := util.GetFileChecksum(biPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, err = manager.Fetch(ctx, &rpc.FetchRequest{
+		Spec: &rpc.BackingImageSpec{Name: biName, Uuid: biUUID, Checksum: checksum, Size: int64(len(data))},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for range 50 {
+		bi, err := manager.Get(ctx, &rpc.GetRequest{Name: biName, Uuid: biUUID})
+		if err == nil && bi.Status.State == string(types.StateReady) {
+			break
+		}
+		time.Sleep(100 * time.Millisecond)
+	}
+	response, err := manager.PrepareDownload(ctx, &rpc.PrepareDownloadRequest{Name: biName, Uuid: biUUID})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if response.Address != syncAddr {
+		t.Fatalf("PrepareDownload() address = %q, want %q", response.Address, syncAddr)
+	}
+
+	target, err := url.Parse("http://" + response.Address)
+	if err != nil {
+		t.Fatal(err)
+	}
+	proxy := httptest.NewServer(httputil.NewSingleHostReverseProxy(target))
+	defer proxy.Close()
+	dstPath := filepath.Join(t.TempDir(), "download")
+	if err := (&client.SyncClient{Remote: proxy.Listener.Addr().String()}).DownloadToDst(response.SrcFilePath, dstPath); err != nil {
+		t.Fatal(err)
+	}
+	downloadedFile, err := os.Open(dstPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() {
+		if err := downloadedFile.Close(); err != nil {
+			t.Error(err)
+		}
+	}()
+	gzipReader, err := gzip.NewReader(downloadedFile)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() {
+		if err := gzipReader.Close(); err != nil {
+			t.Error(err)
+		}
+	}()
+	downloaded, err := io.ReadAll(gzipReader)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(downloaded) != data {
+		t.Fatalf("downloaded data = %q, want %q", downloaded, data)
+	}
+}
 
 func Test(t *testing.T) { TestingT(t) }
 
@@ -61,6 +172,10 @@ type TestSuite struct {
 }
 
 var _ = Suite(&TestSuite{})
+
+func resolvePodIP() (string, error) {
+	return "127.0.0.1", nil
+}
 
 func (s *TestSuite) prepareDirs(c *C) {
 	currentUser, err := user.Current()
@@ -108,26 +223,23 @@ func (s *TestSuite) prepareDirs(c *C) {
 func (s *TestSuite) SetUpSuite(c *C) {
 	logrus.SetLevel(logrus.DebugLevel)
 
-	err := os.Setenv(util.EnvPodIP, "localhost")
-	c.Assert(err, IsNil)
-
 	s.prepareDirs(c)
 
 	s.ctx, s.cancel = context.WithCancel(context.Background())
-	s.addr1 = fmt.Sprintf("localhost:%d", TestManagerServerPort1)
-	s.syncAddr1 = fmt.Sprintf("localhost:%d", TestSyncServerPort1)
+	s.addr1 = fmt.Sprintf("127.0.0.1:%d", TestManagerServerPort1)
+	s.syncAddr1 = fmt.Sprintf("127.0.0.1:%d", TestSyncServerPort1)
 	go func() {
-		_ = NewServer(s.ctx, s.addr1, s.syncAddr1, TestDiskUUID1, s.testDiskPath1, "30001-31000", &filesync.HTTPHandler{})
+		_ = NewServer(s.ctx, s.addr1, s.syncAddr1, TestDiskUUID1, s.testDiskPath1, "30001-31000", &filesync.HTTPHandler{}, resolvePodIP)
 	}()
 
-	s.addr2 = fmt.Sprintf("localhost:%d", TestManagerServerPort2)
-	s.syncAddr2 = fmt.Sprintf("localhost:%d", TestSyncServerPort2)
+	s.addr2 = fmt.Sprintf("127.0.0.1:%d", TestManagerServerPort2)
+	s.syncAddr2 = fmt.Sprintf("127.0.0.1:%d", TestSyncServerPort2)
 
 	go func() {
-		_ = NewServer(s.ctx, s.addr2, s.syncAddr2, TestDiskUUID1, s.testDiskPath2, "31001-32000", &filesync.HTTPHandler{})
+		_ = NewServer(s.ctx, s.addr2, s.syncAddr2, TestDiskUUID1, s.testDiskPath2, "31001-32000", &filesync.HTTPHandler{}, resolvePodIP)
 	}()
 
-	err = checkAndWaitForServer(s.addr1, 5, true)
+	err := checkAndWaitForServer(s.addr1, 5, true)
 	c.Assert(err, IsNil)
 	err = checkAndWaitForServer(s.addr2, 5, true)
 	c.Assert(err, IsNil)
@@ -413,6 +525,17 @@ func (s *TestSuite) TestBackingImageDownloadToLocal(c *C) {
 			logrus.WithError(errRemove).Error("Failed to remove the original file")
 		}
 	}()
+	previousPodIP, hadPodIP := os.LookupEnv(commonnet.EnvPodIP)
+	if err := os.Setenv(commonnet.EnvPodIP, "127.0.0.1"); err != nil {
+		c.Assert(err, IsNil)
+	}
+	defer func() {
+		if hadPodIP {
+			_ = os.Setenv(commonnet.EnvPodIP, previousPodIP)
+		} else {
+			_ = os.Unsetenv(commonnet.EnvPodIP)
+		}
+	}()
 	checksum, err := util.GetFileChecksum(biFilePath1)
 	c.Assert(err, IsNil)
 	logrus.Debugf("the original file %v for the test is ready", biFilePath1)
@@ -655,7 +778,7 @@ func launchAndWaitTestDataSourceServer(ctx context.Context, addr, syncAddr, biNa
 		_ = datasource.NewServer(ctx, addr, syncAddr,
 			checksum, string(types.DataSourceTypeDownload), biName, biUUID, diskPath,
 			map[string]string{types.DataSourceTypeDownloadParameterURL: "http://mock-download"}, map[string]string{},
-			&filesync.MockHandler{},
+			&filesync.MockHandler{}, resolvePodIP,
 		)
 	}()
 
