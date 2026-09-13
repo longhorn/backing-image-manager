@@ -6,7 +6,7 @@ require (
 	github.com/golang/protobuf v1.5.4
 	github.com/gorilla/mux v1.8.1
 	github.com/longhorn/backupstore v0.0.0-20260820153238-ab5179ec9ca0
-	github.com/longhorn/go-common-libs v0.0.0-20260730002911-add09e6eb92c
+	github.com/longhorn/go-common-libs v0.0.0-20260909075701-1a37e0e5083e
 	github.com/longhorn/longhorn-engine v1.12.1
 	github.com/longhorn/sparse-tools v0.0.0-20260423074222-280e61de741a
 	github.com/longhorn/types v0.0.0-20260709032252-3d0a3cd8f06f

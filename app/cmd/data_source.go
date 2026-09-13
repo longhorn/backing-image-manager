@@ -12,6 +12,7 @@ import (
 	"github.com/longhorn/backing-image-manager/pkg/datasource"
 	"github.com/longhorn/backing-image-manager/pkg/sync"
 	"github.com/longhorn/backing-image-manager/pkg/types"
+	"github.com/longhorn/backing-image-manager/pkg/util"
 )
 
 func DataSourceCmd() cli.Command {
@@ -81,7 +82,7 @@ func dataSource(c *cli.Context) error {
 		return err
 	}
 
-	return datasource.NewServer(context.Background(), listen, syncListen, checksum, sourceType, name, uuid, types.DiskPathInContainer, parameters, credential, &sync.HTTPHandler{})
+	return datasource.NewServer(context.Background(), listen, syncListen, checksum, sourceType, name, uuid, types.DiskPathInContainer, parameters, credential, &sync.HTTPHandler{}, util.GetIPForPod)
 }
 
 func parseSliceToMap(sli []string) (map[string]string, error) {
