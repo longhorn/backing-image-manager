@@ -344,7 +344,7 @@ func (m *Manager) Sync(ctx context.Context, req *rpc.SyncRequest) (resp *rpc.Bac
 			log.Errorf("Backing Image Manager: failed to wait for the HTTP server using port %v stopped, cannot release the port", port)
 			return
 		}
-		if err := m.releasePorts(port, port+1); err != nil {
+		if err := m.releasePorts(port, port); err != nil {
 			log.WithError(err).Errorf("Backing Image Manager: failed to release port %v after syncing backing image", port)
 		}
 		log.Infof("Backing Image Manager: released port %v after syncing", port)
