@@ -54,6 +54,14 @@ func TestExportFromVolumeUsesConfiguredIPFamily(t *testing.T) {
 	syncServer.Config.Handler = filesync.NewRouter(syncService)
 	syncServer.Start()
 	t.Cleanup(syncServer.Close)
+	receiverListener, err := net.Listen("tcp6", "[::1]:0")
+	if err != nil {
+		t.Fatal(err)
+	}
+	receiverPort := receiverListener.Addr().(*net.TCPAddr).Port
+	if err := receiverListener.Close(); err != nil {
+		t.Fatal(err)
+	}
 
 	filePath := filepath.Join(t.TempDir(), "export-from-volume")
 	data := make([]byte, 512)
@@ -96,7 +104,8 @@ func TestExportFromVolumeUsesConfiguredIPFamily(t *testing.T) {
 			}
 			return "", errors.New("IPv6 family is required")
 		},
-		syncClient: client.SyncClient{Remote: syncServer.Listener.Addr().String()},
+		syncClient:               client.SyncClient{Remote: syncServer.Listener.Addr().String()},
+		volumeExportReceiverPort: int32(receiverPort),
 	}
 	parameters := map[string]string{
 		types.DataSourceTypeExportFromVolumeParameterSnapshotName:              "snapshot",
