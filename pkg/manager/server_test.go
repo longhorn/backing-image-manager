@@ -323,7 +323,7 @@ func TestSyncReleasesPortAfterResolverFailure(t *testing.T) {
 
 	resolverErr := errors.New("no usable IPv6 address")
 	manager, err := NewManager(ctx, syncServer.Listener.Addr().String(), commonnet.IPFamilyIPv6,
-		"sync-resolver-failure-disk", diskPath, "39011-39012",
+		"sync-resolver-failure-disk", diskPath, "39011-39011",
 		func(commonnet.IPFamily) (string, error) { return "", resolverErr })
 	if err != nil {
 		t.Fatal(err)
@@ -354,12 +354,12 @@ func TestSyncReleasesPortAfterResolverFailure(t *testing.T) {
 
 	deadline := time.Now().Add(5 * time.Second)
 	for time.Now().Before(deadline) {
-		start, end, err := manager.allocatePorts(2)
+		start, end, err := manager.allocatePorts(1)
 		if err == nil {
 			ownedStart, ownedEnd = start, end
 			owned = true
-			if start != 39011 || end != 39012 {
-				t.Fatalf("allocated range = %d-%d, want 39011-39012", start, end)
+			if start != 39011 || end != 39011 {
+				t.Fatalf("allocated range = %d-%d, want 39011-39011", start, end)
 			}
 			return
 		}
