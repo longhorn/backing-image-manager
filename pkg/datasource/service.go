@@ -52,8 +52,9 @@ type Service struct {
 	credential       map[string]string
 	expectedChecksum string
 
-	syncListenAddr string
-	syncClient     client.SyncClient
+	syncListenAddr           string
+	syncClient               client.SyncClient
+	volumeExportReceiverPort int32
 }
 
 func LaunchService(ctx context.Context, cancel context.CancelFunc,
@@ -104,6 +105,7 @@ func LaunchService(ctx context.Context, cancel context.CancelFunc,
 		syncClient: client.SyncClient{
 			Remote: syncListenAddr,
 		},
+		volumeExportReceiverPort: types.DefaultVolumeExportReceiverPort,
 	}
 	s.dsInfo = &api.DataSourceInfo{
 		SourceType: string(s.sourceType),
@@ -315,7 +317,7 @@ func (s *Service) exportFromVolume(parameters map[string]string) error {
 	}
 	s.log.Infof("DataSource Service: export volume via %v", storageIP)
 
-	if err := s.syncClient.Receive(s.filePath, s.uuid, s.diskUUID, s.expectedChecksum, fileType, types.DefaultVolumeExportReceiverPort, size, dataEngine); err != nil {
+	if err := s.syncClient.Receive(s.filePath, s.uuid, s.diskUUID, s.expectedChecksum, fileType, int(s.volumeExportReceiverPort), size, dataEngine); err != nil {
 		return err
 	}
 
@@ -332,7 +334,7 @@ func (s *Service) exportFromVolume(parameters map[string]string) error {
 			senderErr = errors.Wrapf(err, "failed to get replica client %v", senderAddress)
 			return
 		}
-		if err := replicaClient.ExportVolume(snapshotName, storageIP, types.DefaultVolumeExportReceiverPort, true, timeout); err != nil {
+		if err := replicaClient.ExportVolume(snapshotName, storageIP, s.volumeExportReceiverPort, true, timeout); err != nil {
 			senderErr = errors.Wrapf(err, "failed to export volume snapshot %v", snapshotName)
 			return
 		}
