@@ -25,11 +25,13 @@ ENV ARCH ${TARGETPLATFORM#linux/}
 RUN zypper -n addrepo --refresh https://download.opensuse.org/repositories/system:/snappy/openSUSE_Factory/system:snappy.repo && \
     zypper --gpg-auto-import-keys ref && \
     zypper -n ref && \
-    zypper update -y
+    zypper update -y && \
+    zypper -n clean --all
 
 RUN zypper -n install kmod curl wget nfs-client nfs4-acl-tools fuse \
-    librdmacm1 librdmacm-utils libibverbs perl-Config-General libaio-devel sg3_utils \
-    iputils telnet qemu-tools iproute2 e2fsprogs e2fsprogs-devel xfsprogs xfsprogs-devel
+    librdmacm1 librdmacm-utils libibverbs perl-Config-General libaio1 sg3_utils \
+    iputils telnet qemu-tools iproute2 e2fsprogs xfsprogs && \
+    zypper -n clean --all
 
 RUN if [ "$ARCH" = "amd64" ]; then \
         REPO_URL="https://download.opensuse.org/repositories/network:utilities/openSUSE_Factory/network:utilities.repo"; \
@@ -41,19 +43,19 @@ RUN if [ "$ARCH" = "amd64" ]; then \
     zypper -n addrepo --refresh "$REPO_URL" && \
     zypper --gpg-auto-import-keys ref && \
     zypper -n ref && \
-    zypper update -y
+    zypper update -y && \
+    zypper -n clean --all
 
-RUN zypper -n install iperf
+RUN zypper -n install iperf && \
+    zypper -n clean --all
 
-COPY --from=builder /app/bin/backing-image-manager-${ARCH} /usr/local/bin/backing-image-manager
-RUN chmod +x /usr/local/bin/backing-image-manager
+COPY --chmod=0755 --from=builder /app/bin/backing-image-manager-${ARCH} /usr/local/bin/backing-image-manager
 
 VOLUME /usr/local/bin
 
 # Add Tini
 ENV TINI_VERSION v0.19.0
-ADD https://github.com/krallin/tini/releases/download/${TINI_VERSION}/tini-${ARCH} /tini
-RUN chmod +x /tini
+ADD --chmod=0755 https://github.com/krallin/tini/releases/download/${TINI_VERSION}/tini-${ARCH} /tini
 ENTRYPOINT ["/tini", "--"]
 
 CMD ["backing-image-manager"]
