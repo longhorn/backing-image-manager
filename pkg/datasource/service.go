@@ -357,8 +357,9 @@ func (s *Service) Upload(writer http.ResponseWriter, request *http.Request) {
 	request.URL.RawQuery = q.Encode()
 	s.log.Debugf("DataSource Service: forwarding upload request to sync server %v", request.URL.String())
 
+	// The inbound request has already been rewritten to target the sync server, so the outbound request needs no further changes.
 	proxy := &httputil.ReverseProxy{
-		Director:  func(r *http.Request) {},
+		Rewrite:   func(r *httputil.ProxyRequest) {},
 		Transport: util.NoProxyTransport,
 	}
 	proxy.ServeHTTP(writer, request)
