@@ -15,6 +15,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 
+	commonnet "github.com/longhorn/go-common-libs/net"
 	repclient "github.com/longhorn/longhorn-engine/pkg/replica/client"
 
 	"github.com/longhorn/backing-image-manager/api"
@@ -45,17 +46,19 @@ type Service struct {
 	uuid             string
 	diskUUID         string
 	sourceType       types.DataSourceType
+	ipFamily         commonnet.IPFamily
 	parameters       map[string]string
-	credential       map[string]string
 	resolvePodIP     util.PodIPResolver
+	credential       map[string]string
 	expectedChecksum string
 
-	syncListenAddr string
-	syncClient     client.SyncClient
+	syncListenAddr           string
+	syncClient               client.SyncClient
+	volumeExportReceiverPort int32
 }
 
 func LaunchService(ctx context.Context, cancel context.CancelFunc,
-	syncListenAddr, checksum, sourceType, name, uuid, diskPathInContainer string,
+	syncListenAddr string, ipFamily commonnet.IPFamily, checksum, sourceType, name, uuid, diskPathInContainer string,
 	parameters map[string]string, credential map[string]string, resolvePodIP util.PodIPResolver) (*Service, error) {
 	if resolvePodIP == nil {
 		return nil, errors.New("pod IP resolver is required")
@@ -63,6 +66,10 @@ func LaunchService(ctx context.Context, cancel context.CancelFunc,
 
 	if name == "" || uuid == "" {
 		return nil, fmt.Errorf("the backing image name or uuid is not specified")
+	}
+	parsedIPFamily, err := commonnet.ParseIPFamily(string(ipFamily))
+	if err != nil {
+		return nil, err
 	}
 	diskUUID, err := util.GetDiskConfig(diskPathInContainer)
 	if err != nil {
@@ -88,6 +95,7 @@ func LaunchService(ctx context.Context, cancel context.CancelFunc,
 		uuid:             uuid,
 		diskUUID:         diskUUID,
 		sourceType:       types.DataSourceType(sourceType),
+		ipFamily:         parsedIPFamily,
 		parameters:       parameters,
 		credential:       credential,
 		expectedChecksum: checksum,
@@ -97,6 +105,7 @@ func LaunchService(ctx context.Context, cancel context.CancelFunc,
 		syncClient: client.SyncClient{
 			Remote: syncListenAddr,
 		},
+		volumeExportReceiverPort: types.DefaultVolumeExportReceiverPort,
 	}
 	s.dsInfo = &api.DataSourceInfo{
 		SourceType: string(s.sourceType),
@@ -120,6 +129,7 @@ func LaunchService(ctx context.Context, cancel context.CancelFunc,
 			"name":             s.name,
 			"uuid":             s.uuid,
 			"sourceType":       s.sourceType,
+			"ipFamily":         s.ipFamily,
 			"diskUUID":         s.diskUUID,
 			"parameters":       s.parameters,
 			"expectedChecksum": s.expectedChecksum,
@@ -301,13 +311,13 @@ func (s *Service) exportFromVolume(parameters map[string]string) error {
 	}
 
 	// TODO: Use the storage IP of the sync service after launching the separate sync server pod.
-	storageIP, err := s.resolvePodIP()
+	storageIP, err := s.resolvePodIP(s.ipFamily)
 	if err != nil {
 		return errors.Wrapf(err, "failed to get an available ip during volume export")
 	}
 	s.log.Infof("DataSource Service: export volume via %v", storageIP)
 
-	if err := s.syncClient.Receive(s.filePath, s.uuid, s.diskUUID, s.expectedChecksum, fileType, types.DefaultVolumeExportReceiverPort, size, dataEngine); err != nil {
+	if err := s.syncClient.Receive(s.filePath, s.uuid, s.diskUUID, s.expectedChecksum, fileType, int(s.volumeExportReceiverPort), size, dataEngine); err != nil {
 		return err
 	}
 
@@ -324,7 +334,7 @@ func (s *Service) exportFromVolume(parameters map[string]string) error {
 			senderErr = errors.Wrapf(err, "failed to get replica client %v", senderAddress)
 			return
 		}
-		if err := replicaClient.ExportVolume(snapshotName, storageIP, types.DefaultVolumeExportReceiverPort, true, timeout); err != nil {
+		if err := replicaClient.ExportVolume(snapshotName, storageIP, s.volumeExportReceiverPort, true, timeout); err != nil {
 			senderErr = errors.Wrapf(err, "failed to export volume snapshot %v", snapshotName)
 			return
 		}

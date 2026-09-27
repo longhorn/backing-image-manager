@@ -1,11 +1,15 @@
 package manager
 
 import (
+	"bytes"
 	"compress/gzip"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
+	"net"
+	"net/http"
 	"net/http/httptest"
 	"net/http/httputil"
 	"net/url"
@@ -21,8 +25,10 @@ import (
 
 	"github.com/sirupsen/logrus"
 
+	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+	"google.golang.org/protobuf/types/known/emptypb"
 
 	. "gopkg.in/check.v1"
 
@@ -87,8 +93,9 @@ func TestPrepareDownloadUsesPodIPForHTTPProxy(t *testing.T) {
 	syncServer.Config.Handler = filesync.NewRouter(service)
 	syncServer.Start()
 	defer syncServer.Close()
-	manager, err := NewManager(ctx, syncAddr, "prepare-download-proxy-disk", diskPath, "30001-31000",
-		func() (string, error) { return "127.0.0.2", nil })
+	manager, err := NewManager(ctx, syncAddr, commonnet.IPFamilyUnspecified,
+		"prepare-download-proxy-disk", diskPath, "30001-31000",
+		func(commonnet.IPFamily) (string, error) { return "127.0.0.2", nil })
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -154,6 +161,213 @@ func TestPrepareDownloadUsesPodIPForHTTPProxy(t *testing.T) {
 	}
 }
 
+type sourceSyncSender struct {
+	rpc.UnimplementedBackingImageManagerServiceServer
+	syncClient *client.SyncClient
+	filePath   string
+}
+
+func (s *sourceSyncSender) Send(_ context.Context, req *rpc.SendRequest) (*emptypb.Empty, error) {
+	if err := s.syncClient.Send(s.filePath, req.ToAddress); err != nil {
+		return nil, err
+	}
+	return &emptypb.Empty{}, nil
+}
+
+func TestSyncUsesConfiguredIPFamily(t *testing.T) {
+	const (
+		biName = "sync-configured-ip-family"
+		biUUID = "sync-configured-ip-family-uuid"
+	)
+
+	ctx, cancel := context.WithCancel(t.Context())
+	defer cancel()
+	diskPath := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(diskPath, types.BackingImageManagerDirectoryName), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	destinationSyncServer := httptest.NewUnstartedServer(nil)
+	destinationSyncService, err := filesync.InitService(ctx, destinationSyncServer.Listener.Addr().String(), &filesync.HTTPHandler{})
+	if err != nil {
+		destinationSyncServer.Close()
+		t.Fatal(err)
+	}
+	destinationSyncServer.Config.Handler = filesync.NewRouter(destinationSyncService)
+	destinationSyncServer.Start()
+	t.Cleanup(destinationSyncServer.Close)
+
+	sourceSyncServer := httptest.NewUnstartedServer(nil)
+	sourceSyncService, err := filesync.InitService(ctx, sourceSyncServer.Listener.Addr().String(), &filesync.HTTPHandler{})
+	if err != nil {
+		sourceSyncServer.Close()
+		t.Fatal(err)
+	}
+	sourceSyncServer.Config.Handler = filesync.NewRouter(sourceSyncService)
+	sourceSyncServer.Start()
+	t.Cleanup(sourceSyncServer.Close)
+
+	sourceDiskPath := t.TempDir()
+	sourceFilePath := types.GetBackingImageFilePath(sourceDiskPath, biName, biUUID)
+	if err := os.MkdirAll(filepath.Dir(sourceFilePath), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	data := make([]byte, 512)
+	for i := range data {
+		data[i] = byte(i % 251)
+	}
+	if err := os.WriteFile(sourceFilePath, data, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	sourceSyncClient := &client.SyncClient{Remote: sourceSyncServer.Listener.Addr().String()}
+	checksum, err := util.GetFileChecksum(sourceFilePath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := sourceSyncClient.Fetch(sourceFilePath, sourceFilePath, biUUID, "source-disk", checksum, int64(len(data))); err != nil {
+		t.Fatal(err)
+	}
+	deadline := time.Now().Add(5 * time.Second)
+	sourceReady := false
+	for time.Now().Before(deadline) {
+		info, err := sourceSyncClient.Get(sourceFilePath)
+		if err == nil && info.State == string(types.StateReady) {
+			sourceReady = true
+			break
+		}
+		time.Sleep(100 * time.Millisecond)
+	}
+	if !sourceReady {
+		t.Fatal("timed out waiting for source file to become ready")
+	}
+
+	sourceListener, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatal(err)
+	}
+	sourceServer := grpc.NewServer()
+	rpc.RegisterBackingImageManagerServiceServer(sourceServer, &sourceSyncSender{
+		syncClient: sourceSyncClient,
+		filePath:   sourceFilePath,
+	})
+	go func() {
+		_ = sourceServer.Serve(sourceListener)
+	}()
+	defer sourceServer.Stop()
+
+	manager, err := NewManager(ctx, destinationSyncServer.Listener.Addr().String(), commonnet.IPFamilyIPv6,
+		"sync-configured-ip-family-disk", diskPath, "39001-39010",
+		func(family commonnet.IPFamily) (string, error) {
+			if family == commonnet.IPFamilyIPv6 {
+				return "::1", nil
+			}
+			return "", errors.New("IPv6 family is required")
+		})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.MkdirAll(types.GetBackingImageDirectory(diskPath, biName, biUUID), 0o700); err != nil {
+		t.Fatal(err)
+	}
+
+	_, err = manager.Sync(ctx, &rpc.SyncRequest{
+		Spec: &rpc.BackingImageSpec{
+			Name:     biName,
+			Uuid:     biUUID,
+			Size:     int64(len(data)),
+			Checksum: checksum,
+		},
+		FromAddress: sourceListener.Addr().String(),
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	deadline = time.Now().Add(10 * time.Second)
+	for time.Now().Before(deadline) {
+		info, err := manager.Get(ctx, &rpc.GetRequest{Name: biName, Uuid: biUUID})
+		if err == nil && info.Status.State == string(types.StateReady) {
+			received, readErr := os.ReadFile(types.GetBackingImageFilePath(diskPath, biName, biUUID))
+			if readErr != nil {
+				t.Fatal(readErr)
+			}
+			if !bytes.Equal(received, data) {
+				t.Fatalf("synced content = %v, want %v", received, data)
+			}
+			return
+		}
+		time.Sleep(100 * time.Millisecond)
+	}
+	t.Fatal("timed out waiting for IPv6 Sync transfer")
+}
+
+func TestSyncReleasesPortAfterResolverFailure(t *testing.T) {
+	const (
+		biName = "sync-resolver-failure"
+		biUUID = "sync-resolver-failure-uuid"
+	)
+
+	ctx, cancel := context.WithCancel(t.Context())
+	defer cancel()
+	diskPath := t.TempDir()
+	syncServer := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
+		if request.Method == http.MethodPost {
+			writer.WriteHeader(http.StatusOK)
+			return
+		}
+		_ = json.NewEncoder(writer).Encode(&api.FileInfo{
+			FilePath: types.GetBackingImageFilePath(diskPath, biName, biUUID),
+			UUID:     biUUID,
+			State:    string(types.StateStarting),
+		})
+	}))
+	t.Cleanup(syncServer.Close)
+
+	resolverErr := errors.New("no usable IPv6 address")
+	manager, err := NewManager(ctx, syncServer.Listener.Addr().String(), commonnet.IPFamilyIPv6,
+		"sync-resolver-failure-disk", diskPath, "39011-39011",
+		func(commonnet.IPFamily) (string, error) { return "", resolverErr })
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	_, err = manager.Sync(ctx, &rpc.SyncRequest{
+		Spec: &rpc.BackingImageSpec{
+			Name: biName,
+			Uuid: biUUID,
+			Size: MockFileSize,
+		},
+		FromAddress: "127.0.0.1:1",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	var ownedStart, ownedEnd int32
+	owned := false
+	t.Cleanup(func() {
+		if !owned {
+			return
+		}
+		if err := manager.releasePorts(ownedStart, ownedEnd); err != nil {
+			t.Error(err)
+		}
+	})
+
+	deadline := time.Now().Add(5 * time.Second)
+	for time.Now().Before(deadline) {
+		start, end, err := manager.allocatePorts(1)
+		if err == nil {
+			ownedStart, ownedEnd = start, end
+			owned = true
+			if start != 39011 || end != 39011 {
+				t.Fatalf("allocated range = %d-%d, want 39011-39011", start, end)
+			}
+			return
+		}
+		time.Sleep(100 * time.Millisecond)
+	}
+	t.Fatal("timed out waiting for the port to be released after resolver failure")
+}
+
 func Test(t *testing.T) { TestingT(t) }
 
 type TestSuite struct {
@@ -173,7 +387,7 @@ type TestSuite struct {
 
 var _ = Suite(&TestSuite{})
 
-func resolvePodIP() (string, error) {
+func resolvePodIP(commonnet.IPFamily) (string, error) {
 	return "127.0.0.1", nil
 }
 
@@ -229,14 +443,14 @@ func (s *TestSuite) SetUpSuite(c *C) {
 	s.addr1 = fmt.Sprintf("127.0.0.1:%d", TestManagerServerPort1)
 	s.syncAddr1 = fmt.Sprintf("127.0.0.1:%d", TestSyncServerPort1)
 	go func() {
-		_ = NewServer(s.ctx, s.addr1, s.syncAddr1, TestDiskUUID1, s.testDiskPath1, "30001-31000", &filesync.HTTPHandler{}, resolvePodIP)
+		_ = NewServer(s.ctx, s.addr1, s.syncAddr1, commonnet.IPFamilyUnspecified, TestDiskUUID1, s.testDiskPath1, "30001-31000", &filesync.HTTPHandler{}, resolvePodIP)
 	}()
 
 	s.addr2 = fmt.Sprintf("127.0.0.1:%d", TestManagerServerPort2)
 	s.syncAddr2 = fmt.Sprintf("127.0.0.1:%d", TestSyncServerPort2)
 
 	go func() {
-		_ = NewServer(s.ctx, s.addr2, s.syncAddr2, TestDiskUUID1, s.testDiskPath2, "31001-32000", &filesync.HTTPHandler{}, resolvePodIP)
+		_ = NewServer(s.ctx, s.addr2, s.syncAddr2, commonnet.IPFamilyUnspecified, TestDiskUUID1, s.testDiskPath2, "31001-32000", &filesync.HTTPHandler{}, resolvePodIP)
 	}()
 
 	err := checkAndWaitForServer(s.addr1, 5, true)
@@ -411,8 +625,8 @@ func (s *TestSuite) TestSingleBackingImageFetch(c *C) {
 		checksum, err := util.GetFileChecksum(dsFilePath)
 		c.Assert(err, IsNil)
 
-		dsAddr := fmt.Sprintf("localhost:%d", TestFirstReservedPort+i*2)
-		dsSyncAddr := fmt.Sprintf("localhost:%d", TestFirstReservedPort+i*2+1)
+		dsAddr := fmt.Sprintf("127.0.0.1:%d", TestFirstReservedPort+i*2)
+		dsSyncAddr := fmt.Sprintf("127.0.0.1:%d", TestFirstReservedPort+i*2+1)
 
 		isRunning := launchAndWaitTestDataSourceServer(subCtx, dsAddr, dsSyncAddr, biName, biUUID, checksum, s.testDiskPath1)
 		c.Assert(isRunning, Equals, true)
@@ -775,7 +989,7 @@ func checkAndWaitForServer(address string, waitIntervalInSecond int, shouldAvail
 
 func launchAndWaitTestDataSourceServer(ctx context.Context, addr, syncAddr, biName, biUUID, checksum, diskPath string) bool {
 	go func() {
-		_ = datasource.NewServer(ctx, addr, syncAddr,
+		_ = datasource.NewServer(ctx, addr, syncAddr, commonnet.IPFamilyUnspecified,
 			checksum, string(types.DataSourceTypeDownload), biName, biUUID, diskPath,
 			map[string]string{types.DataSourceTypeDownloadParameterURL: "http://mock-download"}, map[string]string{},
 			&filesync.MockHandler{}, resolvePodIP,
