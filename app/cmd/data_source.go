@@ -9,6 +9,8 @@ import (
 	"github.com/sirupsen/logrus"
 	"github.com/urfave/cli/v3"
 
+	commonnet "github.com/longhorn/go-common-libs/net"
+
 	"github.com/longhorn/backing-image-manager/pkg/datasource"
 	"github.com/longhorn/backing-image-manager/pkg/sync"
 	"github.com/longhorn/backing-image-manager/pkg/types"
@@ -46,6 +48,11 @@ func DataSourceCmd() *cli.Command {
 				Usage: "Parameters for backing image of different source type.",
 			},
 			&cli.StringFlag{
+				Name:  "ip-family",
+				Value: string(commonnet.IPFamilyUnspecified),
+				Usage: "IP address family used by data source transfers; omitted selects automatically",
+			},
+			&cli.StringFlag{
 				Name:  "checksum",
 				Value: "",
 				Usage: "The SHA512 checksum of the backing images",
@@ -67,6 +74,11 @@ func DataSourceCmd() *cli.Command {
 func dataSource(c *cli.Command) error {
 	logrus.SetLevel(logrus.DebugLevel)
 
+	ipFamily, err := commonnet.ParseIPFamily(c.String("ip-family"))
+	if err != nil {
+		return err
+	}
+
 	listen := c.String("listen")
 	syncListen := c.String("sync-listen")
 	name := c.String("name")
@@ -83,7 +95,7 @@ func dataSource(c *cli.Command) error {
 		return err
 	}
 
-	return datasource.NewServer(context.Background(), listen, syncListen, checksum, sourceType, name, uuid, types.DiskPathInContainer, parameters, credential, &sync.HTTPHandler{}, util.GetIPForPod)
+	return datasource.NewServer(context.Background(), listen, syncListen, ipFamily, checksum, sourceType, name, uuid, types.DiskPathInContainer, parameters, credential, &sync.HTTPHandler{}, util.GetIPForPod)
 }
 
 func parseSliceToMap(sli []string) (map[string]string, error) {
