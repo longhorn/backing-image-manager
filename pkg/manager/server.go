@@ -13,13 +13,14 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/reflection"
 
+	commonnet "github.com/longhorn/go-common-libs/net"
 	rpc "github.com/longhorn/types/pkg/generated/bimrpc"
 
 	"github.com/longhorn/backing-image-manager/pkg/sync"
 	"github.com/longhorn/backing-image-manager/pkg/util"
 )
 
-func NewServer(parentCtx context.Context, listenAddr, syncListenAddr, diskUUID, diskPathInContainer, portRange string, syncHandler sync.Handler, resolvePodIP util.PodIPResolver) error {
+func NewServer(parentCtx context.Context, listenAddr, syncListenAddr string, ipFamily commonnet.IPFamily, diskUUID, diskPathInContainer, portRange string, syncHandler sync.Handler, resolvePodIP util.PodIPResolver) error {
 	ctx, cancel := context.WithCancel(parentCtx)
 	defer cancel()
 
@@ -45,7 +46,7 @@ func NewServer(parentCtx context.Context, listenAddr, syncListenAddr, diskUUID, 
 		}
 	}()
 
-	bim, err := NewManager(ctx, syncListenAddr, diskUUID, diskPathInContainer, portRange, resolvePodIP)
+	bim, err := NewManager(ctx, syncListenAddr, ipFamily, diskUUID, diskPathInContainer, portRange, resolvePodIP)
 	if err != nil {
 		return err
 	}
