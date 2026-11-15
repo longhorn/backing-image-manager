@@ -30,7 +30,7 @@ RUN zypper -n addrepo --refresh https://download.opensuse.org/repositories/syste
 
 RUN zypper -n install kmod curl wget nfs-client nfs4-acl-tools fuse \
     librdmacm1 librdmacm-utils libibverbs perl-Config-General libaio1 sg3_utils \
-    iputils telnet qemu-tools iproute2 e2fsprogs xfsprogs && \
+    iputils telnet qemu-tools iproute2 e2fsprogs xfsprogs cifs-utils && \
     zypper -n clean --all
 
 RUN if [ "$ARCH" = "amd64" ]; then \
