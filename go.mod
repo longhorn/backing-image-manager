@@ -2,7 +2,7 @@ module github.com/longhorn/backing-image-manager
 
 go 1.26.0
 
-replace github.com/longhorn/types => github.com/longhorn/types v0.0.0-20260408014255-ff785625245f
+replace github.com/longhorn/types => github.com/longhorn/types v0.0.0-20261030035820-c6ac902022cf
 
 require (
 	github.com/golang/protobuf v1.5.4
@@ -11,7 +11,7 @@ require (
 	github.com/longhorn/go-common-libs v0.0.0-20261013144042-4de833c70b5f
 	github.com/longhorn/longhorn-engine v1.11.3
 	github.com/longhorn/sparse-tools v0.0.0-20261022004111-a7caacc40965
-	github.com/longhorn/types v0.0.0-20260912171147-ce65698c8b35
+	github.com/longhorn/types v0.0.0-20261030035820-c6ac902022cf
 	github.com/pkg/errors v0.9.1
 	github.com/rancher/go-fibmap v0.0.0-20160418233256-5fc9f8c1ed47
 	github.com/sirupsen/logrus v1.10.2
@@ -84,9 +84,9 @@ require (
 	github.com/slok/goresilience v0.2.0 // indirect
 	github.com/x448/float16 v0.8.4 // indirect
 	github.com/yusufpapurcu/wmi v1.2.4 // indirect
-	golang.org/x/net v0.60.0 // indirect
-	golang.org/x/sys v0.48.0 // indirect
-	golang.org/x/text v0.42.0 // indirect
+	golang.org/x/net v0.62.0 // indirect
+	golang.org/x/sys v0.49.0 // indirect
+	golang.org/x/text v0.43.0 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20260706201446-f0a921348800 // indirect
 	gopkg.in/inf.v0 v0.9.1 // indirect
 	k8s.io/apimachinery v0.35.4 // indirect
