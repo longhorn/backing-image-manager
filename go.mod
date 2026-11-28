@@ -2,21 +2,21 @@ module github.com/longhorn/backing-image-manager
 
 go 1.26.0
 
-replace github.com/longhorn/types => github.com/longhorn/types v0.0.0-20260408014255-ff785625245f
+replace github.com/longhorn/types => github.com/longhorn/types v0.0.0-20261030035820-c6ac902022cf
 
 require (
 	github.com/golang/protobuf v1.5.4
 	github.com/gorilla/mux v1.8.1
 	github.com/longhorn/backupstore v0.0.0-20260929130031-0fe49ea4aac7
-	github.com/longhorn/go-common-libs v0.0.0-20261013144042-4de833c70b5f
+	github.com/longhorn/go-common-libs v0.0.0-20261114062950-d3ec8b4403d1
 	github.com/longhorn/longhorn-engine v1.11.3
 	github.com/longhorn/sparse-tools v0.0.0-20261022004111-a7caacc40965
-	github.com/longhorn/types v0.0.0-20260912171147-ce65698c8b35
+	github.com/longhorn/types v0.0.0-20261030035820-c6ac902022cf
 	github.com/pkg/errors v0.9.1
 	github.com/rancher/go-fibmap v0.0.0-20160418233256-5fc9f8c1ed47
 	github.com/sirupsen/logrus v1.10.2
 	github.com/urfave/cli v1.22.17
-	google.golang.org/grpc v1.84.0
+	google.golang.org/grpc v1.85.0
 	google.golang.org/protobuf v1.36.12
 	gopkg.in/check.v1 v1.0.0-20201130134442-10cb98267c6c
 )
@@ -60,7 +60,7 @@ require (
 	github.com/gammazero/deque v0.2.1 // indirect
 	github.com/gammazero/workerpool v1.1.3 // indirect
 	github.com/getsentry/sentry-go v0.46.0 // indirect
-	github.com/go-logr/logr v1.4.3 // indirect
+	github.com/go-logr/logr v1.4.4 // indirect
 	github.com/go-ole/go-ole v1.3.0 // indirect
 	github.com/gogo/protobuf v1.3.2 // indirect
 	github.com/google/uuid v1.6.0 // indirect
@@ -84,10 +84,10 @@ require (
 	github.com/slok/goresilience v0.2.0 // indirect
 	github.com/x448/float16 v0.8.4 // indirect
 	github.com/yusufpapurcu/wmi v1.2.4 // indirect
-	golang.org/x/net v0.60.0 // indirect
-	golang.org/x/sys v0.48.0 // indirect
-	golang.org/x/text v0.42.0 // indirect
-	google.golang.org/genproto/googleapis/rpc v0.0.0-20260706201446-f0a921348800 // indirect
+	golang.org/x/net v0.62.0 // indirect
+	golang.org/x/sys v0.49.0 // indirect
+	golang.org/x/text v0.43.0 // indirect
+	google.golang.org/genproto/googleapis/rpc v0.0.0-20260817212433-ac3dfec99bb1 // indirect
 	gopkg.in/inf.v0 v0.9.1 // indirect
 	k8s.io/apimachinery v0.35.4 // indirect
 	k8s.io/klog/v2 v2.130.1 // indirect
